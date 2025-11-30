@@ -154,7 +154,7 @@ export default function LabelPage({ params }) {
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             maxLength={500}
-            placeholder="Enter delivery notes here... (e.g., 'Leave at front door', 'Ring doorbell', 'Gate code: 1234')"
+            placeholder="Enter delivery notes here... (e.g., &apos;Leave at front door&apos;, &apos;Ring doorbell&apos;, &apos;Gate code: 1234&apos;)"
             className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent resize-none"
             rows={4}
           />
@@ -179,7 +179,7 @@ export default function LabelPage({ params }) {
           )}
         </div>
 
-        {/* Shipping Label - This will be printed */}
+        {/* Shipping Label */}
         <div className="bg-white rounded-2xl shadow-2xl border-4 border-red-600 p-8 print:border-2 print:shadow-none">
           {/* Header */}
           <div className="flex justify-between items-start mb-8 pb-6 border-b-4 border-gray-200">
@@ -202,7 +202,7 @@ export default function LabelPage({ params }) {
             </div>
           </div>
 
-          {/* QR Code and Service Type */}
+          {/* QR Code */}
           <div className="flex justify-between items-start mb-8">
             <div>
               <QRCodeSVG 
@@ -215,13 +215,13 @@ export default function LabelPage({ params }) {
             <div className="text-right">
               <p className="text-sm text-gray-600 mb-2">Service Type</p>
               <div className="inline-block px-4 py-2 bg-red-600 text-white rounded-xl font-bold text-lg uppercase">
-                {order.service_type?.replace('_', ' ')}
+                {order.service_type?.replace("_", " ")}
               </div>
               {order.scheduled_date && (
                 <div className="mt-3">
                   <p className="text-sm text-gray-600">Scheduled Date</p>
                   <p className="text-lg font-bold text-gray-900">
-                    {order.scheduled_date} {order.scheduled_time || ''}
+                    {order.scheduled_date} {order.scheduled_time || ""}
                   </p>
                 </div>
               )}
@@ -257,27 +257,37 @@ export default function LabelPage({ params }) {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-xs text-gray-600 mb-1">Size</p>
-                <p className="text-base font-bold text-gray-900 uppercase">{order.parcel_size}</p>
+                <p className="text-base font-bold text-gray-900 uppercase">
+                  {order.parcel_size}
+                </p>
               </div>
               <div>
                 <p className="text-xs text-gray-600 mb-1">Weight</p>
-                <p className="text-base font-bold text-gray-900">{order.parcel_weight} kg</p>
+                <p className="text-base font-bold text-gray-900">
+                  {order.parcel_weight} kg
+                </p>
               </div>
             </div>
+
             {(order.length || order.width || order.height) && (
               <div className="mt-4">
-                <p className="text-xs text-gray-600 mb-1">Dimensions (L × W × H)</p>
+                <p className="text-xs text-gray-600 mb-1">
+                  Dimensions (L × W × H)
+                </p>
                 <p className="text-base font-bold text-gray-900">
-                  {order.length || 0} cm × {order.width || 0} cm × {order.height || 0} cm
+                  {order.length || 0} cm × {order.width || 0} cm ×{" "}
+                  {order.height || 0} cm
                 </p>
               </div>
             )}
           </div>
 
-          {/* Delivery Notes - Show on printed label if they exist */}
+          {/* Delivery Notes */}
           {notes && (
             <div className="bg-yellow-50 rounded-xl p-6 mb-8 border-2 border-yellow-200">
-              <h3 className="text-lg font-black text-gray-900 mb-3">📝 DELIVERY INSTRUCTIONS</h3>
+              <h3 className="text-lg font-black text-gray-900 mb-3">
+                📝 DELIVERY INSTRUCTIONS
+              </h3>
               <p className="text-base text-gray-900 whitespace-pre-wrap leading-relaxed">
                 {notes}
               </p>
@@ -289,7 +299,9 @@ export default function LabelPage({ params }) {
             <div className="flex justify-between items-start">
               <div>
                 <p className="text-xs text-gray-600 mb-1">Customer</p>
-                <p className="text-base font-bold text-gray-900">{client?.name}</p>
+                <p className="text-base font-bold text-gray-900">
+                  {client?.name}
+                </p>
                 <p className="text-sm text-gray-600">{client?.email}</p>
                 <p className="text-sm text-gray-600">{client?.phone}</p>
               </div>
@@ -316,11 +328,13 @@ export default function LabelPage({ params }) {
           </div>
         </div>
 
-        {/* Print Instructions - Hidden when printing */}
+        {/* Print Instructions */}
         <div className="mt-6 bg-blue-50 rounded-xl p-6 print:hidden">
-          <h4 className="text-lg font-bold text-blue-900 mb-3">📋 Printing Instructions</h4>
+          <h4 className="text-lg font-bold text-blue-900 mb-3">
+            📋 Printing Instructions
+          </h4>
           <ul className="space-y-2 text-sm text-gray-700">
-            <li>• Click the "Print Label" button above</li>
+            <li>• Click the &quot;Print Label&quot; button above</li>
             <li>• Make sure your printer is set to portrait orientation</li>
             <li>• Use A4 or Letter size paper</li>
             <li>• Attach this label securely to your parcel</li>
@@ -329,7 +343,6 @@ export default function LabelPage({ params }) {
         </div>
       </main>
 
-      {/* Print Styles */}
       <style jsx global>{`
         @media print {
           body {

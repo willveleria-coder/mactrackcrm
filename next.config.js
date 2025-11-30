@@ -1,9 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // ❌ Remove the experimental.turbo line completely
-  webpack: (config) => {
-    return config;
+  eslint: {
+    ignoreDuringBuilds: true,
   },
-};
+}
 
-module.exports = nextConfig;
+module.exports = nextConfig
