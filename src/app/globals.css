@@ -1,0 +1,206 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+/* ============================================
+   MOBILE OPTIMIZATION - ALL PORTALS
+   ============================================ */
+
+/* Make everything more touch-friendly on mobile */
+@media (max-width: 640px) {
+  
+  /* Better touch targets */
+  button, a, input, select, textarea {
+    min-height: 44px;
+    font-size: 16px !important; /* Prevents iOS zoom on focus */
+  }
+
+  /* Better text readability */
+  body {
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Navigation fixes */
+  nav {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  nav h1 {
+    font-size: 1.25rem !important;
+  }
+
+  /* Card spacing */
+  .space-y-4 > * + *,
+  .space-y-3 > * + *,
+  .space-y-6 > * + * {
+    margin-top: 0.75rem !important;
+  }
+
+  /* Modal fixes - full screen on mobile */
+  .fixed.top-8 {
+    top: 0 !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+    width: 100% !important;
+    padding: 1rem !important;
+  }
+
+  /* Form inputs */
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="number"],
+  input[type="date"],
+  input[type="time"],
+  select,
+  textarea {
+    font-size: 16px !important;
+    padding: 0.75rem !important;
+  }
+
+  /* Grid responsive */
+  .grid-cols-2 {
+    grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+  }
+
+  .grid-cols-3 {
+    grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+  }
+
+  .grid-cols-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .grid-cols-5 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  /* Stats cards on mobile */
+  .lg\\:grid-cols-5,
+  .sm\\:grid-cols-5 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  /* Signature canvas */
+  canvas {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  /* Better button sizing */
+  .px-6 {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  .py-3 {
+    padding-top: 0.875rem !important;
+    padding-bottom: 0.875rem !important;
+  }
+
+  /* Hide less important text on mobile */
+  .hidden.sm\\:inline {
+    display: none !important;
+  }
+
+  /* Better spacing for modals */
+  .lg\\:grid-cols-2 {
+    grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+  }
+
+  /* Table-like layouts */
+  .flex.justify-between {
+    flex-direction: column;
+    align-items: flex-start !important;
+    gap: 0.5rem;
+  }
+
+  .flex.justify-between.items-center {
+    flex-direction: row;
+    align-items: center !important;
+  }
+
+  /* Status badges */
+  .text-xs {
+    font-size: 0.75rem !important;
+  }
+
+  /* Make images responsive */
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Overflow prevention */
+  * {
+    max-width: 100%;
+  }
+
+  /* Better card padding on mobile */
+  .p-6 {
+    padding: 1rem !important;
+  }
+
+  .p-8 {
+    padding: 1.5rem !important;
+  }
+
+  /* Navigation menu wrapping */
+  nav .flex {
+    flex-wrap: wrap;
+    gap: 0.5rem !important;
+  }
+
+  /* Order cards better spacing */
+  .rounded-2xl {
+    border-radius: 1rem !important;
+  }
+
+  /* Prevent horizontal scroll */
+  body, html {
+    overflow-x: hidden;
+    width: 100%;
+  }
+
+  /* Touch-friendly dropdowns */
+  select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 1.5em 1.5em;
+    padding-right: 2.5rem !important;
+  }
+}
+
+/* Medium screens (tablets) */
+@media (min-width: 641px) and (max-width: 1024px) {
+  
+  .lg\\:grid-cols-5 {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .lg\\:grid-cols-2 {
+    grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+  }
+
+  .grid-cols-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* Print styles - for shipping labels */
+@media print {
+  nav, .print\\:hidden {
+    display: none !important;
+  }
+  
+  body {
+    background: white !important;
+  }
+  
+  .print\\:border-2 {
+    border-width: 2px !important;
+  }
+}

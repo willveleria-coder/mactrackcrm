@@ -1,0 +1,23 @@
+{
+  "name": "Mac Track Driver",
+  "short_name": "Driver",
+  "description": "Driver portal for Mac With A Van",
+  "start_url": "/driver/dashboard",
+  "scope": "/driver/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#0072ab",
+  "icons": [
+    {
+      "src": "/icons/driver-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/driver-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

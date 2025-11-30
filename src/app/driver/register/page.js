@@ -1,0 +1,211 @@
+"use client";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "../../../lib/supabase/client";
+import Link from "next/link";
+import Image from "next/image";
+
+export default function DriverRegisterPage() {
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    phone: "",
+    vehicle_type: "van",
+    license_plate: "",
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const router = useRouter();
+  const supabase = createClient();
+
+  function handleChange(e) {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    try {
+      // Create auth user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (authError) throw authError;
+
+      // Create driver record
+      const { error: driverError } = await supabase
+        .from("drivers")
+        .insert([{
+          user_id: authData.user.id,
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          vehicle_type: formData.vehicle_type,
+          license_plate: formData.license_plate,
+          is_on_duty: false,
+        }]);
+
+      if (driverError) throw driverError;
+
+      alert("✅ Application submitted! Please check your email to verify. You'll be notified once approved.");
+      router.push("/driver/login");
+    } catch (err) {
+      setError(err.message || "Failed to create account");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <div className="flex justify-center mb-4">
+            <Image 
+              src="/bus-icon.png" 
+              alt="Mac With A Van" 
+              width={80} 
+              height={80}
+              className="object-contain"
+            />
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-black text-[#0072ab] mb-2">
+            MAC WITH A VAN
+          </h1>
+          <p className="text-base sm:text-lg text-gray-600">Driver Application</p>
+        </div>
+
+        <div className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 border border-gray-100">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Apply to Drive</h2>
+
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border-2 border-red-200 rounded-2xl">
+              <p className="text-red-700 text-sm font-semibold">❌ {error}</p>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                Full Name *
+              </label>
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="John Doe"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-[#0072ab]"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                Email Address *
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="john@example.com"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-[#0072ab]"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                Password *
+              </label>
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="••••••••"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-[#0072ab]"
+                required
+                minLength={6}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                Phone Number *
+              </label>
+              <input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleChange}
+                placeholder="0412 345 678"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-[#0072ab]"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                Vehicle Type *
+              </label>
+              <select
+                name="vehicle_type"
+                value={formData.vehicle_type}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-[#0072ab]"
+                required
+              >
+                <option value="van">Van</option>
+                <option value="truck">Truck</option>
+                <option value="car">Car</option>
+                <option value="motorcycle">Motorcycle</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-bold text-gray-700 mb-2">
+                License Plate *
+              </label>
+              <input
+                type="text"
+                name="license_plate"
+                value={formData.license_plate}
+                onChange={handleChange}
+                placeholder="ABC123"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-[#0072ab]"
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-4 bg-gradient-to-r from-[#0072ab] to-[#005d8c] text-white rounded-2xl font-black text-lg shadow-xl hover:shadow-2xl transition disabled:opacity-50"
+            >
+              {loading ? "Submitting..." : "Submit Application"}
+            </button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-sm text-gray-600">
+              Already have an account?{' '}
+              <Link 
+                href="/driver/login" 
+                className="font-bold text-[#0072ab] hover:text-[#005d8c] underline"
+              >
+                Login here
+              </Link>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
