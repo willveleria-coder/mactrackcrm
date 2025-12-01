@@ -1,6 +1,9 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Your custom global styles under here if needed */
+
 /* ============================================
    MOBILE OPTIMIZATION - ALL PORTALS
    ============================================ */
