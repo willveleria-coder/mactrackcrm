@@ -2,8 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
-import Link from "next/link";
-import Image from "next/image";
+import HamburgerMenu from "@/components/HamburgerMenu";
 
 export default function DriverFeedbackPage() {
   const [driver, setDriver] = useState(null);
@@ -28,7 +27,7 @@ export default function DriverFeedbackPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        router.push("/driver-portal/login");
+        router.push("/driver/login");
         return;
       }
 
@@ -39,7 +38,7 @@ export default function DriverFeedbackPage() {
         .single();
 
       if (!driverData) {
-        router.push("/driver-portal/login");
+        router.push("/driver/login");
         return;
       }
 
@@ -86,8 +85,16 @@ export default function DriverFeedbackPage() {
 
   async function handleLogout() {
     await supabase.auth.signOut();
-    router.push("/driver-portal/login");
+    router.push("/driver/login");
   }
+
+  const menuItems = [
+    { href: "/driver/dashboard", icon: "🏠", label: "Dashboard" },
+    { href: "/driver/orders", icon: "📦", label: "Deliveries" },
+    { href: "/driver/earnings", icon: "💰", label: "Earnings" },
+    { href: "/driver/wallet", icon: "💳", label: "Wallet" },
+    { href: "/driver/feedback", icon: "⭐", label: "Feedback" },
+  ];
 
   const renderStars = (rating) => {
     return '⭐'.repeat(Math.round(rating)) + '☆'.repeat(5 - Math.round(rating));
@@ -95,48 +102,32 @@ export default function DriverFeedbackPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff] flex items-center justify-center">
         <div className="text-gray-600 text-lg">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff]">
       {/* Navigation */}
-      <nav className="bg-white border-b border-gray-200 shadow-sm">
+      <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 shadow-sm sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Image 
-                src="/bus-icon.png" 
-                alt="Mac Track" 
-                width={40} 
-                height={40}
-                className="object-contain"
-              />
               <div>
                 <h1 className="text-xl sm:text-2xl font-black text-red-600">Mac Track</h1>
                 <p className="text-xs text-gray-500">Driver Portal</p>
               </div>
             </div>
-            <div className="flex items-center gap-4 sm:gap-6">
-              <span className="text-sm text-gray-600">👋 {driver?.name}</span>
-              <Link href="/driver-portal/dashboard" className="text-sm font-semibold text-gray-700 hover:text-red-600">
-                Dashboard
-              </Link>
-              <Link href="/driver-portal/wallet" className="text-sm font-semibold text-gray-700 hover:text-red-600">
-                Wallet
-              </Link>
-              <Link href="/driver-portal/feedback" className="text-sm font-semibold text-red-600 border-b-2 border-red-600">
-                Feedback
-              </Link>
-              <button 
-                onClick={handleLogout}
-                className="text-sm font-semibold text-gray-700 hover:text-red-600"
-              >
-                Logout
-              </button>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-600 hidden sm:inline">👋 {driver?.name}</span>
+              <HamburgerMenu 
+                items={menuItems}
+                onLogout={handleLogout}
+                userName={driver?.name}
+                userRole="Driver"
+              />
             </div>
           </div>
         </div>
@@ -177,9 +168,9 @@ export default function DriverFeedbackPage() {
         </div>
 
         {/* Feedback List */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-6">
           <h3 className="text-xl font-bold text-gray-900 mb-6">Customer Reviews</h3>
-          
+
           {feedbacks.length === 0 ? (
             <div className="text-center py-16">
               <div className="text-6xl mb-4">⭐</div>
@@ -189,7 +180,7 @@ export default function DriverFeedbackPage() {
           ) : (
             <div className="space-y-6">
               {feedbacks.map((feedback) => (
-                <div key={feedback.id} className="border-2 border-gray-200 rounded-xl p-6 hover:border-red-600 transition">
+                <div key={feedback.id} className="border-2 border-gray-200 rounded-xl p-6 hover:border-red-600 transition bg-white">
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <div className="flex items-center gap-3 mb-2">

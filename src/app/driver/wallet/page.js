@@ -2,8 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
-import Link from "next/link";
-import Image from "next/image";
+import HamburgerMenu from "@/components/HamburgerMenu";
 
 export default function DriverWalletPage() {
   const [driver, setDriver] = useState(null);
@@ -29,11 +28,10 @@ export default function DriverWalletPage() {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        router.push("/driver-portal/login");
+        router.push("/driver/login");
         return;
       }
 
-      // Get driver
       const { data: driverData } = await supabase
         .from("drivers")
         .select("*")
@@ -41,13 +39,12 @@ export default function DriverWalletPage() {
         .single();
 
       if (!driverData) {
-        router.push("/driver-portal/login");
+        router.push("/driver/login");
         return;
       }
 
       setDriver(driverData);
 
-      // Get wallet
       const { data: walletData } = await supabase
         .from("driver_wallets")
         .select("*")
@@ -56,7 +53,6 @@ export default function DriverWalletPage() {
 
       setWallet(walletData);
 
-      // Get payout requests
       const { data: requestsData } = await supabase
         .from("payout_requests")
         .select("*")
@@ -65,7 +61,6 @@ export default function DriverWalletPage() {
 
       setPayoutRequests(requestsData || []);
 
-      // Get payout history
       const { data: historyData } = await supabase
         .from("payout_history")
         .select("*")
@@ -115,15 +110,13 @@ export default function DriverWalletPage() {
       if (error) throw error;
 
       setMessage("✅ Payout request submitted successfully!");
-      
-      // Reset form
+
       setRequestAmount('');
       setBankDetails('');
       setNotes('');
-      
-      // Reload data
+
       await loadWalletData();
-      
+
       setTimeout(() => {
         setShowRequestModal(false);
         setMessage('');
@@ -139,12 +132,20 @@ export default function DriverWalletPage() {
 
   async function handleLogout() {
     await supabase.auth.signOut();
-    router.push("/driver-portal/login");
+    router.push("/driver/login");
   }
+
+  const menuItems = [
+    { href: "/driver/dashboard", icon: "🏠", label: "Dashboard" },
+    { href: "/driver/orders", icon: "📦", label: "Deliveries" },
+    { href: "/driver/earnings", icon: "💰", label: "Earnings" },
+    { href: "/driver/wallet", icon: "💳", label: "Wallet" },
+    { href: "/driver/feedback", icon: "⭐", label: "Feedback" },
+  ];
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff] flex items-center justify-center">
         <div className="text-gray-600 text-lg">Loading...</div>
       </div>
     );
@@ -157,38 +158,25 @@ export default function DriverWalletPage() {
   const availableBalance = wallet ? wallet.balance - pendingAmount : 0;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff]">
       {/* Navigation */}
-      <nav className="bg-white border-b border-gray-200 shadow-sm">
+      <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 shadow-sm sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Image 
-                src="/bus-icon.png" 
-                alt="Mac Track" 
-                width={40} 
-                height={40}
-                className="object-contain"
-              />
               <div>
                 <h1 className="text-xl sm:text-2xl font-black text-red-600">Mac Track</h1>
                 <p className="text-xs text-gray-500">Driver Portal</p>
               </div>
             </div>
-            <div className="flex items-center gap-4 sm:gap-6">
-              <span className="text-sm text-gray-600">👋 {driver?.name}</span>
-              <Link href="/driver-portal/dashboard" className="text-sm font-semibold text-gray-700 hover:text-red-600">
-                Dashboard
-              </Link>
-              <Link href="/driver-portal/wallet" className="text-sm font-semibold text-red-600 border-b-2 border-red-600">
-                Wallet
-              </Link>
-              <button 
-                onClick={handleLogout}
-                className="text-sm font-semibold text-gray-700 hover:text-red-600"
-              >
-                Logout
-              </button>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-600 hidden sm:inline">👋 {driver?.name}</span>
+              <HamburgerMenu 
+                items={menuItems}
+                onLogout={handleLogout}
+                userName={driver?.name}
+                userRole="Driver"
+              />
             </div>
           </div>
         </div>
@@ -233,7 +221,7 @@ export default function DriverWalletPage() {
           <button
             onClick={() => setShowRequestModal(true)}
             disabled={availableBalance <= 0}
-            className="w-full md:w-auto px-8 py-4 bg-red-600 text-white rounded-xl font-bold text-lg hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full md:w-auto px-8 py-4 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl font-bold text-lg hover:from-red-700 hover:to-red-800 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
           >
             💰 Request Payout
           </button>
@@ -244,7 +232,7 @@ export default function DriverWalletPage() {
 
         {/* Pending Requests */}
         {payoutRequests.filter(r => r.status === 'pending').length > 0 && (
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-8">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-6 mb-8">
             <h3 className="text-xl font-bold text-gray-900 mb-4">⏳ Pending Requests</h3>
             <div className="space-y-3">
               {payoutRequests.filter(r => r.status === 'pending').map((request) => (
@@ -267,7 +255,7 @@ export default function DriverWalletPage() {
         {/* Payout History */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Recent Requests */}
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-6">
             <h3 className="text-xl font-bold text-gray-900 mb-4">📋 Request History</h3>
             <div className="space-y-3">
               {payoutRequests.length === 0 ? (
@@ -296,7 +284,7 @@ export default function DriverWalletPage() {
           </div>
 
           {/* Payment History */}
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-6">
             <h3 className="text-xl font-bold text-gray-900 mb-4">💸 Payment History</h3>
             <div className="space-y-3">
               {payoutHistory.length === 0 ? (
@@ -322,14 +310,14 @@ export default function DriverWalletPage() {
       {/* Request Payout Modal */}
       {showRequestModal && (
         <>
-          <div 
+          <div
             className="fixed inset-0 bg-black bg-opacity-50 z-50"
             onClick={() => setShowRequestModal(false)}
           />
           <div className="fixed top-8 left-1/2 transform -translate-x-1/2 bg-white rounded-2xl shadow-2xl p-6 sm:p-8 z-50 w-11/12 max-w-md">
             <div className="flex justify-between items-start mb-6">
               <h3 className="text-2xl font-bold text-gray-900">Request Payout</h3>
-              <button 
+              <button
                 onClick={() => setShowRequestModal(false)}
                 className="text-gray-500 hover:text-gray-700 text-3xl font-bold leading-none"
               >

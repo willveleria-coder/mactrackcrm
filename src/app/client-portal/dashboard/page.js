@@ -3,19 +3,17 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
 import Link from "next/link";
-import Image from "next/image";
+import HamburgerMenu from "@/components/HamburgerMenu";
 
 // Helper function to calculate approximate distance between two addresses
 function calculateDistance(pickup, dropoff) {
-  // This is a rough estimate - in production you'd use Google Maps Distance Matrix API
-  // For now, we'll estimate based on address length difference as a placeholder
-  const roughDistance = Math.floor(Math.random() * 50) + 10; // 10-60 km
+  const roughDistance = Math.floor(Math.random() * 50) + 10;
   return roughDistance;
 }
 
 // Helper function to calculate estimated time
 function calculateEstimatedTime(distance, serviceType) {
-  let baseSpeed = 40; // km/h average
+  let baseSpeed = 40;
   if (serviceType === 'express') baseSpeed = 50;
   if (serviceType === 'same_day') baseSpeed = 60;
   
@@ -58,19 +56,16 @@ export default function ClientDashboard() {
 
       setClient(clientData);
 
-      // Load orders with driver info
       const { data: ordersData } = await supabase
         .from("orders")
         .select("*")
         .eq("client_id", clientData.id)
         .order("created_at", { ascending: false });
 
-      // Load drivers separately
       const { data: driversData } = await supabase
         .from("drivers")
         .select("id, name, email, phone, vehicle_type");
 
-      // Manually join driver data
       const ordersWithDrivers = ordersData?.map(order => ({
         ...order,
         driver: driversData?.find(d => d.id === order.driver_id) || null
@@ -89,50 +84,40 @@ export default function ClientDashboard() {
     router.push("/client-portal/login");
   }
 
+  const menuItems = [
+    { href: "/client-portal/dashboard", icon: "🏠", label: "Dashboard" },
+    { href: "/client-portal/orders", icon: "📦", label: "Orders" },
+    { href: "/client-portal/new-order", icon: "➕", label: "New Order" },
+  ];
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff] flex items-center justify-center">
         <div className="text-gray-600 text-lg">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff]">
       {/* Navigation */}
-      <nav className="bg-white border-b border-gray-200 shadow-sm">
+      <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 shadow-sm sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Image 
-                src="/bus-icon.png" 
-                alt="Mac Track" 
-                width={40} 
-                height={40}
-                className="object-contain"
-              />
               <div>
                 <h1 className="text-xl sm:text-2xl font-black text-red-600">Mac Track</h1>
                 <p className="text-xs text-gray-500">Client Portal</p>
               </div>
             </div>
-            <div className="flex items-center gap-4 sm:gap-6">
+            <div className="flex items-center gap-4">
               <span className="text-sm text-gray-600 hidden sm:inline">👋 {client?.name}</span>
-              <Link href="/client-portal/dashboard" className="text-sm font-semibold text-red-600 border-b-2 border-red-600">
-                Dashboard
-              </Link>
-              <Link href="/client-portal/orders" className="text-sm font-semibold text-gray-700 hover:text-red-600">
-                Orders
-              </Link>
-              <Link href="/client-portal/new-order" className="text-sm font-semibold text-gray-700 hover:text-red-600">
-                New Order
-              </Link>
-              <button 
-                onClick={handleLogout}
-                className="text-sm font-semibold text-gray-700 hover:text-red-600"
-              >
-                Logout
-              </button>
+              <HamburgerMenu 
+                items={menuItems}
+                onLogout={handleLogout}
+                userName={client?.name}
+                userRole="Client"
+              />
             </div>
           </div>
         </div>
@@ -149,23 +134,23 @@ export default function ClientDashboard() {
 
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6 sm:mb-8">
-          <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-lg border border-gray-100">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 sm:p-5 shadow-lg border border-gray-100">
             <p className="text-xs sm:text-sm text-gray-600 mb-1">Total Orders</p>
             <p className="text-2xl sm:text-3xl font-black text-gray-900">{orders.length}</p>
           </div>
-          <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-lg border border-gray-100">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 sm:p-5 shadow-lg border border-gray-100">
             <p className="text-xs sm:text-sm text-gray-600 mb-1">In Progress</p>
             <p className="text-2xl sm:text-3xl font-black text-blue-600">
               {orders.filter(o => o.status === "pending" || o.status === "active").length}
             </p>
           </div>
-          <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-lg border border-gray-100">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 sm:p-5 shadow-lg border border-gray-100">
             <p className="text-xs sm:text-sm text-gray-600 mb-1">Completed</p>
             <p className="text-2xl sm:text-3xl font-black text-green-600">
               {orders.filter(o => o.status === "delivered").length}
             </p>
           </div>
-          <div className="bg-white rounded-2xl p-4 sm:p-5 shadow-lg border border-gray-100">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 sm:p-5 shadow-lg border border-gray-100">
             <p className="text-xs sm:text-sm text-gray-600 mb-1">Total Spent</p>
             <p className="text-2xl sm:text-3xl font-black text-purple-600">
               ${orders.reduce((sum, o) => sum + (o.price || 0), 0).toFixed(0)}
@@ -174,12 +159,12 @@ export default function ClientDashboard() {
         </div>
 
         {/* Orders List */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5 sm:p-6">
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-5 sm:p-6">
           <div className="flex justify-between items-center mb-5 sm:mb-6">
             <h3 className="text-lg sm:text-xl font-bold text-gray-900">Your Orders</h3>
             <Link 
               href="/client-portal/new-order"
-              className="px-4 py-2 bg-red-600 text-white rounded-xl font-bold text-sm hover:bg-red-700 transition shadow-lg"
+              className="px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl font-bold text-sm hover:from-red-700 hover:to-red-800 transition shadow-lg"
             >
               + New Order
             </Link>
@@ -191,7 +176,7 @@ export default function ClientDashboard() {
               <p className="text-gray-500 text-lg font-semibold mb-4">No orders yet</p>
               <Link 
                 href="/client-portal/new-order"
-                className="inline-block px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition"
+                className="inline-block px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl font-bold hover:from-red-700 hover:to-red-800 transition"
               >
                 Create Your First Order
               </Link>
@@ -202,7 +187,7 @@ export default function ClientDashboard() {
                 <div key={order.id} className="space-y-3">
                   <button
                     onClick={() => setViewOrderDetails(order)}
-                    className="w-full text-left border-2 border-gray-200 rounded-2xl p-4 sm:p-5 hover:border-red-600 hover:shadow-md transition cursor-pointer"
+                    className="w-full text-left border-2 border-gray-200 rounded-2xl p-4 sm:p-5 hover:border-red-600 hover:shadow-md transition cursor-pointer bg-white"
                   >
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-3">
                       <div>
@@ -254,7 +239,6 @@ export default function ClientDashboard() {
                     </div>
                   </button>
                   
-                  {/* View Label Button */}
                   <Link
                     href={`/client-portal/orders/${order.id}/label`}
                     className="block w-full py-3 bg-purple-500 text-white rounded-xl text-center font-bold hover:bg-purple-600 transition"
@@ -338,7 +322,6 @@ export default function ClientDashboard() {
                 <div className="bg-gray-50 rounded-xl p-4">
                   <h4 className="text-sm font-bold text-gray-700 mb-3">🗺️ Route Details</h4>
                   
-                  {/* Route Stats */}
                   <div className="grid grid-cols-2 gap-3 mb-3">
                     <div className="bg-white rounded-lg p-3 border border-gray-200">
                       <p className="text-xs text-gray-500 mb-1">Distance</p>
@@ -357,7 +340,6 @@ export default function ClientDashboard() {
                     </div>
                   </div>
 
-                  {/* Route Status */}
                   {viewOrderDetails.status === 'delivered' && viewOrderDetails.delivered_at && (
                     <div className="bg-green-50 rounded-lg p-3 mb-3 border border-green-200">
                       <p className="text-xs text-green-700 font-bold mb-1">✅ Completed Route</p>
@@ -367,7 +349,6 @@ export default function ClientDashboard() {
                     </div>
                   )}
 
-                  {/* Map Preview */}
                   <div className="bg-gray-200 rounded-lg h-48 flex items-center justify-center mb-2">
                     <p className="text-gray-600 text-sm text-center px-4">
                       Route Map<br/>
@@ -375,7 +356,6 @@ export default function ClientDashboard() {
                     </p>
                   </div>
 
-                  {/* Map Actions */}
                   <div className="grid grid-cols-2 gap-2">
                     <button 
                       onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(viewOrderDetails.pickup_address)}&destination=${encodeURIComponent(viewOrderDetails.dropoff_address)}&travelmode=driving`, '_blank')}

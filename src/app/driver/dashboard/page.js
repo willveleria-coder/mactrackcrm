@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
 import Link from "next/link";
 import DriverLocationTracker from "@/components/DriverLocationTracker";
-import DriverNav from "@/components/DriverNav";
+import HamburgerMenu from "@/components/HamburgerMenu";
 
 export default function DriverDashboard() {
   const [driver, setDriver] = useState(null);
@@ -220,19 +220,47 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
     window.open(googleMapsUrl, '_blank');
   }
 
+  const menuItems = [
+    { href: "/driver/dashboard", icon: "🏠", label: "Dashboard" },
+    { href: "/driver/orders", icon: "📦", label: "Deliveries" },
+    { href: "/driver/earnings", icon: "💰", label: "Earnings" },
+    { href: "/driver/wallet", icon: "💳", label: "Wallet" },
+    { href: "/driver/feedback", icon: "⭐", label: "Feedback" },
+  ];
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff] flex items-center justify-center">
         <div className="text-gray-600 text-lg">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 pb-20 md:pb-0">
+    <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff]">
       
       {/* Navigation */}
-      <DriverNav driver={driver} onLogout={handleLogout} currentPage="dashboard" />
+      <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 shadow-sm sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div>
+                <h1 className="text-xl sm:text-2xl font-black text-red-600">Mac Track</h1>
+                <p className="text-xs text-gray-500">Driver Portal</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-600 hidden sm:inline">👋 {driver?.name}</span>
+              <HamburgerMenu 
+                items={menuItems}
+                onLogout={handleLogout}
+                userName={driver?.name}
+                userRole="Driver"
+              />
+            </div>
+          </div>
+        </div>
+      </nav>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
@@ -259,7 +287,7 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5 mb-6">
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-5 mb-6">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
             <div>
               <h3 className="text-lg font-bold text-gray-900 mb-1">Duty Status</h3>
@@ -280,7 +308,7 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-5 sm:p-6">
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-5 sm:p-6">
           <h3 className="text-xl font-bold text-gray-900 mb-5">Your Orders</h3>
           
           {orders.length === 0 ? (
@@ -294,7 +322,7 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
               {orders.map((order) => (
                 <div 
                   key={order.id} 
-                  className="border-2 border-gray-200 rounded-2xl p-4 sm:p-5 hover:shadow-md transition"
+                  className="border-2 border-gray-200 rounded-2xl p-4 sm:p-5 hover:shadow-md transition bg-white"
                 >
                   <div className="flex justify-between items-start mb-4">
                     <div>
@@ -364,7 +392,6 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
                     </div>
                   )}
 
-                  {/* Send to Admin Button */}
                   <button 
                     onClick={() => handleSendToAdmin(order.id)}
                     className="w-full mt-3 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-bold text-sm hover:from-orange-600 hover:to-orange-700 transition shadow-lg"
@@ -378,37 +405,10 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
         </div>
       </main>
 
-      {/* Bottom Navigation - Mobile Only */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-gray-200 shadow-2xl md:hidden z-50">
-        <div className="flex justify-around items-center py-2">
-          <Link 
-            href="/driver/dashboard"
-            className="flex flex-col items-center py-2 px-4 text-[#0072ab] font-bold"
-          >
-            <span className="text-2xl mb-1">🏠</span>
-            <span className="text-xs">Dashboard</span>
-          </Link>
-          <Link 
-            href="/driver/orders"
-            className="flex flex-col items-center py-2 px-4 text-gray-600"
-          >
-            <span className="text-2xl mb-1">📦</span>
-            <span className="text-xs">Deliveries</span>
-          </Link>
-          <Link 
-            href="/driver/earnings"
-            className="flex flex-col items-center py-2 px-4 text-gray-600"
-          >
-            <span className="text-2xl mb-1">💰</span>
-            <span className="text-xs">Earnings</span>
-          </Link>
-        </div>
-      </nav>
-
       {/* Floating Help Button */}
       <button
         onClick={() => setShowContactPopup(!showContactPopup)}
-        className="fixed bottom-24 md:bottom-8 right-8 w-14 h-14 bg-gradient-to-r from-[#0072ab] to-[#005d8c] text-white rounded-full shadow-2xl hover:scale-110 transition-transform z-50 flex items-center justify-center text-2xl font-bold"
+        className="fixed bottom-8 right-8 w-14 h-14 bg-gradient-to-r from-[#0072ab] to-[#005d8c] text-white rounded-full shadow-2xl hover:scale-110 transition-transform z-50 flex items-center justify-center text-2xl font-bold"
       >
         ❓
       </button>
@@ -416,14 +416,12 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
       {/* Contact Popup */}
       {showContactPopup && (
         <>
-          {/* Backdrop */}
           <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-50"
+            className="fixed inset-0 bg-black bg-opacity-50 z-40"
             onClick={() => setShowContactPopup(false)}
           />
           
-          {/* Popup */}
-          <div className="fixed bottom-40 md:bottom-24 right-8 bg-white rounded-2xl shadow-2xl border-2 border-gray-200 p-4 z-50 w-64">
+          <div className="fixed bottom-24 right-8 bg-white rounded-2xl shadow-2xl border-2 border-gray-200 p-4 z-50 w-64">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-gray-900">Contact Admin</h3>
               <button 

@@ -79,7 +79,7 @@ export default function AdminLoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@macwithavan.com"
+              placeholder="admin@mactrack.com"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#ba0606] focus:border-transparent transition"
               required
               disabled={loading}
@@ -126,19 +126,9 @@ export default function AdminLoginPage() {
           <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
         </div>
 
-        <p className="text-center text-sm text-gray-600">
-          Need admin access?{" "}
-          <Link 
-            href="/admin/signup" 
-            className="text-[#0072ab] hover:underline font-bold"
-          >
-            Request Access
-          </Link>
-        </p>
-
         <Link 
           href="/" 
-          className="block text-center text-xs text-gray-500 hover:text-gray-700 mt-6 transition"
+          className="block text-center text-sm text-gray-500 hover:text-gray-700 transition"
         >
           ← Back to Home
         </Link>
