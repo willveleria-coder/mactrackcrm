@@ -4,31 +4,31 @@ import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
 import Link from "next/link";
 import HamburgerMenu from "@/components/HamburgerMenu";
+import { ThemeProvider, useTheme } from "../../../context/ThemeContext";
 
-// Helper function to calculate approximate distance between two addresses
-function calculateDistance(pickup, dropoff) {
-  const roughDistance = Math.floor(Math.random() * 50) + 10;
-  return roughDistance;
-}
-
-// Helper function to calculate estimated time
-function calculateEstimatedTime(distance, serviceType) {
-  let baseSpeed = 40;
-  if (serviceType === 'express') baseSpeed = 50;
-  if (serviceType === 'same_day') baseSpeed = 60;
-  
-  const hours = distance / baseSpeed;
-  const minutes = Math.round(hours * 60);
-  return minutes;
-}
-
-export default function ClientDashboard() {
+function ClientDashboardContent() {
+  const { theme } = useTheme(); // Get current theme
   const [client, setClient] = useState(null);
   const [orders, setOrders] = useState([]);
-  const [viewOrderDetails, setViewOrderDetails] = useState(null);
+  const [stats, setStats] = useState({
+    totalOrders: 0,
+    inProgress: 0,
+    completed: 0,
+    totalSpent: 0,
+    thisMonth: 0,
+    avgDeliveryTime: 0
+  });
   const [loading, setLoading] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState(null);
   const router = useRouter();
   const supabase = createClient();
+
+  const menuItems = [
+    { href: "/client-portal/dashboard", icon: "🏠", label: "Dashboard" },
+    { href: "/client-portal/orders", icon: "📦", label: "Orders" },
+    { href: "/client-portal/new-order", icon: "➕", label: "New Order" },
+    { href: "/client-portal/settings", icon: "⚙️", label: "Settings" },
+  ];
 
   useEffect(() => {
     loadDashboard();
@@ -62,16 +62,42 @@ export default function ClientDashboard() {
         .eq("client_id", clientData.id)
         .order("created_at", { ascending: false });
 
-      const { data: driversData } = await supabase
-        .from("drivers")
-        .select("id, name, email, phone, vehicle_type");
+      setOrders(ordersData || []);
 
-      const ordersWithDrivers = ordersData?.map(order => ({
-        ...order,
-        driver: driversData?.find(d => d.id === order.driver_id) || null
-      })) || [];
+      if (ordersData) {
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        
+        const totalOrders = ordersData.length;
+        const inProgress = ordersData.filter(o => o.status === "pending" || o.status === "active").length;
+        const completed = ordersData.filter(o => o.status === "delivered").length;
+        const totalSpent = ordersData
+          .filter(o => o.status === "delivered")
+          .reduce((sum, o) => sum + (Number(o.price) || 0), 0);
+        const thisMonth = ordersData.filter(o => new Date(o.created_at) >= monthStart).length;
 
-      setOrders(ordersWithDrivers);
+        let totalTime = 0;
+        let count = 0;
+        ordersData.forEach(order => {
+          if (order.delivered_at && order.created_at && order.status === 'delivered') {
+            const diff = new Date(order.delivered_at) - new Date(order.created_at);
+            const days = diff / (1000 * 60 * 60 * 24);
+            totalTime += days;
+            count++;
+          }
+        });
+        const avgDeliveryTime = count > 0 ? totalTime / count : 0;
+
+        setStats({
+          totalOrders,
+          inProgress,
+          completed,
+          totalSpent,
+          thisMonth,
+          avgDeliveryTime
+        });
+      }
+
     } catch (error) {
       console.error("Error loading dashboard:", error);
     } finally {
@@ -84,12 +110,6 @@ export default function ClientDashboard() {
     router.push("/client-portal/login");
   }
 
-  const menuItems = [
-    { href: "/client-portal/dashboard", icon: "🏠", label: "Dashboard" },
-    { href: "/client-portal/orders", icon: "📦", label: "Orders" },
-    { href: "/client-portal/new-order", icon: "➕", label: "New Order" },
-  ];
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff] flex items-center justify-center">
@@ -98,153 +118,276 @@ export default function ClientDashboard() {
     );
   }
 
+  const activeDeliveries = orders.filter(o => o.status === 'pending' || o.status === 'active');
+  const recentOrders = orders.slice(0, 3);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff]">
-      {/* Navigation */}
+      {/* Navigation - Uses dynamic theme */}
       <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 shadow-sm sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div>
-                <h1 className="text-xl sm:text-2xl font-black text-red-600">Mac Track</h1>
-                <p className="text-xs text-gray-500">Client Portal</p>
-              </div>
+            <div>
+              <h1 className={`text-xl sm:text-2xl font-black ${theme.text}`}>Mac Track</h1>
+              <p className="text-xs text-gray-500">Client Portal</p>
             </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600 hidden sm:inline">👋 {client?.name}</span>
-              <HamburgerMenu 
-                items={menuItems}
-                onLogout={handleLogout}
-                userName={client?.name}
-                userRole="Client"
-              />
-            </div>
+            
+            <HamburgerMenu 
+              items={menuItems}
+              onLogout={handleLogout}
+              userName={client?.name}
+              userRole="Client"
+            />
           </div>
         </div>
       </nav>
 
-      {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+        
         <div className="mb-6 sm:mb-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
-            Hi {client?.name}! 👋
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
+            Welcome back, {client?.name}! 👋
           </h2>
-          <p className="text-sm sm:text-base text-gray-600">Here&apos;s your delivery overview</p>
+          <p className="text-sm sm:text-base text-gray-600">Here's your delivery overview</p>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6 sm:mb-8">
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 sm:p-5 shadow-lg border border-gray-100">
-            <p className="text-xs sm:text-sm text-gray-600 mb-1">Total Orders</p>
-            <p className="text-2xl sm:text-3xl font-black text-gray-900">{orders.length}</p>
+        {/* Enhanced Stats Grid - Uses dynamic theme gradients */}
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <div className={`bg-gradient-to-br ${theme.gradient} rounded-2xl p-4 sm:p-5 text-white shadow-lg hover:shadow-xl transition transform hover:scale-105`}>
+            <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">Total Orders</p>
+            <p className="text-3xl sm:text-4xl font-black mb-1">{stats.totalOrders}</p>
+            <p className="text-xs opacity-75">All time</p>
           </div>
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 sm:p-5 shadow-lg border border-gray-100">
-            <p className="text-xs sm:text-sm text-gray-600 mb-1">In Progress</p>
-            <p className="text-2xl sm:text-3xl font-black text-blue-600">
-              {orders.filter(o => o.status === "pending" || o.status === "active").length}
-            </p>
+
+          <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-4 sm:p-5 text-white shadow-lg hover:shadow-xl transition transform hover:scale-105">
+            <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">In Progress</p>
+            <p className="text-3xl sm:text-4xl font-black mb-1">{stats.inProgress}</p>
+            <p className="text-xs opacity-75">Active</p>
           </div>
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 sm:p-5 shadow-lg border border-gray-100">
-            <p className="text-xs sm:text-sm text-gray-600 mb-1">Completed</p>
-            <p className="text-2xl sm:text-3xl font-black text-green-600">
-              {orders.filter(o => o.status === "delivered").length}
-            </p>
+
+          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-4 sm:p-5 text-white shadow-lg hover:shadow-xl transition transform hover:scale-105">
+            <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">Completed</p>
+            <p className="text-3xl sm:text-4xl font-black mb-1">{stats.completed}</p>
+            <p className="text-xs opacity-75">Delivered</p>
           </div>
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 sm:p-5 shadow-lg border border-gray-100">
-            <p className="text-xs sm:text-sm text-gray-600 mb-1">Total Spent</p>
-            <p className="text-2xl sm:text-3xl font-black text-purple-600">
-              ${orders.reduce((sum, o) => sum + (o.price || 0), 0).toFixed(0)}
-            </p>
+
+          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-4 sm:p-5 text-white shadow-lg hover:shadow-xl transition transform hover:scale-105">
+            <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">Total Spent</p>
+            <p className="text-2xl sm:text-3xl font-black mb-1">${stats.totalSpent.toFixed(0)}</p>
+            <p className="text-xs opacity-75">Lifetime</p>
+          </div>
+
+          <div className="bg-gradient-to-br from-pink-500 to-rose-500 rounded-2xl p-4 sm:p-5 text-white shadow-lg hover:shadow-xl transition transform hover:scale-105">
+            <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">This Month</p>
+            <p className="text-3xl sm:text-4xl font-black mb-1">{stats.thisMonth}</p>
+            <p className="text-xs opacity-75">Orders</p>
+          </div>
+
+          <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-4 sm:p-5 text-white shadow-lg hover:shadow-xl transition transform hover:scale-105">
+            <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">Avg Time</p>
+            <p className="text-3xl sm:text-4xl font-black mb-1">{stats.avgDeliveryTime.toFixed(1)}</p>
+            <p className="text-xs opacity-75">Days</p>
           </div>
         </div>
 
-        {/* Orders List */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-5 sm:p-6">
-          <div className="flex justify-between items-center mb-5 sm:mb-6">
-            <h3 className="text-lg sm:text-xl font-bold text-gray-900">Your Orders</h3>
-            <Link 
-              href="/client-portal/new-order"
-              className="px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl font-bold text-sm hover:from-red-700 hover:to-red-800 transition shadow-lg"
-            >
-              + New Order
-            </Link>
-          </div>
+        {/* Quick Actions - Uses dynamic theme */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <Link
+            href="/client-portal/new-order"
+            className={`p-5 bg-gradient-to-br ${theme.gradient} text-white rounded-2xl shadow-lg hover:shadow-xl transition transform hover:scale-105 text-center`}
+          >
+            <div className="text-4xl mb-2">📦</div>
+            <p className="font-bold text-sm sm:text-base">New Order</p>
+          </Link>
+
+          <Link
+            href="/client-portal/orders"
+            className="p-5 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl shadow-lg hover:shadow-xl transition transform hover:scale-105 text-center"
+          >
+            <div className="text-4xl mb-2">📋</div>
+            <p className="font-bold text-sm sm:text-base">All Orders</p>
+          </Link>
+
+          <a
+            href="mailto:support@mactrack.com.au"
+            className="p-5 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-2xl shadow-lg hover:shadow-xl transition transform hover:scale-105 text-center"
+          >
+            <div className="text-4xl mb-2">💬</div>
+            <p className="font-bold text-sm sm:text-base">Support</p>
+          </a>
+
+          <a
+            href="tel:+61400000000"
+            className="p-5 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-2xl shadow-lg hover:shadow-xl transition transform hover:scale-105 text-center"
+          >
+            <div className="text-4xl mb-2">📞</div>
+            <p className="font-bold text-sm sm:text-base">Call Us</p>
+          </a>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 mb-8">
           
-          {orders.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-6xl mb-4">📦</div>
-              <p className="text-gray-500 text-lg font-semibold mb-4">No orders yet</p>
-              <Link 
-                href="/client-portal/new-order"
-                className="inline-block px-6 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl font-bold hover:from-red-700 hover:to-red-800 transition"
-              >
-                Create Your First Order
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {orders.map((order) => (
-                <div key={order.id} className="space-y-3">
-                  <button
-                    onClick={() => setViewOrderDetails(order)}
-                    className="w-full text-left border-2 border-gray-200 rounded-2xl p-4 sm:p-5 hover:border-red-600 hover:shadow-md transition cursor-pointer bg-white"
+          {/* Active Deliveries - Uses dynamic theme */}
+          <div className="lg:col-span-2">
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-5 sm:p-6">
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">🚚 Active Deliveries</h3>
+              
+              {activeDeliveries.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="text-6xl mb-4">📦</div>
+                  <p className="text-gray-500 text-lg font-semibold mb-4">No Active Deliveries</p>
+                  <Link
+                    href="/client-portal/new-order"
+                    className={`inline-block px-6 py-3 ${theme.bg} hover:${theme.bgHover} text-white rounded-xl font-bold transition shadow-lg`}
                   >
-                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-3">
-                      <div>
-                        <p className="text-xs text-gray-500 mb-1">Order #{order.id.slice(0, 8)}</p>
+                    Create New Order
+                  </Link>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {activeDeliveries.map((order) => (
+                    <div
+                      key={order.id}
+                      onClick={() => setSelectedOrder(order)}
+                      className={`p-4 border-2 border-gray-200 rounded-xl hover:border-${theme.id}-500 transition cursor-pointer bg-white`}
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <p className="font-bold text-gray-900">Order #{order.id.slice(0, 8)}</p>
+                          <p className="text-xs text-gray-500">{new Date(order.created_at).toLocaleString()}</p>
+                        </div>
                         <StatusBadge status={order.status} />
                       </div>
-                      <div className="text-right">
-                        <p className="text-xs text-gray-500">Price</p>
-                        <p className="text-xl sm:text-2xl font-black text-green-600">${order.price?.toFixed(2)}</p>
+                      
+                      <div className="space-y-2 text-sm mb-3">
+                        <div className="flex items-start gap-2">
+                          <span className="text-blue-600">📍</span>
+                          <span className="text-gray-700 line-clamp-1">{order.pickup_address}</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-green-600">🎯</span>
+                          <span className="text-gray-700 line-clamp-1">{order.dropoff_address}</span>
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="space-y-2 mb-3">
-                      <div className="bg-blue-50 rounded-xl p-3">
-                        <p className="text-xs font-bold text-blue-700 mb-1">📍 PICKUP</p>
-                        <p className="text-sm text-gray-900 font-medium">{order.pickup_address}</p>
-                      </div>
-                      <div className="bg-green-50 rounded-xl p-3">
-                        <p className="text-xs font-bold text-green-700 mb-1">🎯 DROPOFF</p>
-                        <p className="text-sm text-gray-900 font-medium">{order.dropoff_address}</p>
-                      </div>
+                      <Link
+                        href={`/client-portal/orders/${order.id}/track`}
+                        className={`block w-full text-center py-2 ${theme.bg} hover:${theme.bgHover} text-white rounded-lg font-semibold text-sm transition`}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Track Live 📍
+                      </Link>
                     </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
 
-                    <div className="flex flex-wrap gap-2 text-xs sm:text-sm">
-                      <span className="bg-gray-100 px-3 py-1 rounded-full text-gray-700">
-                        📦 {order.parcel_size}
-                      </span>
-                      <span className="bg-gray-100 px-3 py-1 rounded-full text-gray-700">
-                        ⚖️ {order.parcel_weight}kg
-                      </span>
-                      <span className="bg-gray-100 px-3 py-1 rounded-full text-gray-700">
-                        ⚡ {order.service_type}
-                      </span>
-                      {order.driver && (
-                        <span className="bg-blue-100 px-3 py-1 rounded-full text-blue-700 font-semibold">
-                          🚐 {order.driver.name}
-                        </span>
-                      )}
+          {/* Account Summary */}
+          <div>
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-5 sm:p-6 mb-6">
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">👤 Account Summary</h3>
+              
+              <div className="space-y-3 text-sm">
+                <div>
+                  <p className="text-gray-600 mb-1">Name</p>
+                  <p className="font-semibold text-gray-900">{client?.name}</p>
+                </div>
+                <div>
+                  <p className="text-gray-600 mb-1">Email</p>
+                  <p className="font-semibold text-gray-900">{client?.email}</p>
+                </div>
+                {client?.phone && (
+                  <div>
+                    <p className="text-gray-600 mb-1">Phone</p>
+                    <p className="font-semibold text-gray-900">{client?.phone}</p>
+                  </div>
+                )}
+                {client?.company && (
+                  <div>
+                    <p className="text-gray-600 mb-1">Company</p>
+                    <p className="font-semibold text-gray-900">{client?.company}</p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-gray-600 mb-1">Member Since</p>
+                  <p className="font-semibold text-gray-900">
+                    {new Date(client?.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+
+              <Link
+                href="/client-portal/settings"
+                className={`block w-full text-center mt-4 py-3 ${theme.bg} hover:${theme.bgHover} text-white rounded-xl font-bold transition shadow-lg`}
+              >
+                Settings ⚙️
+              </Link>
+            </div>
+
+            {/* Help & Support */}
+            <div className={`bg-gradient-to-br ${theme.gradient} rounded-2xl shadow-lg p-5 sm:p-6 text-white`}>
+              <h3 className="text-lg font-bold mb-4">💬 Help & Support</h3>
+              
+              <div className="space-y-3">
+                <a
+                  href="mailto:support@mactrack.com.au"
+                  className="block w-full text-center py-2 bg-white/20 hover:bg-white/30 rounded-lg font-semibold text-sm transition backdrop-blur-sm"
+                >
+                  📧 Email Support
+                </a>
+                <a
+                  href="tel:+61400000000"
+                  className="block w-full text-center py-2 bg-white/20 hover:bg-white/30 rounded-lg font-semibold text-sm transition backdrop-blur-sm"
+                >
+                  📞 Call Us
+                </a>
+              </div>
+
+              <p className="text-xs opacity-75 mt-4 text-center">
+                Mon-Fri, 9AM-6PM AEST
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Orders Preview */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-5 sm:p-6">
+          <div className="flex justify-between items-center mb-5">
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900">📦 Recent Orders</h3>
+            <Link
+              href="/client-portal/orders"
+              className={`text-sm font-semibold ${theme.text} hover:underline`}
+            >
+              View All →
+            </Link>
+          </div>
+
+          {recentOrders.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-5xl mb-3">📭</div>
+              <p className="text-gray-500 font-semibold">No orders yet</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {recentOrders.map((order) => (
+                <div
+                  key={order.id}
+                  onClick={() => setSelectedOrder(order)}
+                  className="p-4 border-2 border-gray-200 rounded-xl hover:border-gray-400 transition cursor-pointer bg-white"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <p className="font-bold text-gray-900">Order #{order.id.slice(0, 8)}</p>
+                      <p className="text-xs text-gray-500">{new Date(order.created_at).toLocaleString()}</p>
                     </div>
-
-                    {order.scheduled_date && (
-                      <div className="mt-3 text-xs text-gray-600">
-                        📅 Scheduled: {order.scheduled_date} {order.scheduled_time || ''}
-                      </div>
-                    )}
-
-                    <div className="mt-3 text-xs text-gray-500">
-                      Created: {new Date(order.created_at).toLocaleString()}
+                    <div className="text-right">
+                      <StatusBadge status={order.status} />
+                      <p className="text-sm font-bold text-green-600 mt-1">${Number(order.price).toFixed(2)}</p>
                     </div>
-                  </button>
-                  
-                  <Link
-                    href={`/client-portal/orders/${order.id}/label`}
-                    className="block w-full py-3 bg-purple-500 text-white rounded-xl text-center font-bold hover:bg-purple-600 transition"
-                  >
-                    📄 View Shipping Label
-                  </Link>
+                  </div>
+                  <p className="text-sm text-gray-600 truncate">{order.pickup_address} → {order.dropoff_address}</p>
                 </div>
               ))}
             </div>
@@ -253,249 +396,19 @@ export default function ClientDashboard() {
       </main>
 
       {/* Order Details Modal */}
-      {viewOrderDetails && (
-        <>
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-50 overflow-y-auto"
-            onClick={() => setViewOrderDetails(null)}
-          />
-          <div className="fixed top-8 left-1/2 transform -translate-x-1/2 bg-white rounded-2xl shadow-2xl p-6 sm:p-8 z-50 w-11/12 max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <h3 className="text-2xl sm:text-3xl font-bold text-gray-900">Order Details</h3>
-                <p className="text-sm text-gray-500 mt-1">#{viewOrderDetails.id.slice(0, 8)}</p>
-              </div>
-              <button 
-                onClick={() => setViewOrderDetails(null)}
-                className="text-gray-500 hover:text-gray-700 text-3xl font-bold leading-none"
-              >
-                ×
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Left Column */}
-              <div className="space-y-6">
-                {/* Status */}
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <h4 className="text-sm font-bold text-gray-700 mb-2">Status</h4>
-                  <StatusBadge status={viewOrderDetails.status} />
-                </div>
-
-                {/* Timeline */}
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <h4 className="text-sm font-bold text-gray-700 mb-3">Timeline</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Created:</span>
-                      <span className="font-semibold">{new Date(viewOrderDetails.created_at).toLocaleString()}</span>
-                    </div>
-                    {viewOrderDetails.scheduled_date && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Scheduled:</span>
-                        <span className="font-semibold">
-                          {viewOrderDetails.scheduled_date} {viewOrderDetails.scheduled_time || ''}
-                        </span>
-                      </div>
-                    )}
-                    {viewOrderDetails.delivered_at && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Delivered:</span>
-                        <span className="font-semibold">{new Date(viewOrderDetails.delivered_at).toLocaleString()}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Addresses */}
-                <div className="bg-blue-50 rounded-xl p-4">
-                  <h4 className="text-sm font-bold text-blue-700 mb-2">📍 Pickup Address</h4>
-                  <p className="text-sm text-gray-900">{viewOrderDetails.pickup_address}</p>
-                </div>
-
-                <div className="bg-green-50 rounded-xl p-4">
-                  <h4 className="text-sm font-bold text-green-700 mb-2">🎯 Dropoff Address</h4>
-                  <p className="text-sm text-gray-900">{viewOrderDetails.dropoff_address}</p>
-                </div>
-
-                {/* Route Details */}
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <h4 className="text-sm font-bold text-gray-700 mb-3">🗺️ Route Details</h4>
-                  
-                  <div className="grid grid-cols-2 gap-3 mb-3">
-                    <div className="bg-white rounded-lg p-3 border border-gray-200">
-                      <p className="text-xs text-gray-500 mb-1">Distance</p>
-                      <p className="text-lg font-bold text-gray-900">
-                        {calculateDistance(viewOrderDetails.pickup_address, viewOrderDetails.dropoff_address)} km
-                      </p>
-                    </div>
-                    <div className="bg-white rounded-lg p-3 border border-gray-200">
-                      <p className="text-xs text-gray-500 mb-1">Est. Time</p>
-                      <p className="text-lg font-bold text-gray-900">
-                        {calculateEstimatedTime(
-                          calculateDistance(viewOrderDetails.pickup_address, viewOrderDetails.dropoff_address),
-                          viewOrderDetails.service_type
-                        )} mins
-                      </p>
-                    </div>
-                  </div>
-
-                  {viewOrderDetails.status === 'delivered' && viewOrderDetails.delivered_at && (
-                    <div className="bg-green-50 rounded-lg p-3 mb-3 border border-green-200">
-                      <p className="text-xs text-green-700 font-bold mb-1">✅ Completed Route</p>
-                      <p className="text-xs text-gray-600">
-                        Delivered on {new Date(viewOrderDetails.delivered_at).toLocaleString()}
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="bg-gray-200 rounded-lg h-48 flex items-center justify-center mb-2">
-                    <p className="text-gray-600 text-sm text-center px-4">
-                      Route Map<br/>
-                      <span className="text-xs">Click button below to view full route</span>
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2">
-                    <button 
-                      onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(viewOrderDetails.pickup_address)}&destination=${encodeURIComponent(viewOrderDetails.dropoff_address)}&travelmode=driving`, '_blank')}
-                      className="py-2 bg-blue-500 text-white rounded-lg text-sm font-semibold hover:bg-blue-600 transition"
-                    >
-                      View Directions
-                    </button>
-                    <button 
-                      onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(viewOrderDetails.dropoff_address)}`, '_blank')}
-                      className="py-2 bg-green-500 text-white rounded-lg text-sm font-semibold hover:bg-green-600 transition"
-                    >
-                      View Destination
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Column */}
-              <div className="space-y-6">
-                {/* Driver Info */}
-                {viewOrderDetails.driver && (
-                  <div className="bg-gray-50 rounded-xl p-4">
-                    <h4 className="text-sm font-bold text-gray-700 mb-3">🚐 Your Driver</h4>
-                    <p className="font-semibold text-gray-900">{viewOrderDetails.driver.name}</p>
-                    <p className="text-sm text-gray-600">{viewOrderDetails.driver.phone}</p>
-                    <p className="text-sm text-gray-600 capitalize">{viewOrderDetails.driver.vehicle_type}</p>
-                  </div>
-                )}
-
-                {/* Parcel Details */}
-                <div className="bg-gray-50 rounded-xl p-4">
-                  <h4 className="text-sm font-bold text-gray-700 mb-3">📦 Parcel Details</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Size:</span>
-                      <span className="font-semibold capitalize">{viewOrderDetails.parcel_size}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Weight:</span>
-                      <span className="font-semibold">{viewOrderDetails.parcel_weight} kg</span>
-                    </div>
-                    {(viewOrderDetails.length || viewOrderDetails.width || viewOrderDetails.height) && (
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Dimensions:</span>
-                        <span className="font-semibold">
-                          {viewOrderDetails.length || 0} × {viewOrderDetails.width || 0} × {viewOrderDetails.height || 0} cm
-                        </span>
-                      </div>
-                    )}
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Service:</span>
-                      <span className="font-semibold capitalize">{viewOrderDetails.service_type?.replace('_', ' ')}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Price:</span>
-                      <span className="font-bold text-green-600 text-lg">${viewOrderDetails.price?.toFixed(2)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Parcel Image */}
-                {viewOrderDetails.image_url && (
-                  <div className="bg-gray-50 rounded-xl p-4">
-                    <h4 className="text-sm font-bold text-gray-700 mb-3">📸 Parcel Image</h4>
-                    <img 
-                      src={viewOrderDetails.image_url} 
-                      alt="Parcel" 
-                      className="w-full rounded-lg shadow"
-                    />
-                  </div>
-                )}
-
-                {/* Notes */}
-                {viewOrderDetails.notes && (
-                  <div className="bg-yellow-50 rounded-xl p-4">
-                    <h4 className="text-sm font-bold text-gray-700 mb-2">📝 Notes</h4>
-                    <p className="text-sm text-gray-900 whitespace-pre-wrap">{viewOrderDetails.notes}</p>
-                  </div>
-                )}
-
-                {/* Proof of Delivery */}
-                {viewOrderDetails.status === 'delivered' && (
-                  <div className="bg-green-50 rounded-xl p-4">
-                    <h4 className="text-sm font-bold text-green-700 mb-3">✅ Proof of Delivery</h4>
-                    
-                    {viewOrderDetails.anyone_home && (
-                      <div className="mb-3">
-                        <p className="text-xs text-gray-600 mb-1">Anyone Home?</p>
-                        <p className="text-sm font-semibold capitalize">{viewOrderDetails.anyone_home}</p>
-                      </div>
-                    )}
-
-                    {viewOrderDetails.delivery_notes && (
-                      <div className="mb-3">
-                        <p className="text-xs text-gray-600 mb-1">Delivery Notes</p>
-                        <p className="text-sm">{viewOrderDetails.delivery_notes}</p>
-                      </div>
-                    )}
-
-                    {viewOrderDetails.signature_url && (
-                      <div className="mb-3">
-                        <p className="text-xs text-gray-600 mb-2">Signature</p>
-                        <img 
-                          src={viewOrderDetails.signature_url} 
-                          alt="Signature" 
-                          className="border-2 border-gray-300 rounded-lg bg-white"
-                        />
-                      </div>
-                    )}
-
-                    {viewOrderDetails.proof_images && viewOrderDetails.proof_images.length > 0 && (
-                      <div>
-                        <p className="text-xs text-gray-600 mb-2">Proof Photos</p>
-                        <div className="grid grid-cols-2 gap-2">
-                          {viewOrderDetails.proof_images.map((img, idx) => (
-                            <img 
-                              key={idx}
-                              src={img} 
-                              alt={`Proof ${idx + 1}`} 
-                              className="w-full rounded-lg shadow"
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <button 
-              onClick={() => setViewOrderDetails(null)}
-              className="mt-6 w-full py-3 bg-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-400 transition"
-            >
-              Close
-            </button>
-          </div>
-        </>
+      {selectedOrder && (
+        <OrderModal order={selectedOrder} onClose={() => setSelectedOrder(null)} theme={theme} />
       )}
     </div>
+  );
+}
+
+// Wrap the component with ThemeProvider
+export default function ClientDashboard() {
+  return (
+    <ThemeProvider userType="client">
+      <ClientDashboardContent />
+    </ThemeProvider>
   );
 }
 
@@ -509,14 +422,93 @@ function StatusBadge({ status }) {
 
   const labels = {
     pending: "⏳ Pending",
-    active: "🚚 In Transit",
+    active: "🚚 Active",
     delivered: "✅ Delivered",
     cancelled: "❌ Cancelled",
   };
 
   return (
-    <span className={`inline-block px-3 py-1.5 rounded-full text-xs font-bold border-2 ${styles[status] || "bg-gray-100 text-gray-600 border-gray-300"}`}>
+    <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${styles[status] || "bg-gray-100 text-gray-600 border-gray-300"}`}>
       {labels[status] || status}
     </span>
+  );
+}
+
+function OrderModal({ order, onClose, theme }) {
+  return (
+    <>
+      <div 
+        className="fixed inset-0 bg-black bg-opacity-50 z-40"
+        onClick={onClose}
+      />
+      
+      <div className="fixed inset-4 sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:inset-auto bg-white rounded-2xl shadow-2xl z-50 sm:w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className={`bg-gradient-to-r ${theme.gradient} text-white p-6 flex justify-between items-start`}>
+          <div>
+            <h3 className="text-2xl font-black mb-1">Order Details</h3>
+            <p className="text-sm opacity-90">#{order.id.slice(0, 8)}</p>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-white hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-2xl font-bold"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="p-6">
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-gray-600 mb-1">Status</p>
+              <StatusBadge status={order.status} />
+            </div>
+
+            <div>
+              <p className="text-sm text-gray-600 mb-1">Total Price</p>
+              <p className="text-2xl font-bold text-green-600">${Number(order.price).toFixed(2)}</p>
+            </div>
+
+            <div>
+              <p className="text-sm font-bold text-gray-900 mb-2">📍 Pickup Address</p>
+              <p className="text-gray-700">{order.pickup_address}</p>
+              {order.pickup_contact_name && (
+                <p className="text-sm text-gray-600 mt-1">Contact: {order.pickup_contact_name}</p>
+              )}
+            </div>
+
+            <div>
+              <p className="text-sm font-bold text-gray-900 mb-2">🎯 Delivery Address</p>
+              <p className="text-gray-700">{order.dropoff_address}</p>
+              {order.dropoff_contact_name && (
+                <p className="text-sm text-gray-600 mt-1">Contact: {order.dropoff_contact_name}</p>
+              )}
+            </div>
+
+            <div>
+              <p className="text-sm font-bold text-gray-900 mb-2">📦 Parcel Details</p>
+              <p className="text-gray-700">Size: {order.parcel_size}</p>
+              {order.parcel_weight && (
+                <p className="text-gray-700">Weight: {order.parcel_weight}kg</p>
+              )}
+              <p className="text-gray-700">Quantity: {order.quantity}</p>
+            </div>
+
+            {order.notes && (
+              <div>
+                <p className="text-sm font-bold text-gray-900 mb-2">📝 Notes</p>
+                <p className="text-gray-700">{order.notes}</p>
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={onClose}
+            className="w-full mt-6 py-3 bg-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-400 transition"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </>
   );
 }

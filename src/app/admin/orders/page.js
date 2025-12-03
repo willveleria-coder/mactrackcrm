@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
 import Link from "next/link";
-import Image from "next/image";
+import HamburgerMenu from "@/components/HamburgerMenu";
 
 export default function AdminOrdersPage() {
   const [admin, setAdmin] = useState(null);
@@ -208,49 +208,43 @@ export default function AdminOrdersPage() {
     });
   }
 
+  const menuItems = [
+    { href: "/admin/dashboard", icon: "🏠", label: "Dashboard" },
+    { href: "/admin/orders", icon: "📦", label: "Orders" },
+    { href: "/admin/clients", icon: "👥", label: "Clients" },
+    { href: "/admin/drivers", icon: "🚐", label: "Drivers" },
+    { href: "/admin/analytics", icon: "📊", label: "Analytics" },
+    { href: "/admin/invoices", icon: "💰", label: "Invoices" },
+  ];
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff] flex items-center justify-center">
         <div className="text-gray-600 text-lg">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white border-b border-gray-200 shadow-sm">
+    <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff]">
+      {/* Navigation */}
+      <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 shadow-sm sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Image 
-                src="/bus-icon.png" 
-                alt="Mac With A Van" 
-                width={40} 
-                height={40}
-                className="object-contain"
-              />
               <div>
-                <h1 className="text-xl sm:text-2xl font-black text-[#0072ab]">MAC WITH A VAN</h1>
+                <h1 className="text-xl sm:text-2xl font-black text-red-600">Mac Track</h1>
                 <p className="text-xs text-gray-500">Admin Portal</p>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-3 sm:gap-6">
-              <span className="text-sm text-gray-600">👋 {admin?.name}</span>
-              <Link href="/admin/dashboard" className="text-sm font-semibold text-gray-700 hover:text-[#0072ab]">
-                Dashboard
-              </Link>
-              <Link href="/admin/orders" className="text-sm font-semibold text-[#0072ab] border-b-2 border-[#0072ab]">
-                Orders
-              </Link>
-              <Link href="/admin/drivers" className="text-sm font-semibold text-gray-700 hover:text-[#0072ab]">
-                Drivers
-              </Link>
-              <button 
-                onClick={handleLogout}
-                className="text-sm font-semibold text-red-600 hover:text-red-700"
-              >
-                Logout
-              </button>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-gray-600 hidden sm:inline">👋 {admin?.name || 'Admin'}</span>
+              <HamburgerMenu
+                items={menuItems}
+                onLogout={handleLogout}
+                userName={admin?.name || 'Admin'}
+                userRole="Admin"
+              />
             </div>
           </div>
         </div>
@@ -268,8 +262,8 @@ export default function AdminOrdersPage() {
             onClick={() => setFilter("all")}
             className={`px-4 sm:px-6 py-3 rounded-xl font-bold text-sm transition ${
               filter === "all"
-                ? "bg-[#0072ab] text-white shadow-lg"
-                : "bg-white text-gray-700 border-2 border-gray-200 hover:border-[#0072ab]"
+                ? "bg-red-600 text-white shadow-lg"
+                : "bg-white text-gray-700 border-2 border-gray-200 hover:border-red-600"
             }`}
           >
             📋 All ({orders.length})
@@ -307,7 +301,7 @@ export default function AdminOrdersPage() {
         </div>
 
         {/* Advanced Filters */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-6">
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-6 mb-6">
           <h3 className="text-lg font-bold text-gray-900 mb-4">🔍 Search & Filters</h3>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -316,13 +310,13 @@ export default function AdminOrdersPage() {
               placeholder="Search by ID, address, client..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="px-4 py-2 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#0072ab] focus:border-transparent"
+              className="px-4 py-2 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent"
             />
             
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-4 py-2 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#0072ab] focus:border-transparent"
+              className="px-4 py-2 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent"
             >
               <option value="all">All Statuses</option>
               <option value="pending">Pending</option>
@@ -334,7 +328,7 @@ export default function AdminOrdersPage() {
             <select
               value={filterDriver}
               onChange={(e) => setFilterDriver(e.target.value)}
-              className="px-4 py-2 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#0072ab] focus:border-transparent"
+              className="px-4 py-2 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent"
             >
               <option value="all">All Drivers</option>
               {drivers.map(driver => (
@@ -347,7 +341,7 @@ export default function AdminOrdersPage() {
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
               placeholder="From Date"
-              className="px-4 py-2 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#0072ab] focus:border-transparent"
+              className="px-4 py-2 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent"
             />
             
             <input
@@ -355,13 +349,13 @@ export default function AdminOrdersPage() {
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
               placeholder="To Date"
-              className="px-4 py-2 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#0072ab] focus:border-transparent"
+              className="px-4 py-2 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent"
             />
             
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
-              className="px-4 py-2 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#0072ab] focus:border-transparent"
+              className="px-4 py-2 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent"
             >
               <option value="created_at">Sort by Date</option>
               <option value="price">Sort by Price</option>
@@ -391,7 +385,7 @@ export default function AdminOrdersPage() {
         </div>
 
         {/* Orders List */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
           {filteredOrders.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-6xl mb-4">📦</div>
@@ -419,7 +413,7 @@ export default function AdminOrdersPage() {
                       <td className="px-4 sm:px-6 py-4">
                         <button
                           onClick={() => setViewOrderDetails(order)}
-                          className="text-sm font-mono text-[#0072ab] hover:underline font-bold"
+                          className="text-sm font-mono text-red-600 hover:underline font-bold"
                         >
                           #{order.id.slice(0, 8)} 👁️
                         </button>
@@ -440,7 +434,7 @@ export default function AdminOrdersPage() {
                         {order.driver ? (
                           <button
                             onClick={() => handleViewDriver(order.driver_id)}
-                            className="text-sm font-semibold text-[#0072ab] hover:underline"
+                            className="text-sm font-semibold text-red-600 hover:underline"
                           >
                             {order.driver.name}
                           </button>
@@ -457,7 +451,7 @@ export default function AdminOrdersPage() {
                       <td className="px-4 sm:px-6 py-4">
                         <button
                           onClick={() => setSelectedOrder(selectedOrder === order.id ? null : order.id)}
-                          className="px-3 sm:px-4 py-2 bg-[#0072ab] text-white rounded-lg text-xs sm:text-sm font-semibold hover:bg-[#005d8c] transition"
+                          className="px-3 sm:px-4 py-2 bg-red-600 text-white rounded-lg text-xs sm:text-sm font-semibold hover:bg-red-700 transition"
                         >
                           {selectedOrder === order.id ? "Close" : "Assign"}
                         </button>
@@ -471,7 +465,6 @@ export default function AdminOrdersPage() {
         </div>
       </main>
 
-      {/* All your existing modals remain the same... */}
       {/* Assign Driver Modal */}
       {selectedOrder && (
         <>
@@ -489,7 +482,7 @@ export default function AdminOrdersPage() {
               <select
                 value={selectedDriver || ""}
                 onChange={(e) => setSelectedDriver(e.target.value)}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-[#0072ab] focus:border-transparent"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent"
               >
                 <option value="">Choose a driver...</option>
                 {drivers.map((driver) => (
@@ -522,7 +515,7 @@ export default function AdminOrdersPage() {
         </>
       )}
 
-      {/* Order Details Modal - Keep all your existing modal code */}
+      {/* Order Details Modal */}
       {viewOrderDetails && (
         <>
           <div 
@@ -627,7 +620,7 @@ export default function AdminOrdersPage() {
                               setViewOrderDetails(null);
                               handleViewDriver(viewOrderDetails.driver_id);
                             }}
-                            className="font-semibold text-[#0072ab] hover:underline"
+                            className="font-semibold text-red-600 hover:underline"
                           >
                             {viewOrderDetails.driver.name}
                           </button>
@@ -752,7 +745,7 @@ export default function AdminOrdersPage() {
         </>
       )}
 
-      {/* Driver Info Modal - Keep existing code */}
+      {/* Driver Info Modal */}
       {viewDriverDetails && (
         <>
           <div 

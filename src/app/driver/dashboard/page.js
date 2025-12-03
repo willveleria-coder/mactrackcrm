@@ -5,11 +5,13 @@ import { createClient } from "../../../lib/supabase/client";
 import Link from "next/link";
 import DriverLocationTracker from "@/components/DriverLocationTracker";
 import HamburgerMenu from "@/components/HamburgerMenu";
+import { ThemeProvider, useTheme } from "../../../context/ThemeContext";
 
-export default function DriverDashboard() {
+function DriverDashboardContent() {
+  const { theme } = useTheme();
   const [driver, setDriver] = useState(null);
   const [orders, setOrders] = useState([]);
-  const [stats, setStats] = useState({ assigned: 0, completed: 0, earnings: 0 });
+  const [stats, setStats] = useState({ assigned: 0, completed: 0, earnings: 0, pending: 0, active: 0, thisWeek: 0 });
   const [loading, setLoading] = useState(true);
   const [showContactPopup, setShowContactPopup] = useState(false);
   const [adminContact, setAdminContact] = useState(null);
@@ -53,12 +55,21 @@ export default function DriverDashboard() {
         setOrders(ordersData);
         
         const assigned = ordersData.filter(o => o.status === "pending" || o.status === "active").length;
+        const pending = ordersData.filter(o => o.status === "pending").length;
+        const active = ordersData.filter(o => o.status === "active").length;
         const completed = ordersData.filter(o => o.status === "delivered").length;
         const earnings = ordersData
           .filter(o => o.status === "delivered")
           .reduce((sum, o) => sum + Number(o.price), 0);
         
-        setStats({ assigned, completed, earnings });
+        // This week's deliveries
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        const thisWeek = ordersData.filter(o => 
+          o.status === "delivered" && new Date(o.created_at) > oneWeekAgo
+        ).length;
+        
+        setStats({ assigned, completed, earnings, pending, active, thisWeek });
       }
     } catch (error) {
       console.error("Error loading dashboard:", error);
@@ -245,7 +256,7 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div>
-                <h1 className="text-xl sm:text-2xl font-black text-red-600">Mac Track</h1>
+                <h1 className={`text-xl sm:text-2xl font-black ${theme.text}`}>MAC WITH A VAN</h1>
                 <p className="text-xs text-gray-500">Driver Portal</p>
               </div>
             </div>
@@ -272,21 +283,46 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
           <p className="text-sm sm:text-base text-gray-600">Here&apos;s your delivery overview</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-5 text-white shadow-lg">
-            <p className="text-sm font-medium opacity-90 mb-1">Assigned Orders</p>
-            <p className="text-4xl font-black">{stats.assigned}</p>
+        {/* Enhanced Stats - 2 rows on mobile, 3 columns on desktop */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
+          <div className="bg-gradient-to-br from-yellow-500 to-orange-500 rounded-2xl p-4 sm:p-5 text-white shadow-lg">
+            <p className="text-xs sm:text-sm font-medium opacity-90 mb-1">Pending</p>
+            <p className="text-3xl sm:text-4xl font-black">{stats.pending}</p>
+            <p className="text-xs opacity-75 mt-1">Awaiting response</p>
           </div>
-          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-5 text-white shadow-lg">
-            <p className="text-sm font-medium opacity-90 mb-1">Completed</p>
-            <p className="text-4xl font-black">{stats.completed}</p>
+          
+          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 sm:p-5 text-white shadow-lg">
+            <p className="text-xs sm:text-sm font-medium opacity-90 mb-1">Active</p>
+            <p className="text-3xl sm:text-4xl font-black">{stats.active}</p>
+            <p className="text-xs opacity-75 mt-1">In progress</p>
           </div>
-          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-5 text-white shadow-lg">
-            <p className="text-sm font-medium opacity-90 mb-1">Total Earnings</p>
-            <p className="text-4xl font-black">${stats.earnings.toFixed(2)}</p>
+          
+          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-4 sm:p-5 text-white shadow-lg">
+            <p className="text-xs sm:text-sm font-medium opacity-90 mb-1">Completed</p>
+            <p className="text-3xl sm:text-4xl font-black">{stats.completed}</p>
+            <p className="text-xs opacity-75 mt-1">All time</p>
+          </div>
+          
+          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-4 sm:p-5 text-white shadow-lg">
+            <p className="text-xs sm:text-sm font-medium opacity-90 mb-1">Total Earnings</p>
+            <p className="text-2xl sm:text-4xl font-black">${stats.earnings.toFixed(2)}</p>
+            <p className="text-xs opacity-75 mt-1">Lifetime</p>
+          </div>
+          
+          <div className="bg-gradient-to-br from-pink-500 to-rose-500 rounded-2xl p-4 sm:p-5 text-white shadow-lg">
+            <p className="text-xs sm:text-sm font-medium opacity-90 mb-1">This Week</p>
+            <p className="text-3xl sm:text-4xl font-black">{stats.thisWeek}</p>
+            <p className="text-xs opacity-75 mt-1">Deliveries</p>
+          </div>
+          
+          <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-4 sm:p-5 text-white shadow-lg">
+            <p className="text-xs sm:text-sm font-medium opacity-90 mb-1">Vehicle</p>
+            <p className="text-2xl sm:text-3xl font-black capitalize">{driver?.vehicle_type}</p>
+            <p className="text-xs opacity-75 mt-1">{driver?.license_plate}</p>
           </div>
         </div>
 
+        {/* Duty Status */}
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-5 mb-6">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
             <div>
@@ -308,6 +344,42 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
           </div>
         </div>
 
+        {/* Quick Actions */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          <Link
+            href="/driver/orders"
+            className="bg-white/80 backdrop-blur-sm rounded-xl p-4 shadow-md border border-gray-100 hover:shadow-lg transition text-center"
+          >
+            <div className="text-3xl mb-2">📦</div>
+            <p className="text-sm font-bold text-gray-900">View All Orders</p>
+          </Link>
+          
+          <Link
+            href="/driver/earnings"
+            className="bg-white/80 backdrop-blur-sm rounded-xl p-4 shadow-md border border-gray-100 hover:shadow-lg transition text-center"
+          >
+            <div className="text-3xl mb-2">💰</div>
+            <p className="text-sm font-bold text-gray-900">My Earnings</p>
+          </Link>
+          
+          <Link
+            href="/driver/wallet"
+            className="bg-white/80 backdrop-blur-sm rounded-xl p-4 shadow-md border border-gray-100 hover:shadow-lg transition text-center"
+          >
+            <div className="text-3xl mb-2">💳</div>
+            <p className="text-sm font-bold text-gray-900">Wallet</p>
+          </Link>
+          
+          <Link
+            href="/driver/feedback"
+            className="bg-white/80 backdrop-blur-sm rounded-xl p-4 shadow-md border border-gray-100 hover:shadow-lg transition text-center"
+          >
+            <div className="text-3xl mb-2">⭐</div>
+            <p className="text-sm font-bold text-gray-900">Feedback</p>
+          </Link>
+        </div>
+
+        {/* Your Orders */}
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-5 sm:p-6">
           <h3 className="text-xl font-bold text-gray-900 mb-5">Your Orders</h3>
           
@@ -408,7 +480,7 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
       {/* Floating Help Button */}
       <button
         onClick={() => setShowContactPopup(!showContactPopup)}
-        className="fixed bottom-8 right-8 w-14 h-14 bg-gradient-to-r from-[#0072ab] to-[#005d8c] text-white rounded-full shadow-2xl hover:scale-110 transition-transform z-50 flex items-center justify-center text-2xl font-bold"
+        className={`fixed bottom-8 right-8 w-14 h-14 bg-gradient-to-r ${theme.gradient} text-white rounded-full shadow-2xl hover:scale-110 transition-transform z-50 flex items-center justify-center text-2xl font-bold`}
       >
         ❓
       </button>
@@ -507,5 +579,13 @@ function StatusBadge({ status }) {
     <span className={`inline-block px-4 py-2 rounded-full text-xs font-black uppercase border-2 ${styles[status] || "bg-gray-100 text-gray-600 border-gray-300"}`}>
       {labels[status] || status}
     </span>
+  );
+}
+
+export default function DriverDashboard() {
+  return (
+    <ThemeProvider userType="driver">
+      <DriverDashboardContent />
+    </ThemeProvider>
   );
 }

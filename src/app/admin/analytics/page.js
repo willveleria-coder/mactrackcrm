@@ -3,9 +3,10 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
 import Link from "next/link";
-import Image from "next/image";
+import HamburgerMenu from "@/components/HamburgerMenu";
 
 export default function AnalyticsPage() {
+  const [admin, setAdmin] = useState(null);
   const [stats, setStats] = useState({
     totalRevenue: 0,
     totalOrders: 0,
@@ -24,17 +25,40 @@ export default function AnalyticsPage() {
   const router = useRouter();
   const supabase = createClient();
 
+  const menuItems = [
+    { href: "/admin/dashboard", icon: "🏠", label: "Dashboard" },
+    { href: "/admin/orders", icon: "📦", label: "Orders" },
+    { href: "/admin/clients", icon: "👥", label: "Clients" },
+    { href: "/admin/drivers", icon: "🚐", label: "Drivers" },
+    { href: "/admin/analytics", icon: "📊", label: "Analytics" },
+    { href: "/admin/invoices", icon: "💰", label: "Invoices" },
+  ];
+
   useEffect(() => {
     loadAnalytics();
   }, [dateRange]);
 
   async function loadAnalytics() {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
         router.push("/admin/login");
         return;
       }
+
+      const { data: adminData } = await supabase
+        .from("admins")
+        .select("*")
+        .eq("user_id", user.id)
+        .single();
+
+      if (!adminData) {
+        router.push("/admin/login");
+        return;
+      }
+
+      setAdmin(adminData);
 
       // Load all data
       const { data: ordersData } = await supabase
@@ -165,7 +189,7 @@ export default function AnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff] flex items-center justify-center">
         <div className="text-gray-600 text-lg">Loading analytics...</div>
       </div>
     );
@@ -174,61 +198,39 @@ export default function AnalyticsPage() {
   const maxRevenue = Math.max(...revenueByDay.map(d => d.revenue), 1);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff]">
       {/* Navigation */}
-      <nav className="bg-white border-b border-gray-200 shadow-sm">
+      <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 shadow-sm sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Image 
-                src="/bus-icon.png" 
-                alt="Mac Track" 
-                width={40} 
-                height={40}
-                className="object-contain"
-              />
-              <div>
-                <h1 className="text-xl sm:text-2xl font-black text-red-600">Mac Track</h1>
-                <p className="text-xs text-gray-500">Admin Portal</p>
-              </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-black text-red-600">Mac Track</h1>
+              <p className="text-xs text-gray-500">Admin Portal</p>
             </div>
-            <div className="flex items-center gap-4 sm:gap-6">
-              <Link href="/admin/dashboard" className="text-sm font-semibold text-gray-700 hover:text-red-600">
-                Dashboard
-              </Link>
-              <Link href="/admin/analytics" className="text-sm font-semibold text-red-600 border-b-2 border-red-600">
-                Analytics
-              </Link>
-              <Link href="/admin/orders" className="text-sm font-semibold text-gray-700 hover:text-red-600">
-                Orders
-              </Link>
-              <Link href="/admin/drivers" className="text-sm font-semibold text-gray-700 hover:text-red-600">
-                Drivers
-              </Link>
-              <button 
-                onClick={handleLogout}
-                className="text-sm font-semibold text-gray-700 hover:text-red-600"
-              >
-                Logout
-              </button>
-            </div>
+            
+            <HamburgerMenu 
+              items={menuItems}
+              onLogout={handleLogout}
+              userName={admin?.name || 'Admin'}
+              userRole="Admin"
+            />
           </div>
         </div>
       </nav>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 sm:mb-8">
           <div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">📊 Analytics Dashboard</h2>
-            <p className="text-gray-600">Business insights and performance metrics</p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">📊 Analytics Dashboard</h2>
+            <p className="text-sm sm:text-base text-gray-600">Business insights and performance metrics</p>
           </div>
           
           {/* Date Range Filter */}
           <select
             value={dateRange}
             onChange={(e) => setDateRange(e.target.value)}
-            className="px-4 py-2 border-2 border-gray-300 rounded-xl font-semibold focus:ring-2 focus:ring-red-600 focus:border-transparent"
+            className="px-4 py-2 border-2 border-gray-300 rounded-xl font-semibold focus:ring-2 focus:ring-red-600 focus:border-transparent bg-white"
           >
             <option value="7">Last 7 Days</option>
             <option value="30">Last 30 Days</option>
@@ -238,34 +240,34 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Key Metrics */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
-          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-lg">
-            <p className="text-sm font-medium opacity-90 mb-1">Total Revenue</p>
-            <p className="text-4xl font-black">${stats.totalRevenue.toFixed(0)}</p>
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-4 sm:p-6 text-white shadow-lg hover:shadow-xl transition transform hover:scale-105">
+            <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">Total Revenue</p>
+            <p className="text-3xl sm:text-4xl font-black">${stats.totalRevenue.toFixed(0)}</p>
             <p className="text-xs opacity-75 mt-2">Last {dateRange} days</p>
           </div>
 
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-6 text-white shadow-lg">
-            <p className="text-sm font-medium opacity-90 mb-1">Total Orders</p>
-            <p className="text-4xl font-black">{stats.totalOrders}</p>
+          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 sm:p-6 text-white shadow-lg hover:shadow-xl transition transform hover:scale-105">
+            <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">Total Orders</p>
+            <p className="text-3xl sm:text-4xl font-black">{stats.totalOrders}</p>
             <p className="text-xs opacity-75 mt-2">Last {dateRange} days</p>
           </div>
 
-          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg">
-            <p className="text-sm font-medium opacity-90 mb-1">Avg Order Value</p>
-            <p className="text-4xl font-black">${stats.avgOrderValue.toFixed(0)}</p>
+          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-4 sm:p-6 text-white shadow-lg hover:shadow-xl transition transform hover:scale-105">
+            <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">Avg Order Value</p>
+            <p className="text-3xl sm:text-4xl font-black">${stats.avgOrderValue.toFixed(0)}</p>
             <p className="text-xs opacity-75 mt-2">Per order</p>
           </div>
 
-          <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-6 text-white shadow-lg">
-            <p className="text-sm font-medium opacity-90 mb-1">Completion Rate</p>
-            <p className="text-4xl font-black">{stats.completionRate.toFixed(0)}%</p>
+          <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-4 sm:p-6 text-white shadow-lg hover:shadow-xl transition transform hover:scale-105">
+            <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">Completion Rate</p>
+            <p className="text-3xl sm:text-4xl font-black">{stats.completionRate.toFixed(0)}%</p>
             <p className="text-xs opacity-75 mt-2">Success rate</p>
           </div>
 
-          <div className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-2xl p-6 text-white shadow-lg">
-            <p className="text-sm font-medium opacity-90 mb-1">Avg Delivery Time</p>
-            <p className="text-4xl font-black">{stats.avgDeliveryTime.toFixed(1)}h</p>
+          <div className="bg-gradient-to-br from-pink-500 to-pink-600 rounded-2xl p-4 sm:p-6 text-white shadow-lg hover:shadow-xl transition transform hover:scale-105">
+            <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">Avg Delivery Time</p>
+            <p className="text-3xl sm:text-4xl font-black">{stats.avgDeliveryTime.toFixed(1)}h</p>
             <p className="text-xs opacity-75 mt-2">Hours average</p>
           </div>
         </div>
@@ -273,16 +275,16 @@ export default function AnalyticsPage() {
         {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Revenue Chart */}
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-6">📈 Revenue & Orders Trend</h3>
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-5 sm:p-6">
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-6">📈 Revenue & Orders Trend</h3>
             <div className="space-y-3">
               {revenueByDay.map((day, idx) => (
                 <div key={idx}>
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-sm font-semibold text-gray-700">{day.date}</span>
+                    <span className="text-xs sm:text-sm font-semibold text-gray-700">{day.date}</span>
                     <div className="text-right">
                       <span className="text-sm font-bold text-green-600">${day.revenue.toFixed(0)}</span>
-                      <span className="text-xs text-gray-500 ml-2">({day.orders} orders)</span>
+                      <span className="text-xs text-gray-500 ml-2">({day.orders})</span>
                     </div>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-3">
@@ -297,8 +299,8 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Orders by Status */}
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-6">📦 Orders by Status</h3>
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-5 sm:p-6">
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-6">📦 Orders by Status</h3>
             <div className="space-y-4">
               {ordersByStatus.map((status, idx) => (
                 <div key={idx}>
@@ -327,10 +329,10 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Top Drivers & Recent Deliveries */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Top Drivers */}
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-6">🏆 Top Performing Drivers</h3>
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-5 sm:p-6">
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-6">🏆 Top Performing Drivers</h3>
             <div className="space-y-4">
               {topDrivers.length === 0 ? (
                 <div className="text-center py-8">
@@ -339,20 +341,20 @@ export default function AnalyticsPage() {
                 </div>
               ) : (
                 topDrivers.map((driver, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-black ${
+                  <div key={idx} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition">
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-white font-black text-sm sm:text-base ${
                         idx === 0 ? 'bg-yellow-500' : idx === 1 ? 'bg-gray-400' : idx === 2 ? 'bg-orange-600' : 'bg-blue-500'
                       }`}>
                         #{idx + 1}
                       </div>
                       <div>
-                        <p className="font-bold text-gray-900">{driver.name}</p>
-                        <p className="text-sm text-gray-600">{driver.completed} completed • {driver.avgTime}h avg</p>
+                        <p className="text-sm sm:text-base font-bold text-gray-900">{driver.name}</p>
+                        <p className="text-xs sm:text-sm text-gray-600">{driver.completed} completed • {driver.avgTime}h avg</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-2xl font-black text-green-600">${driver.revenue.toFixed(0)}</p>
+                      <p className="text-xl sm:text-2xl font-black text-green-600">${driver.revenue.toFixed(0)}</p>
                       <p className="text-xs text-gray-500">Revenue</p>
                     </div>
                   </div>
@@ -362,8 +364,8 @@ export default function AnalyticsPage() {
           </div>
 
           {/* Recent Deliveries */}
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-6">⚡ Recent Delivery Times</h3>
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-5 sm:p-6">
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-6">⚡ Recent Delivery Times</h3>
             <div className="space-y-3">
               {recentDeliveries.length === 0 ? (
                 <div className="text-center py-8">
@@ -373,14 +375,14 @@ export default function AnalyticsPage() {
               ) : (
                 recentDeliveries.map((delivery, idx) => (
                   <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition">
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <p className="text-xs font-mono text-gray-500 mb-1">#{delivery.id.slice(0, 8)}</p>
                       <p className="text-sm font-semibold text-gray-900">{delivery.driver}</p>
                       <p className="text-xs text-gray-600 truncate">{delivery.pickup} → {delivery.dropoff}</p>
                     </div>
-                    <div className="text-right ml-4">
-                      <p className="text-2xl font-black text-blue-600">{delivery.time}h</p>
-                      <p className="text-xs text-gray-500">Delivery time</p>
+                    <div className="text-right ml-4 flex-shrink-0">
+                      <p className="text-xl sm:text-2xl font-black text-blue-600">{delivery.time}h</p>
+                      <p className="text-xs text-gray-500">Time</p>
                     </div>
                   </div>
                 ))

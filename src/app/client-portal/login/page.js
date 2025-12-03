@@ -3,7 +3,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
 import Link from "next/link";
-import Image from "next/image";
 
 export default function ClientLoginPage() {
   const [email, setEmail] = useState("");
@@ -49,31 +48,22 @@ export default function ClientLoginPage() {
     <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff] flex items-center justify-center px-4">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
-  <div className="flex justify-center mb-4">
-    <Image 
-      src="/bus-icon.png" 
-      alt="Mac Track" 
-      width={80} 
-      height={80}
-      className="object-contain"
-    />
-  </div>
-  <h1 className="text-4xl font-black text-[#0072ab] mb-2">MAC TRACK</h1>
-  <p className="text-gray-600 text-lg">Your Delivery Command Center</p>
-</div>
+          <h1 className="text-4xl sm:text-5xl font-black text-red-600 mb-2">Mac Track</h1>
+          <p className="text-gray-600 text-base sm:text-lg">Client Portal</p>
+        </div>
 
-        <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Welcome Back</h2>
+        <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl p-6 sm:p-8 border border-gray-100">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6 text-center">Welcome Back 📦</h2>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-red-700 text-sm">{error}</p>
+            <div className="mb-6 p-4 bg-red-50 border-2 border-red-200 rounded-2xl">
+              <p className="text-red-700 text-sm font-semibold">❌ {error}</p>
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-5">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-base font-bold text-gray-700 mb-3">
                 Email Address
               </label>
               <input
@@ -81,14 +71,14 @@ export default function ClientLoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="your@email.com"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072ab] focus:border-transparent"
+                className="w-full px-5 py-4 text-base border-2 border-gray-300 rounded-2xl focus:ring-4 focus:ring-red-100 focus:border-red-600 transition"
                 required
                 disabled={loading}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-base font-bold text-gray-700 mb-3">
                 Password
               </label>
               <input
@@ -96,7 +86,7 @@ export default function ClientLoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072ab] focus:border-transparent"
+                className="w-full px-5 py-4 text-base border-2 border-gray-300 rounded-2xl focus:ring-4 focus:ring-red-100 focus:border-red-600 transition"
                 required
                 disabled={loading}
               />
@@ -105,9 +95,9 @@ export default function ClientLoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-gradient-to-r from-[#0072ab] to-[#005d8c] text-white rounded-lg font-bold hover:shadow-lg transition disabled:opacity-50"
+              className="w-full py-5 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-2xl font-black text-lg shadow-xl hover:shadow-2xl hover:from-red-700 hover:to-red-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-6"
             >
-              {loading ? "Logging in..." : "Login"}
+              {loading ? "Logging in..." : "Login →"}
             </button>
           </form>
 
@@ -117,13 +107,18 @@ export default function ClientLoginPage() {
               Don&apos;t have an account?{' '}
               <Link 
                 href="/client-portal/register" 
-                className="font-bold text-[#0072ab] hover:text-[#005d8c] underline"
+                className="font-bold text-red-600 hover:text-red-700 underline"
               >
                 Sign up here
               </Link>
             </p>
           </div>
         </div>
+
+        {/* Footer */}
+        <p className="text-center text-sm text-gray-500 mt-6">
+          Powered by Mac Track
+        </p>
       </div>
     </div>
   );

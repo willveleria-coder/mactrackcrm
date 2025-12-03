@@ -3,7 +3,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
 import Link from "next/link";
-import Image from "next/image";
 
 export default function DriverLoginPage() {
   const [email, setEmail] = useState("");
@@ -46,29 +45,20 @@ export default function DriverLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4 sm:p-6">
+    <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff] flex items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-md">
         {/* Logo & Header */}
         <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <Image 
-              src="/bus-icon.png" 
-              alt="Mac With A Van" 
-              width={80} 
-              height={80}
-              className="object-contain"
-            />
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-black text-[#0072ab] mb-2">
+          <h1 className="text-4xl sm:text-5xl font-black text-[#0072ab] mb-2">
             MAC WITH A VAN
           </h1>
           <p className="text-base sm:text-lg text-gray-600">Driver Portal</p>
         </div>
 
         {/* Login Card */}
-        <div className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 border border-gray-100">
+        <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl p-6 sm:p-8 border border-gray-100">
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-6 text-center">
-            Welcome Back
+            Welcome Back 🚐
           </h2>
 
           {error && (
@@ -81,7 +71,7 @@ export default function DriverLoginPage() {
             {/* Email */}
             <div>
               <label className="block text-base font-bold text-gray-700 mb-3">
-                📧 Email Address
+                Email Address
               </label>
               <input
                 type="email"
@@ -97,7 +87,7 @@ export default function DriverLoginPage() {
             {/* Password */}
             <div>
               <label className="block text-base font-bold text-gray-700 mb-3">
-                🔒 Password
+                Password
               </label>
               <input
                 type="password"
@@ -114,7 +104,7 @@ export default function DriverLoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-5 bg-gradient-to-r from-[#0072ab] to-[#005d8c] text-white rounded-2xl font-black text-lg shadow-xl hover:shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-6"
+              className="w-full py-5 bg-gradient-to-r from-[#0072ab] to-[#005d8c] text-white rounded-2xl font-black text-lg shadow-xl hover:shadow-2xl hover:from-[#005d8c] hover:to-[#004d73] transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-6"
             >
               {loading ? "Logging in..." : "Login →"}
             </button>
@@ -136,7 +126,7 @@ export default function DriverLoginPage() {
 
         {/* Footer */}
         <p className="text-center text-sm text-gray-500 mt-6">
-          🚐 Logistics With A Pulse
+          Powered by Mac Track
         </p>
       </div>
     </div>

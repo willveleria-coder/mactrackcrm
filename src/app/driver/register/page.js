@@ -3,7 +3,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
 import Link from "next/link";
-import Image from "next/image";
 
 export default function DriverRegisterPage() {
   const [formData, setFormData] = useState({
@@ -62,26 +61,17 @@ export default function DriverRegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <Image 
-              src="/bus-icon.png" 
-              alt="Mac With A Van" 
-              width={80} 
-              height={80}
-              className="object-contain"
-            />
-          </div>
-          <h1 className="text-3xl sm:text-4xl font-black text-[#0072ab] mb-2">
+          <h1 className="text-4xl sm:text-5xl font-black text-[#0072ab] mb-2">
             MAC WITH A VAN
           </h1>
           <p className="text-base sm:text-lg text-gray-600">Driver Application</p>
         </div>
 
-        <div className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 border border-gray-100">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Apply to Drive</h2>
+        <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl p-6 sm:p-8 border border-gray-100">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">Apply to Drive 🚐</h2>
 
           {error && (
             <div className="mb-6 p-4 bg-red-50 border-2 border-red-200 rounded-2xl">
@@ -100,7 +90,7 @@ export default function DriverRegisterPage() {
                 value={formData.name}
                 onChange={handleChange}
                 placeholder="John Doe"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-[#0072ab]"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-[#0072ab] transition"
                 required
               />
             </div>
@@ -115,7 +105,7 @@ export default function DriverRegisterPage() {
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="john@example.com"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-[#0072ab]"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-[#0072ab] transition"
                 required
               />
             </div>
@@ -130,7 +120,7 @@ export default function DriverRegisterPage() {
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="••••••••"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-[#0072ab]"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-[#0072ab] transition"
                 required
                 minLength={6}
               />
@@ -146,7 +136,7 @@ export default function DriverRegisterPage() {
                 value={formData.phone}
                 onChange={handleChange}
                 placeholder="0412 345 678"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-[#0072ab]"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-[#0072ab] transition"
                 required
               />
             </div>
@@ -159,7 +149,7 @@ export default function DriverRegisterPage() {
                 name="vehicle_type"
                 value={formData.vehicle_type}
                 onChange={handleChange}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-[#0072ab]"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-[#0072ab] transition"
                 required
               >
                 <option value="van">Van</option>
@@ -179,7 +169,7 @@ export default function DriverRegisterPage() {
                 value={formData.license_plate}
                 onChange={handleChange}
                 placeholder="ABC123"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-[#0072ab]"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-[#0072ab] transition"
                 required
               />
             </div>
@@ -187,7 +177,7 @@ export default function DriverRegisterPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 bg-gradient-to-r from-[#0072ab] to-[#005d8c] text-white rounded-2xl font-black text-lg shadow-xl hover:shadow-2xl transition disabled:opacity-50"
+              className="w-full py-4 bg-gradient-to-r from-[#0072ab] to-[#005d8c] text-white rounded-2xl font-black text-lg shadow-xl hover:shadow-2xl hover:from-[#005d8c] hover:to-[#004d73] transition disabled:opacity-50"
             >
               {loading ? "Submitting..." : "Submit Application"}
             </button>

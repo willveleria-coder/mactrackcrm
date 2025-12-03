@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
 import Link from "next/link";
-import Image from "next/image";
+import HamburgerMenu from "@/components/HamburgerMenu";
 
 export default function AdminLiveTrackingPage() {
   const [admin, setAdmin] = useState(null);
@@ -17,6 +17,15 @@ export default function AdminLiveTrackingPage() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const supabase = createClient();
+
+  const menuItems = [
+    { href: "/admin/dashboard", icon: "🏠", label: "Dashboard" },
+    { href: "/admin/orders", icon: "📦", label: "Orders" },
+    { href: "/admin/clients", icon: "👥", label: "Clients" },
+    { href: "/admin/drivers", icon: "🚐", label: "Drivers" },
+    { href: "/admin/analytics", icon: "📊", label: "Analytics" },
+    { href: "/admin/invoices", icon: "💰", label: "Invoices" },
+  ];
 
   useEffect(() => {
     checkAuth();
@@ -76,6 +85,7 @@ export default function AdminLiveTrackingPage() {
       setActiveOrders(ordersData || []);
 
       setLastRefresh(new Date());
+      setMessage("");
     } catch (err) {
       console.error(err);
       setMessage("❌ Failed to load tracking data");
@@ -127,91 +137,63 @@ export default function AdminLiveTrackingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff] flex items-center justify-center">
         <div className="text-gray-600 text-lg">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* NAV */}
-      <nav className="bg-white border-b border-gray-200 shadow-sm">
+    <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff]">
+      {/* Navigation */}
+      <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 shadow-sm sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Image
-                src="/bus-icon.png"
-                alt="Mac Track"
-                width={40}
-                height={40}
-                className="object-contain"
-              />
-              <div>
-                <h1 className="text-xl sm:text-2xl font-black text-red-600">
-                  Mac Track
-                </h1>
-                <p className="text-xs text-gray-500">Admin Portal</p>
-              </div>
+            <div>
+              <h1 className="text-xl sm:text-2xl font-black text-red-600">Mac Track</h1>
+              <p className="text-xs text-gray-500">Admin Portal</p>
             </div>
-
-            <div className="flex items-center gap-4">
-              <Link href="/admin/dashboard" className="text-sm font-semibold">
-                Dashboard
-              </Link>
-              <Link href="/admin/analytics" className="text-sm font-semibold">
-                Analytics
-              </Link>
-              <Link
-                href="/admin/live-tracking"
-                className="text-sm font-semibold text-red-600 border-b-2 border-red-600"
-              >
-                Live Tracking
-              </Link>
-              <Link href="/admin/orders" className="text-sm font-semibold">
-                Orders
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="text-sm font-semibold text-gray-700 hover:text-red-600"
-              >
-                Logout
-              </button>
-            </div>
+            
+            <HamburgerMenu 
+              items={menuItems}
+              onLogout={handleLogout}
+              userName={admin?.name || 'Admin'}
+              userRole="Admin"
+            />
           </div>
         </div>
       </nav>
 
-      {/* MAIN */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
-        <div className="flex justify-between items-center mb-8">
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 sm:mb-8">
           <div>
-            <h2 className="text-3xl font-bold">🗺️ Live Driver Tracking</h2>
-            <p className="text-gray-600">Monitor all drivers in real-time</p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">🗺️ Live Driver Tracking</h2>
+            <p className="text-sm sm:text-base text-gray-600">Monitor all drivers in real-time</p>
           </div>
           <button
             onClick={loadTrackingData}
-            className="px-6 py-3 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600 transition"
+            className="px-6 py-3 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600 transition shadow-lg"
           >
             🔄 Refresh
           </button>
         </div>
 
-        {/* MESSAGE */}
+        {/* Message */}
         {message && (
           <div
-            className={`mb-6 p-4 rounded-xl ${
+            className={`mb-6 p-4 rounded-xl font-semibold ${
               message.includes("❌")
-                ? "bg-red-50 text-red-700"
-                : "bg-green-50 text-green-700"
+                ? "bg-red-50 text-red-700 border border-red-200"
+                : "bg-green-50 text-green-700 border border-green-200"
             }`}
           >
             {message}
           </div>
         )}
 
-        {/* STATS */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-6 mb-8">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
           <StatCard
             color="from-green-500 to-green-600"
             label="Active Drivers"
@@ -238,14 +220,13 @@ export default function AdminLiveTrackingPage() {
           />
         </div>
 
-        {/* LAST REFRESH */}
-        <div className="text-center mb-6 text-sm text-gray-600">
-          🔄 Last updated: {lastRefresh?.toLocaleTimeString() || "Never"} •
-          Auto-refresh every 30s
+        {/* Last Refresh */}
+        <div className="text-center mb-6 text-sm text-gray-600 bg-white/60 backdrop-blur-sm rounded-xl py-3 border border-gray-100">
+          🔄 Last updated: {lastRefresh?.toLocaleTimeString() || "Never"} • Auto-refresh every 30s
         </div>
 
-        {/* FILTER TABS */}
-        <div className="bg-white rounded-2xl shadow-lg p-4 mb-6">
+        {/* Filter Tabs */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-4 mb-6">
           <div className="flex gap-2 flex-wrap">
             {[
               { v: "all", label: "All Drivers", count: drivers.length },
@@ -259,10 +240,10 @@ export default function AdminLiveTrackingPage() {
               <button
                 key={tab.v}
                 onClick={() => setFilterStatus(tab.v)}
-                className={`px-4 py-2 rounded-xl font-bold text-sm ${
+                className={`px-4 py-2 rounded-xl font-bold text-sm transition ${
                   filterStatus === tab.v
-                    ? "bg-red-600 text-white"
-                    : "bg-gray-100 hover:bg-gray-200"
+                    ? "bg-red-600 text-white shadow-lg"
+                    : "bg-gray-100 hover:bg-gray-200 text-gray-700"
                 }`}
               >
                 {tab.label} ({tab.count})
@@ -271,7 +252,7 @@ export default function AdminLiveTrackingPage() {
           </div>
         </div>
 
-        {/* DRIVER LIST */}
+        {/* Driver List */}
         <div className="space-y-4">
           {filteredDrivers.length === 0 ? (
             <EmptyDrivers filter={filterStatus} />
@@ -285,18 +266,16 @@ export default function AdminLiveTrackingPage() {
               return (
                 <div
                   key={driver.id}
-                  className={`bg-white rounded-2xl shadow-lg border-2 p-6 ${
+                  className={`bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border-2 p-5 sm:p-6 transition hover:shadow-xl ${
                     active ? "border-green-200" : "border-gray-200"
                   }`}
                 >
                   <div className="flex flex-col lg:flex-row justify-between gap-6">
-                    {/* LEFT */}
+                    {/* Left Side */}
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-3">
-                        <h3 className="text-xl font-bold">{driver.name}</h3>
-
+                      <div className="flex flex-wrap items-center gap-3 mb-4">
+                        <h3 className="text-lg sm:text-xl font-bold text-gray-900">{driver.name}</h3>
                         <StatusBadge active={active} />
-
                         {!settings?.tracking_enabled && (
                           <span className="px-3 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full">
                             Tracking Disabled
@@ -312,18 +291,17 @@ export default function AdminLiveTrackingPage() {
                       />
 
                       {loc && <LocationBox loc={loc} />}
-
                       {order && <OrderBox order={order} />}
                     </div>
 
-                    {/* RIGHT BUTTONS */}
-                    <div className="flex flex-col gap-2 w-full lg:w-48">
+                    {/* Right Side Buttons */}
+                    <div className="flex flex-row lg:flex-col gap-2 w-full lg:w-48">
                       {loc && (
                         <a
                           href={`https://www.google.com/maps?q=${loc.latitude},${loc.longitude}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="w-full px-4 py-2 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600 text-center"
+                          className="flex-1 lg:w-full px-4 py-2 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600 text-center text-sm transition"
                         >
                           📍 View on Map
                         </a>
@@ -331,14 +309,14 @@ export default function AdminLiveTrackingPage() {
 
                       <a
                         href={`tel:${driver.phone}`}
-                        className="w-full px-4 py-2 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 text-center"
+                        className="flex-1 lg:w-full px-4 py-2 bg-green-500 text-white rounded-lg font-semibold hover:bg-green-600 text-center text-sm transition"
                       >
                         📞 Call
                       </a>
 
                       <button
                         onClick={() => setSelectedDriver(driver)}
-                        className="w-full px-4 py-2 bg-gray-500 text-white rounded-lg font-semibold hover:bg-gray-600 text-center"
+                        className="flex-1 lg:w-full px-4 py-2 bg-gray-500 text-white rounded-lg font-semibold hover:bg-gray-600 text-center text-sm transition"
                       >
                         ℹ️ Details
                       </button>
@@ -351,7 +329,7 @@ export default function AdminLiveTrackingPage() {
         </div>
       </main>
 
-      {/* MODAL */}
+      {/* Driver Details Modal */}
       {selectedDriver && (
         <DriverModal
           driver={selectedDriver}
@@ -362,25 +340,28 @@ export default function AdminLiveTrackingPage() {
   );
 }
 
-/* COMPONENTS */
+/* Components */
 function StatCard({ color, label, value, sub }) {
   return (
     <div
-      className={`bg-gradient-to-br ${color} rounded-2xl p-6 text-white shadow-lg`}
+      className={`bg-gradient-to-br ${color} rounded-2xl p-4 sm:p-6 text-white shadow-lg hover:shadow-xl transition transform hover:scale-105`}
     >
-      <p className="text-sm opacity-90">{label}</p>
-      <p className="text-4xl font-black">{value}</p>
-      <p className="text-xs opacity-75 mt-2">{sub}</p>
+      <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">{label}</p>
+      <p className="text-3xl sm:text-4xl font-black mb-1">{value}</p>
+      <p className="text-xs opacity-75">{sub}</p>
     </div>
   );
 }
 
 function EmptyDrivers({ filter }) {
   return (
-    <div className="bg-white rounded-2xl shadow-lg p-16 text-center">
+    <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-16 text-center">
       <div className="text-6xl mb-4">🚗</div>
       <p className="text-gray-500 text-lg font-semibold">
         No {filter !== "all" ? filter : ""} drivers found
+      </p>
+      <p className="text-gray-400 text-sm mt-2">
+        {filter === "active" ? "No drivers are currently online" : "Try adjusting your filter"}
       </p>
     </div>
   );
@@ -405,15 +386,10 @@ function StatusBadge({ active }) {
 
 function DriverInfo({ driver, loc, order, getTimeSinceUpdate }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm mb-3">
-      <Info label="Vehicle" value={driver.vehicle_type} />
-      <Info label="Reg Number" value={driver.vehicle_registration} />
-
-      <Info
-        label="Last Update"
-        value={getTimeSinceUpdate(loc?.timestamp)}
-      />
-
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm mb-4">
+      <Info label="Vehicle" value={driver.vehicle_type || "N/A"} />
+      <Info label="Reg Number" value={driver.vehicle_registration || "N/A"} />
+      <Info label="Last Update" value={getTimeSinceUpdate(loc?.timestamp)} />
       <Info label="Status" value={order ? "On Delivery" : "Available"} />
     </div>
   );
@@ -422,45 +398,37 @@ function DriverInfo({ driver, loc, order, getTimeSinceUpdate }) {
 function Info({ label, value }) {
   return (
     <div>
-      <p className="text-gray-600 mb-1">{label}</p>
-      <p className="font-semibold text-gray-900 capitalize">{value}</p>
+      <p className="text-gray-600 mb-1 text-xs">{label}</p>
+      <p className="font-semibold text-gray-900 capitalize truncate">{value}</p>
     </div>
   );
 }
 
 function LocationBox({ loc }) {
   return (
-    <div className="p-3 bg-blue-50 rounded-xl mb-3">
-      <div className="flex flex-wrap items-center gap-4 text-sm">
-        <span className="text-blue-600 font-semibold">
-          Lat:{" "}
-          <span className="font-mono text-blue-900 ml-1">
-            {loc.latitude.toFixed(6)}
-          </span>
-        </span>
+    <div className="p-3 sm:p-4 bg-blue-50 rounded-xl mb-3 border border-blue-200">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-xs sm:text-sm">
+        <div>
+          <span className="text-blue-600 font-semibold block mb-1">Latitude</span>
+          <span className="font-mono text-blue-900">{loc.latitude.toFixed(6)}</span>
+        </div>
 
-        <span className="text-blue-600 font-semibold">
-          Lng:{" "}
-          <span className="font-mono text-blue-900 ml-1">
-            {loc.longitude.toFixed(6)}
-          </span>
-        </span>
+        <div>
+          <span className="text-blue-600 font-semibold block mb-1">Longitude</span>
+          <span className="font-mono text-blue-900">{loc.longitude.toFixed(6)}</span>
+        </div>
 
-        {loc.speed && (
-          <span className="text-blue-600 font-semibold">
-            Speed:
-            <span className="text-blue-900 ml-1">
-              {loc.speed.toFixed(0)} km/h
-            </span>
-          </span>
+        {loc.speed !== null && loc.speed !== undefined && (
+          <div>
+            <span className="text-blue-600 font-semibold block mb-1">Speed</span>
+            <span className="text-blue-900">{loc.speed.toFixed(0)} km/h</span>
+          </div>
         )}
 
-        <span className="text-blue-600 font-semibold">
-          Accuracy:
-          <span className="text-blue-900 ml-1">
-            {loc.accuracy?.toFixed(0) || "N/A"} m
-          </span>
-        </span>
+        <div>
+          <span className="text-blue-600 font-semibold block mb-1">Accuracy</span>
+          <span className="text-blue-900">{loc.accuracy?.toFixed(0) || "N/A"} m</span>
+        </div>
       </div>
     </div>
   );
@@ -468,13 +436,20 @@ function LocationBox({ loc }) {
 
 function OrderBox({ order }) {
   return (
-    <div className="p-3 bg-orange-50 rounded-xl border border-orange-200">
-      <p className="text-xs font-bold text-orange-900">
-        Active Delivery: #{order.id.slice(0, 8).toUpperCase()}
+    <div className="p-3 sm:p-4 bg-orange-50 rounded-xl border border-orange-200">
+      <p className="text-xs font-bold text-orange-900 mb-2">
+        🚚 Active Delivery: #{order.id.slice(0, 8).toUpperCase()}
       </p>
-      <p className="text-sm text-orange-700">
-        {order.pickup_address} → {order.dropoff_address}
-      </p>
+      <div className="space-y-1 text-sm">
+        <div className="flex items-start gap-2">
+          <span className="text-orange-600">📍</span>
+          <span className="text-orange-700">{order.pickup_address}</span>
+        </div>
+        <div className="flex items-start gap-2">
+          <span className="text-orange-600">🎯</span>
+          <span className="text-orange-700">{order.dropoff_address}</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -489,59 +464,66 @@ function DriverModal({ driver, onClose }) {
         onClick={onClose}
       />
 
-      <div className="fixed top-10 left-1/2 -translate-x-1/2 bg-white rounded-2xl shadow-2xl p-8 z-50 w-11/12 max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-start mb-6">
-          <h3 className="text-2xl font-bold">Driver Details</h3>
+      <div className="fixed inset-4 sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:inset-auto bg-white rounded-2xl shadow-2xl z-50 sm:w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="bg-gradient-to-r from-red-600 to-red-700 text-white p-6 flex justify-between items-start">
+          <div>
+            <h3 className="text-2xl font-black mb-1">Driver Details</h3>
+            <p className="text-sm opacity-90">{driver.name}</p>
+          </div>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700 text-3xl font-bold"
+            className="text-white hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-2xl font-bold"
           >
             ×
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <Info label="Name" value={driver.name} />
-          <Info label="Phone" value={driver.phone} />
-          <Info label="Email" value={driver.email} />
-          <Info label="Vehicle Type" value={driver.vehicle_type} />
-          <Info label="Registration" value={driver.vehicle_registration} />
-          <Info label="License Number" value={driver.license_number} />
-        </div>
-
-        {settings && (
-          <div className="p-4 bg-blue-50 rounded-xl mt-6">
-            <p className="font-bold text-blue-900 mb-2">Location Settings</p>
-
-            <div className="flex justify-between text-sm">
-              <span className="text-blue-700">Tracking Enabled:</span>
-              <span className="font-semibold text-blue-900">
-                {settings.tracking_enabled ? "Yes" : "No"}
-              </span>
-            </div>
-
-            <div className="flex justify-between text-sm">
-              <span className="text-blue-700">Share with Clients:</span>
-              <span className="font-semibold text-blue-900">
-                {settings.share_with_clients ? "Yes" : "No"}
-              </span>
-            </div>
-
-            <div className="flex justify-between text-sm">
-              <span className="text-blue-700">Update Interval:</span>
-              <span className="font-semibold text-blue-900">
-                {settings.location_update_interval}s
-              </span>
-            </div>
+        <div className="p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            <Info label="Name" value={driver.name} />
+            <Info label="Phone" value={driver.phone || "N/A"} />
+            <Info label="Email" value={driver.email} />
+            <Info label="Vehicle Type" value={driver.vehicle_type || "N/A"} />
+            <Info label="Registration" value={driver.vehicle_registration || "N/A"} />
+            <Info label="License Number" value={driver.license_number || "N/A"} />
           </div>
-        )}
 
-        <button
-          onClick={onClose}
-          className="w-full mt-6 py-3 bg-gray-300 rounded-xl font-bold hover:bg-gray-400 transition"
-        >
-          Close
-        </button>
+          {settings && (
+            <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
+              <p className="font-bold text-blue-900 mb-3">📍 Location Settings</p>
+
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-blue-700">Tracking Enabled:</span>
+                  <span className="font-semibold text-blue-900">
+                    {settings.tracking_enabled ? "✅ Yes" : "❌ No"}
+                  </span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="text-blue-700">Share with Clients:</span>
+                  <span className="font-semibold text-blue-900">
+                    {settings.share_with_clients ? "✅ Yes" : "❌ No"}
+                  </span>
+                </div>
+
+                <div className="flex justify-between">
+                  <span className="text-blue-700">Update Interval:</span>
+                  <span className="font-semibold text-blue-900">
+                    {settings.location_update_interval}s
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={onClose}
+            className="w-full mt-6 py-3 bg-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-400 transition"
+          >
+            Close
+          </button>
+        </div>
       </div>
     </>
   );

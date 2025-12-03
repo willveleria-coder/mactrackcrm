@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
 import Link from "next/link";
+import HamburgerMenu from "../../../components/HamburgerMenu";
 
 export default function DriverEarningsPage() {
   const [driver, setDriver] = useState(null);
@@ -111,6 +112,14 @@ export default function DriverEarningsPage() {
     router.push("/driver/login");
   }
 
+  const menuItems = [
+    { icon: "🏠", label: "Dashboard", href: "/driver/dashboard" },
+    { icon: "📦", label: "My Deliveries", href: "/driver/orders" },
+    { icon: "💰", label: "Earnings", href: "/driver/earnings" },
+    { icon: "💬", label: "Feedback", href: "/driver/feedback" },
+    { icon: "👛", label: "Wallet", href: "/driver/wallet" },
+  ];
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff] flex items-center justify-center">
@@ -122,60 +131,54 @@ export default function DriverEarningsPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff]">
       
-      <nav className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-black text-[#0072ab]">MAC WITH A VAN</h1>
-            <p className="text-xs text-gray-500">Driver Portal</p>
-          </div>
-          <div className="flex items-center gap-6">
-            <span className="text-sm text-gray-600">👋 {driver?.name}</span>
-            <Link href="/driver/dashboard" className="text-sm font-semibold text-gray-700 hover:text-[#0072ab]">
-              Dashboard
-            </Link>
-            <Link href="/driver/orders" className="text-sm font-semibold text-gray-700 hover:text-[#0072ab]">
-              My Deliveries
-            </Link>
-            <Link href="/driver/earnings" className="text-sm font-semibold text-[#0072ab] border-b-2 border-[#0072ab]">
-              Earnings
-            </Link>
-            <button 
-              onClick={handleLogout}
-              className="text-sm font-semibold text-red-600 hover:text-red-700"
-            >
-              Logout
-            </button>
+      {/* Navigation */}
+      <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 shadow-sm sticky top-0 z-30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-black text-[#0072ab]">MAC WITH A VAN</h1>
+              <p className="text-xs text-gray-500">Driver Portal</p>
+            </div>
+            
+            <HamburgerMenu 
+              items={menuItems}
+              onLogout={handleLogout}
+              userName={driver?.name}
+              userRole="Driver"
+            />
           </div>
         </div>
       </nav>
 
-      <main className="max-w-7xl mx-auto px-6 py-10">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Earnings & Payouts</h2>
-          <p className="text-gray-600">Track your earnings and request bi-weekly payouts</p>
+        <div className="mb-6 sm:mb-8">
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Earnings & Payouts 💰</h2>
+          <p className="text-sm sm:text-base text-gray-600">Track your earnings and request bi-weekly payouts</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-10">
           <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg">
             <p className="text-sm font-medium opacity-90 mb-2">Total Earnings</p>
-            <p className="text-4xl font-black">${totalEarnings.toFixed(2)}</p>
+            <p className="text-3xl sm:text-4xl font-black">${totalEarnings.toFixed(2)}</p>
             <p className="text-xs opacity-75 mt-2">All time</p>
           </div>
           <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg">
             <p className="text-sm font-medium opacity-90 mb-2">Available Balance</p>
-            <p className="text-4xl font-black">${availableBalance.toFixed(2)}</p>
+            <p className="text-3xl sm:text-4xl font-black">${availableBalance.toFixed(2)}</p>
             <p className="text-xs opacity-75 mt-2">Ready for payout</p>
           </div>
           <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white shadow-lg">
             <p className="text-sm font-medium opacity-90 mb-2">Completed Deliveries</p>
-            <p className="text-4xl font-black">{completedOrders.length}</p>
+            <p className="text-3xl sm:text-4xl font-black">{completedOrders.length}</p>
             <p className="text-xs opacity-75 mt-2">Total jobs</p>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 mb-6">
-          <div className="flex justify-between items-center">
+        {/* Request Payout */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-gray-100 p-4 sm:p-8 mb-6">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
             <div>
               <h3 className="text-lg font-bold text-gray-900 mb-1">Request Bi-Weekly Payout</h3>
               <p className="text-sm text-gray-600">
@@ -185,14 +188,15 @@ export default function DriverEarningsPage() {
             <button
               onClick={handleRequestPayout}
               disabled={availableBalance <= 0}
-              className="px-8 py-3 bg-green-500 text-white rounded-lg font-bold hover:bg-green-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 sm:px-8 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
             >
               💰 Request ${availableBalance.toFixed(2)}
             </button>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 mb-6">
+        {/* Payout History */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-gray-100 p-4 sm:p-8 mb-6">
           <h3 className="text-xl font-bold text-gray-900 mb-6">Payout History</h3>
           
           {payoutRequests.length === 0 ? (
@@ -233,7 +237,8 @@ export default function DriverEarningsPage() {
           )}
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8">
+        {/* Recent Completed Deliveries */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-gray-100 p-4 sm:p-8">
           <h3 className="text-xl font-bold text-gray-900 mb-6">Recent Completed Deliveries</h3>
           
           {completedOrders.length === 0 ? (
@@ -243,16 +248,16 @@ export default function DriverEarningsPage() {
           ) : (
             <div className="space-y-3">
               {completedOrders.slice(0, 10).map((order) => (
-                <div key={order.id} className="flex justify-between items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50">
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-gray-900">
+                <div key={order.id} className="flex justify-between items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 bg-white">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">
                       {order.pickup_address} → {order.dropoff_address}
                     </p>
                     <p className="text-xs text-gray-500">
                       {new Date(order.created_at).toLocaleDateString()} • {order.service_type}
                     </p>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right ml-4">
                     <p className="text-sm font-bold text-green-600">+${Number(order.price).toFixed(2)}</p>
                   </div>
                 </div>
