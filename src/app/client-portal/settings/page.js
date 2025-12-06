@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
 import Link from "next/link";
+import Image from "next/image";
 import HamburgerMenu from "@/components/HamburgerMenu";
 
 export default function ClientSettingsPage() {
@@ -11,7 +12,6 @@ export default function ClientSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [activeTab, setActiveTab] = useState("profile");
-  const [theme, setTheme] = useState("red");
   
   const [profileData, setProfileData] = useState({
     name: "",
@@ -48,14 +48,6 @@ export default function ClientSettingsPage() {
     { href: "/client-portal/settings", icon: "⚙️", label: "Settings" },
   ];
 
-  const themes = [
-    { id: "red", name: "Red Passion", color: "from-red-500 to-red-600", primary: "#dc2626" },
-    { id: "blue", name: "Blue Ocean", color: "from-blue-500 to-blue-600", primary: "#2563eb" },
-    { id: "green", name: "Green Forest", color: "from-green-500 to-green-600", primary: "#16a34a" },
-    { id: "purple", name: "Purple Galaxy", color: "from-purple-500 to-purple-600", primary: "#9333ea" },
-    { id: "orange", name: "Orange Sunset", color: "from-orange-500 to-orange-600", primary: "#ea580c" }
-  ];
-
   useEffect(() => {
     loadClient();
   }, []);
@@ -88,8 +80,7 @@ export default function ClientSettingsPage() {
         company: clientData.company || ""
       });
 
-      // Load saved preferences (if stored)
-      setTheme(clientData.theme || "red");
+      // Load saved preferences
       setAddressData({
         defaultPickup: clientData.default_pickup || "",
         defaultDropoff: clientData.default_dropoff || ""
@@ -184,27 +175,6 @@ export default function ClientSettingsPage() {
     }
   }
 
-  async function handleThemeChange(newTheme) {
-    setTheme(newTheme);
-    setSaving(true);
-    setMessage("");
-
-    try {
-      const { error } = await supabase
-        .from("clients")
-        .update({ theme: newTheme })
-        .eq("id", client.id);
-
-      if (error) throw error;
-
-      setMessage("✅ Theme changed! Refresh to see changes.");
-    } catch (error) {
-      setMessage("❌ " + error.message);
-    } finally {
-      setSaving(false);
-    }
-  }
-
   async function handleDeleteAccount() {
     const confirm = window.confirm(
       "⚠️ Are you sure you want to delete your account? This action cannot be undone!"
@@ -256,9 +226,18 @@ export default function ClientSettingsPage() {
       <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 shadow-sm sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-black text-red-600">Mac Track</h1>
-              <p className="text-xs text-gray-500">Client Portal</p>
+            <div className="flex items-center gap-3">
+              <Image
+                src="/bus-icon.png"
+                alt="Mac Track"
+                width={40}
+                height={40}
+                className="object-contain"
+              />
+              <div>
+                <h1 className="text-xl sm:text-2xl font-black text-red-600">Mac Track</h1>
+                <p className="text-xs text-gray-500">Client Portal</p>
+              </div>
             </div>
             
             <HamburgerMenu 
@@ -323,16 +302,6 @@ export default function ClientSettingsPage() {
                 }`}
               >
                 📍 Addresses
-              </button>
-              <button
-                onClick={() => setActiveTab("theme")}
-                className={`w-full text-left px-4 py-3 rounded-xl font-semibold mb-2 transition ${
-                  activeTab === "theme" 
-                    ? "bg-red-600 text-white" 
-                    : "hover:bg-gray-100 text-gray-700"
-                }`}
-              >
-                🎨 Theme
               </button>
               <button
                 onClick={() => setActiveTab("notifications")}
@@ -524,40 +493,6 @@ export default function ClientSettingsPage() {
                     {saving ? "Saving..." : "Save Addresses"}
                   </button>
                 </form>
-              </div>
-            )}
-
-            {/* Theme Tab */}
-            {activeTab === "theme" && (
-              <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-6 sm:p-8">
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">🎨 Choose Your Theme</h3>
-                <p className="text-sm text-gray-600 mb-6">Personalize your experience with a color theme</p>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {themes.map((t) => (
-                    <button
-                      key={t.id}
-                      onClick={() => handleThemeChange(t.id)}
-                      className={`p-6 rounded-2xl border-4 transition ${
-                        theme === t.id 
-                          ? "border-gray-900 shadow-xl" 
-                          : "border-gray-200 hover:border-gray-400"
-                      }`}
-                    >
-                      <div className={`w-full h-20 rounded-xl bg-gradient-to-r ${t.color} mb-4`}></div>
-                      <p className="font-bold text-gray-900">{t.name}</p>
-                      {theme === t.id && (
-                        <p className="text-xs text-green-600 mt-2">✓ Active</p>
-                      )}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="mt-6 p-4 bg-yellow-50 rounded-xl border border-yellow-200">
-                  <p className="text-sm text-yellow-900">
-                    <strong>Note:</strong> After changing theme, refresh the page to see the changes applied throughout the app.
-                  </p>
-                </div>
               </div>
             )}
 

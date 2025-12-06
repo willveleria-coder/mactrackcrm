@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
 import Link from "next/link";
+import Image from "next/image";
 import DriverLocationTracker from "@/components/DriverLocationTracker";
 import HamburgerMenu from "@/components/HamburgerMenu";
 import { ThemeProvider, useTheme } from "../../../context/ThemeContext";
@@ -200,28 +201,24 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
   }
 
   function handleCall() {
-    if (adminContact?.phone) {
-      window.location.href = `tel:${adminContact.phone}`;
-    }
+    // Hardcoded admin phone number
+    window.location.href = `tel:+61399998877`;
   }
 
   function handleSMS() {
-    if (adminContact?.phone) {
-      window.location.href = `sms:${adminContact.phone}`;
-    }
+    // Hardcoded admin phone number
+    window.location.href = `sms:+61399998877`;
   }
 
   function handleEmail() {
-    if (adminContact?.email) {
-      window.location.href = `mailto:${adminContact.email}`;
-    }
+    // Hardcoded admin email
+    window.location.href = `mailto:driversupport@mactrack.com.au`;
   }
 
   function handleWhatsApp() {
-    if (adminContact?.whatsapp) {
-      const phone = adminContact.whatsapp.replace(/[^0-9]/g, '');
-      window.open(`https://wa.me/${phone}`, '_blank');
-    }
+    // Hardcoded WhatsApp number (remove spaces/dashes)
+    const phone = '61399998877';
+    window.open(`https://wa.me/${phone}`, '_blank');
   }
 
   function handleNavigate(pickupAddress, dropoffAddress, orderStatus) {
@@ -237,6 +234,7 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
     { href: "/driver/earnings", icon: "💰", label: "Earnings" },
     { href: "/driver/wallet", icon: "💳", label: "Wallet" },
     { href: "/driver/feedback", icon: "⭐", label: "Feedback" },
+    { href: "/driver/settings", icon: "⚙️", label: "Settings" },
   ];
 
   if (loading) {
@@ -255,6 +253,13 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
+              <Image
+                src="/bus-icon.png"
+                alt="Mac Track"
+                width={40}
+                height={40}
+                className="object-contain"
+              />
               <div>
                 <h1 className={`text-xl sm:text-2xl font-black ${theme.text}`}>MAC WITH A VAN</h1>
                 <p className="text-xs text-gray-500">Driver Portal</p>
@@ -512,7 +517,7 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
                 <span className="text-2xl">📞</span>
                 <div>
                   <p className="font-bold text-gray-900 text-sm">Call Admin</p>
-                  <p className="text-xs text-gray-600">{adminContact?.phone || 'No number'}</p>
+                  <p className="text-xs text-gray-600">+61 3 9999 8877</p>
                 </div>
               </button>
 
@@ -523,7 +528,7 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
                 <span className="text-2xl">💬</span>
                 <div>
                   <p className="font-bold text-gray-900 text-sm">Send SMS</p>
-                  <p className="text-xs text-gray-600">Text message</p>
+                  <p className="text-xs text-gray-600">+61 3 9999 8877</p>
                 </div>
               </button>
 
@@ -534,7 +539,7 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
                 <span className="text-2xl">📧</span>
                 <div>
                   <p className="font-bold text-gray-900 text-sm">Email Admin</p>
-                  <p className="text-xs text-gray-600">{adminContact?.email || 'No email'}</p>
+                  <p className="text-xs text-gray-600">driversupport@mactrack.com.au</p>
                 </div>
               </button>
 
@@ -545,7 +550,7 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
                 <span className="text-2xl">📱</span>
                 <div>
                   <p className="font-bold text-gray-900 text-sm">WhatsApp</p>
-                  <p className="text-xs text-gray-600">Chat with admin</p>
+                  <p className="text-xs text-gray-600">+61 3 9999 8877</p>
                 </div>
               </button>
             </div>

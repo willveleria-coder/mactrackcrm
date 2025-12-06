@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function ClientLoginPage() {
   const [email, setEmail] = useState("");
@@ -48,8 +49,16 @@ export default function ClientLoginPage() {
     <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff] flex items-center justify-center px-4">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
+          <div className="flex justify-center mb-4">
+            <Image
+              src="/bus-icon.png"
+              alt="Mac Track"
+              width={60}
+              height={60}
+              className="object-contain"
+            />
+          </div>
           <h1 className="text-4xl sm:text-5xl font-black text-red-600 mb-2">Mac Track</h1>
-          <p className="text-gray-600 text-base sm:text-lg">Client Portal</p>
         </div>
 
         <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl p-6 sm:p-8 border border-gray-100">
@@ -101,10 +110,9 @@ export default function ClientLoginPage() {
             </button>
           </form>
 
-          {/* Sign Up Link */}
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
-              Don&apos;t have an account?{' '}
+              Don't have an account?{" "}
               <Link 
                 href="/client-portal/register" 
                 className="font-bold text-red-600 hover:text-red-700 underline"
@@ -115,7 +123,6 @@ export default function ClientLoginPage() {
           </div>
         </div>
 
-        {/* Footer */}
         <p className="text-center text-sm text-gray-500 mt-6">
           Powered by Mac Track
         </p>

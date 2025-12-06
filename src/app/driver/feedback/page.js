@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
 import HamburgerMenu from "@/components/HamburgerMenu";
+import Image from "next/image";
 
 export default function DriverFeedbackPage() {
   const [driver, setDriver] = useState(null);
@@ -94,6 +95,7 @@ export default function DriverFeedbackPage() {
     { href: "/driver/earnings", icon: "💰", label: "Earnings" },
     { href: "/driver/wallet", icon: "💳", label: "Wallet" },
     { href: "/driver/feedback", icon: "⭐", label: "Feedback" },
+    { href: "/driver/settings", icon: "⚙️", label: "Settings" },
   ];
 
   const renderStars = (rating) => {
@@ -115,8 +117,15 @@ export default function DriverFeedbackPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
+              <Image
+                src="/bus-icon.png"
+                alt="Mac Track"
+                width={40}
+                height={40}
+                className="object-contain"
+              />
               <div>
-                <h1 className="text-xl sm:text-2xl font-black text-red-600">Mac Track</h1>
+                <h1 className="text-xl sm:text-2xl font-black text-[#0072ab]">MAC WITH A VAN</h1>
                 <p className="text-xs text-gray-500">Driver Portal</p>
               </div>
             </div>
@@ -180,7 +189,7 @@ export default function DriverFeedbackPage() {
           ) : (
             <div className="space-y-6">
               {feedbacks.map((feedback) => (
-                <div key={feedback.id} className="border-2 border-gray-200 rounded-xl p-6 hover:border-red-600 transition bg-white">
+                <div key={feedback.id} className="border-2 border-gray-200 rounded-xl p-6 hover:border-[#0072ab] transition bg-white">
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <div className="flex items-center gap-3 mb-2">
@@ -231,6 +240,39 @@ export default function DriverFeedbackPage() {
               ))}
             </div>
           )}
+        </div>
+
+        {/* Contact Support */}
+        <div className="mt-8 bg-blue-50 border-2 border-blue-200 rounded-2xl shadow-lg p-6">
+          <h3 className="text-xl font-bold text-gray-900 mb-2">📞 Need Help?</h3>
+          <p className="text-sm text-gray-600 mb-4">Our driver support team is here to assist you</p>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <a
+              href="mailto:driversupport@mactrack.com.au"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-xl font-bold text-center flex items-center justify-center gap-2 transition shadow-lg hover:shadow-xl"
+            >
+              <span className="text-xl">📧</span>
+              <div className="text-left">
+                <p className="text-sm font-bold">Email Support</p>
+                <p className="text-xs opacity-90">driversupport@mactrack.com.au</p>
+              </div>
+            </a>
+            <a
+              href="tel:+61399998877"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-xl font-bold text-center flex items-center justify-center gap-2 transition shadow-lg hover:shadow-xl"
+            >
+              <span className="text-xl">📞</span>
+              <div className="text-left">
+                <p className="text-sm font-bold">Call Support</p>
+                <p className="text-xs opacity-90">+61 3 9999 8877</p>
+              </div>
+            </a>
+          </div>
+          
+          <p className="text-xs text-gray-600 text-center mt-4">
+            📅 Driver Support: Mon-Fri 6AM-8PM AEST
+          </p>
         </div>
       </main>
     </div>

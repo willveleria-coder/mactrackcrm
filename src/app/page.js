@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function HomePage() {
   return (
@@ -8,8 +9,8 @@ export default function HomePage() {
       <div className="absolute inset-0 bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff]" />
       
       {/* Animated Blobs */}
-      <div className="absolute w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-3xl top-[-200px] left-[-150px] animate-pulse" />
-      <div className="absolute w-[600px] h-[600px] bg-red-500/10 rounded-full blur-3xl bottom-[-200px] right-[-150px] animate-pulse" />
+      <div className="absolute w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-3xl top-[-200px] left-[-100px] animate-pulse" />
+      <div className="absolute w-[600px] h-[600px] bg-red-500/10 rounded-full blur-3xl bottom-[-200px] right-[-100px] animate-pulse" />
       <div className="absolute w-[400px] h-[400px] bg-purple-500/8 rounded-full blur-3xl top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 animate-pulse" />
       
       {/* Main Card */}
@@ -17,15 +18,18 @@ export default function HomePage() {
         
         {/* Logo/Header */}
         <div className="text-center mb-10">
-          <div className="inline-block mb-4">
-            <div className="w-20 h-20 bg-gradient-to-br from-red-500 to-red-600 rounded-2xl flex items-center justify-center shadow-lg transform hover:scale-110 transition">
-              <span className="text-4xl">🚚</span>
-            </div>
+          <div className="flex justify-center mb-4">
+            <Image
+              src="/bus-icon.png"
+              alt="Mac Track"
+              width={80}
+              height={80}
+              className="object-contain"
+            />
           </div>
           <h1 className="text-5xl font-black bg-gradient-to-r from-red-600 to-red-700 bg-clip-text text-transparent mb-2 tracking-tight">
             Mac Track
           </h1>
-          <p className="text-gray-600 text-sm font-semibold">Professional Courier CRM</p>
         </div>
 
         {/* Client Section */}
@@ -97,11 +101,7 @@ export default function HomePage() {
 
         {/* Footer */}
         <div className="mt-10 pt-6 border-t border-gray-200">
-          <div className="flex items-center justify-center gap-2 text-gray-400 text-xs">
-            <span>🔒</span>
-            <p>Secure & Professional Courier Management</p>
-          </div>
-          <p className="text-center text-gray-400 text-xs mt-3">
+          <p className="text-center text-gray-400 text-xs">
             © 2025 Mac Track — All Rights Reserved
           </p>
         </div>

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
 import Link from "next/link";
 import HamburgerMenu from "../../../components/HamburgerMenu";
+import Image from "next/image";
 
 export default function DriverEarningsPage() {
   const [driver, setDriver] = useState(null);
@@ -135,9 +136,18 @@ export default function DriverEarningsPage() {
       <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 shadow-sm sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl sm:text-2xl font-black text-[#0072ab]">MAC WITH A VAN</h1>
-              <p className="text-xs text-gray-500">Driver Portal</p>
+            <div className="flex items-center gap-3">
+              <Image
+                src="/bus-icon.png"
+                alt="Mac Track"
+                width={40}
+                height={40}
+                className="object-contain"
+              />
+              <div>
+                <h1 className="text-xl sm:text-2xl font-black text-[#0072ab]">MAC WITH A VAN</h1>
+                <p className="text-xs text-gray-500">Driver Portal</p>
+              </div>
             </div>
             
             <HamburgerMenu 

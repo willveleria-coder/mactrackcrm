@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function DriverLoginPage() {
   const [email, setEmail] = useState("");
@@ -49,10 +50,18 @@ export default function DriverLoginPage() {
       <div className="w-full max-w-md">
         {/* Logo & Header */}
         <div className="text-center mb-8">
+          <div className="flex justify-center mb-4">
+            <Image
+              src="/bus-icon.png"
+              alt="Mac Track"
+              width={60}
+              height={60}
+              className="object-contain"
+            />
+          </div>
           <h1 className="text-4xl sm:text-5xl font-black text-[#0072ab] mb-2">
             MAC WITH A VAN
           </h1>
-          <p className="text-base sm:text-lg text-gray-600">Driver Portal</p>
         </div>
 
         {/* Login Card */}
@@ -68,7 +77,6 @@ export default function DriverLoginPage() {
           )}
 
           <form onSubmit={handleLogin} className="space-y-5">
-            {/* Email */}
             <div>
               <label className="block text-base font-bold text-gray-700 mb-3">
                 Email Address
@@ -84,7 +92,6 @@ export default function DriverLoginPage() {
               />
             </div>
 
-            {/* Password */}
             <div>
               <label className="block text-base font-bold text-gray-700 mb-3">
                 Password
@@ -100,7 +107,6 @@ export default function DriverLoginPage() {
               />
             </div>
 
-            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
@@ -110,21 +116,19 @@ export default function DriverLoginPage() {
             </button>
           </form>
 
-          {/* Sign Up Link */}
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
-              New driver?{' '}
+              Don&apos;t have an account?{' '}
               <Link 
                 href="/driver/register" 
                 className="font-bold text-[#0072ab] hover:text-[#005d8c] underline"
               >
-                Apply here
+                Sign up here
               </Link>
             </p>
           </div>
         </div>
 
-        {/* Footer */}
         <p className="text-center text-sm text-gray-500 mt-6">
           Powered by Mac Track
         </p>

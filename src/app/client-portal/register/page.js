@@ -61,34 +61,32 @@ export default function ClientRegisterPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff] flex items-center justify-center px-4 py-8">
       <div className="max-w-md w-full">
-        {/* Header - Match Client Dashboard */}
         <div className="text-center mb-8">
           <div className="flex justify-center mb-4">
-            <Image 
-              src="/bus-icon.png" 
-              alt="Mac Track" 
-              width={80} 
-              height={80}
+            <Image
+              src="/bus-icon.png"
+              alt="Mac Track"
+              width={60}
+              height={60}
               className="object-contain"
             />
           </div>
-          <h1 className="text-4xl font-black text-[#0072ab] mb-2">MAC TRACK</h1>
-          <p className="text-gray-600 text-lg">Your Delivery Command Center</p>
+          <h1 className="text-4xl sm:text-5xl font-black text-red-600 mb-2">Mac Track</h1>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Create Account</h2>
+        <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl p-6 sm:p-8 border border-gray-100">
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Create Account 🚀</h2>
           <p className="text-gray-600 text-sm mb-6">Join Mac Track and start managing your deliveries</p>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border-2 border-red-200 rounded-xl">
+            <div className="mb-6 p-4 bg-red-50 border-2 border-red-200 rounded-2xl">
               <p className="text-red-700 text-sm font-semibold">❌ {error}</p>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-sm font-bold text-gray-700 mb-2">
                 Full Name *
               </label>
               <input
@@ -97,13 +95,13 @@ export default function ClientRegisterPage() {
                 value={formData.name}
                 onChange={handleChange}
                 placeholder="John Doe"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072ab] focus:border-transparent transition"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-100 focus:border-red-600 transition"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-sm font-bold text-gray-700 mb-2">
                 Email Address *
               </label>
               <input
@@ -112,13 +110,13 @@ export default function ClientRegisterPage() {
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="john@example.com"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072ab] focus:border-transparent transition"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-100 focus:border-red-600 transition"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-sm font-bold text-gray-700 mb-2">
                 Password *
               </label>
               <input
@@ -127,14 +125,14 @@ export default function ClientRegisterPage() {
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="Minimum 6 characters"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072ab] focus:border-transparent transition"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-100 focus:border-red-600 transition"
                 required
                 minLength={6}
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-sm font-bold text-gray-700 mb-2">
                 Phone Number *
               </label>
               <input
@@ -143,13 +141,13 @@ export default function ClientRegisterPage() {
                 value={formData.phone}
                 onChange={handleChange}
                 placeholder="0412 345 678"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072ab] focus:border-transparent transition"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-100 focus:border-red-600 transition"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-sm font-bold text-gray-700 mb-2">
                 Company (Optional)
               </label>
               <input
@@ -158,14 +156,14 @@ export default function ClientRegisterPage() {
                 value={formData.company}
                 onChange={handleChange}
                 placeholder="Your Company Pty Ltd"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0072ab] focus:border-transparent transition"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-100 focus:border-red-600 transition"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 bg-gradient-to-r from-[#0072ab] to-[#005d8c] text-white rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-6"
+              className="w-full py-4 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-2xl font-black text-lg shadow-xl hover:shadow-2xl hover:from-red-700 hover:to-red-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-6"
             >
               {loading ? "Creating Account..." : "Create Account →"}
             </button>
@@ -176,7 +174,7 @@ export default function ClientRegisterPage() {
               Already have an account?{' '}
               <Link 
                 href="/client-portal/login" 
-                className="font-bold text-[#0072ab] hover:text-[#005d8c] underline"
+                className="font-bold text-red-600 hover:text-red-700 underline"
               >
                 Login here
               </Link>
@@ -185,7 +183,7 @@ export default function ClientRegisterPage() {
         </div>
 
         <p className="text-center text-sm text-gray-500 mt-6">
-          🚐 Logistics With A Pulse
+          Powered by Mac Track
         </p>
       </div>
     </div>

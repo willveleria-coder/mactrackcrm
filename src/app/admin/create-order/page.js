@@ -5,7 +5,10 @@ import { createClient } from "../../../lib/supabase/client";
 import Image from "next/image";
 import HamburgerMenu from "@/components/HamburgerMenu";
 
-export default function NewOrderPage() {
+export default function AdminCreateOrderPage() {
+  const [admin, setAdmin] = useState(null);
+  const [clients, setClients] = useState([]);
+  const [selectedClient, setSelectedClient] = useState(null);
   const [client, setClient] = useState(null);
   const [formData, setFormData] = useState({
     pickup_address: "",
@@ -51,13 +54,18 @@ export default function NewOrderPage() {
   };
 
   const menuItems = [
-    { href: "/client-portal/dashboard", icon: "🏠", label: "Dashboard" },
-    { href: "/client-portal/orders", icon: "📦", label: "My Orders" },
-    { href: "/client-portal/new-order", icon: "➕", label: "New Order" },
+    { href: "/admin/dashboard", icon: "🏠", label: "Dashboard" },
+    { href: "/admin/orders", icon: "📦", label: "Orders" },
+    { href: "/admin/clients", icon: "👥", label: "Clients" },
+    { href: "/admin/drivers", icon: "🚐", label: "Drivers" },
+    { href: "/admin/analytics", icon: "📊", label: "Analytics" },
+    { href: "/admin/tracking", icon: "🗺️", label: "Live Tracking" },
+    { href: "/admin/invoices", icon: "💰", label: "Invoices" },
+    { href: "/admin/settings", icon: "⚙️", label: "Settings" },
   ];
 
   useEffect(() => {
-    loadClient();
+    loadAdminAndClients();
   }, []);
 
   useEffect(() => {
@@ -73,30 +81,44 @@ export default function NewOrderPage() {
     formData.insurance_required
   ]);
 
-  async function loadClient() {
+  async function loadAdminAndClients() {
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
       
       if (userError || !user) {
-        router.push("/client-portal/login");
+        router.push("/admin/login");
         return;
       }
 
-      const { data: clientData, error: clientError } = await supabase
-        .from("clients")
+      const { data: adminData, error: adminError } = await supabase
+        .from("admins")
         .select("*")
         .eq("user_id", user.id)
         .single();
 
-      if (clientError || !clientData) {
-        router.push("/client-portal/login");
+      if (adminError || !adminData) {
+        router.push("/admin/login");
         return;
       }
 
-      setClient(clientData);
+      setAdmin(adminData);
+
+      // Load all clients
+      const { data: clientsData, error: clientsError } = await supabase
+        .from("clients")
+        .select("*")
+        .order("name");
+
+      if (clientsError) {
+        console.error("Error loading clients:", clientsError);
+        setError("Failed to load clients");
+      } else if (clientsData) {
+        setClients(clientsData);
+      }
+
     } catch (error) {
-      console.error("Error loading client:", error);
-      router.push("/client-portal/login");
+      console.error("Error loading data:", error);
+      setError("Failed to load data");
     } finally {
       setLoading(false);
     }
@@ -228,14 +250,14 @@ export default function NewOrderPage() {
 
   async function handleLogout() {
     await supabase.auth.signOut();
-    router.push("/client-portal/login");
+    router.push("/admin/login");
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
     
-    if (!client) {
-      setError("Client data not loaded. Please refresh and try again.");
+    if (!selectedClient) {
+      setError("Please select a client first.");
       return;
     }
 
@@ -271,6 +293,7 @@ export default function NewOrderPage() {
 
           if (uploadError) {
             console.warn('Image upload failed:', uploadError);
+            // Continue anyway - images are optional
           } else {
             const { data: { publicUrl } } = supabase.storage
               .from('parcel-images')
@@ -281,7 +304,7 @@ export default function NewOrderPage() {
       }
 
       const orderData = {
-        client_id: client.id,
+        client_id: selectedClient.id,
         pickup_address: formData.pickup_address,
         pickup_contact_name: formData.pickup_contact_name,
         pickup_contact_phone: formData.pickup_contact_phone,
@@ -301,12 +324,11 @@ export default function NewOrderPage() {
         fragile: formData.fragile || false,
         insurance_required: formData.insurance_required || false,
         price: price,
-        status: "pending_payment",
+        status: "pending",
         signature_data: signature || null,
         parcel_images: uploadedImageUrls.length > 0 ? uploadedImageUrls : null,
       };
 
-      // Create order first (with pending_payment status)
       const { data: order, error: orderError } = await supabase
         .from("orders")
         .insert([orderData])
@@ -317,34 +339,12 @@ export default function NewOrderPage() {
         throw new Error(orderError.message || "Failed to create order");
       }
 
-      console.log("Order created, redirecting to Stripe checkout...");
-
-      // Create Stripe checkout session
-      const response = await fetch('/api/create-checkout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          orderId: order[0].id,
-          amount: price,
-          customerEmail: client.email,
-          customerName: client.name,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create checkout session');
-      }
-
-      const { url } = await response.json();
-
-      // Redirect to Stripe Checkout
-      window.location.href = url;
-
+      alert(`✅ Order created successfully for ${selectedClient.name}! Order ID: ${order[0].id}`);
+      router.push("/admin/orders");
     } catch (err) {
       console.error("Error creating order:", err);
       setError(err.message || "Failed to create order. Please try again.");
+    } finally {
       setSubmitting(false);
     }
   }
@@ -373,15 +373,15 @@ export default function NewOrderPage() {
               />
               <div>
                 <h1 className="text-xl sm:text-2xl font-black text-red-600">Mac Track</h1>
-                <p className="text-xs text-gray-500">Client Portal</p>
+                <p className="text-xs text-gray-500">Admin Portal</p>
               </div>
             </div>
             
             <HamburgerMenu 
               items={menuItems}
               onLogout={handleLogout}
-              userName={client?.name}
-              userRole="Client"
+              userName={admin?.name || 'Admin'}
+              userRole="Admin"
             />
           </div>
         </div>
@@ -391,7 +391,7 @@ export default function NewOrderPage() {
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         <div className="mb-6 sm:mb-8">
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-            Create New Order 📦
+            Create Order for Client 📦
           </h2>
           <p className="text-sm sm:text-base text-gray-600">Fill in the delivery details</p>
         </div>
@@ -427,6 +427,65 @@ export default function NewOrderPage() {
             <p className="text-red-700 font-semibold">❌ {error}</p>
           </div>
         )}
+
+        {/* Client Selector */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-6 sm:p-8 mb-6">
+          <h3 className="text-xl font-bold text-gray-900 mb-4">👤 Select Client</h3>
+          
+          {clients.length === 0 ? (
+            <div className="p-4 bg-yellow-50 border-2 border-yellow-200 rounded-xl">
+              <p className="text-yellow-900 font-semibold">⚠️ No clients found</p>
+              <p className="text-sm text-yellow-700 mt-2">
+                Please create a client first in the Clients page before creating orders.
+              </p>
+            </div>
+          ) : (
+            <>
+              <select
+                value={selectedClient?.id || ""}
+                onChange={(e) => {
+                  const clientId = e.target.value;
+                  if (clientId) {
+                    const client = clients.find(c => c.id.toString() === clientId);
+                    setSelectedClient(client);
+                    setClient(client); // Also set client for compatibility
+                    // Pre-fill contact info
+                    if (client) {
+                      setFormData(prev => ({
+                        ...prev,
+                        pickup_contact_name: client.name || "",
+                        pickup_contact_phone: client.phone || "",
+                      }));
+                    }
+                  } else {
+                    setSelectedClient(null);
+                    setClient(null);
+                  }
+                }}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 text-base"
+              >
+                <option value="">-- Select a client ({clients.length} available) --</option>
+                {clients.map(client => (
+                  <option key={client.id} value={client.id}>
+                    {client.name} ({client.email}) {client.company ? `- ${client.company}` : ''}
+                  </option>
+                ))}
+              </select>
+
+              {selectedClient && (
+                <div className="mt-4 p-4 bg-green-50 rounded-xl">
+                  <p className="text-sm text-green-900">
+                    <strong>✓ Selected:</strong> {selectedClient.name} 
+                    {selectedClient.company && ` (${selectedClient.company})`}
+                  </p>
+                  <p className="text-xs text-green-700 mt-1">
+                    📧 {selectedClient.email} | 📞 {selectedClient.phone}
+                  </p>
+                </div>
+              )}
+            </>
+          )}
+        </div>
 
         <form onSubmit={handleSubmit}>
           {/* Step 1: Addresses */}

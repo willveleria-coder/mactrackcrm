@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
 import HamburgerMenu from "@/components/HamburgerMenu";
+import Image from "next/image";
 
 export default function DriverWalletPage() {
   const [driver, setDriver] = useState(null);
@@ -164,8 +165,15 @@ export default function DriverWalletPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
+              <Image
+                src="/bus-icon.png"
+                alt="Mac Track"
+                width={40}
+                height={40}
+                className="object-contain"
+              />
               <div>
-                <h1 className="text-xl sm:text-2xl font-black text-red-600">Mac Track</h1>
+                <h1 className="text-xl sm:text-2xl font-black text-[#0072ab]">MAC WITH A VAN</h1>
                 <p className="text-xs text-gray-500">Driver Portal</p>
               </div>
             </div>
@@ -221,7 +229,7 @@ export default function DriverWalletPage() {
           <button
             onClick={() => setShowRequestModal(true)}
             disabled={availableBalance <= 0}
-            className="w-full md:w-auto px-8 py-4 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl font-bold text-lg hover:from-red-700 hover:to-red-800 transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+            className="w-full md:w-auto px-8 py-4 bg-gradient-to-r from-[#0072ab] to-[#005d8c] text-white rounded-xl font-bold text-lg hover:from-[#005d8c] hover:to-[#004d73] transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
           >
             💰 Request Payout
           </button>
@@ -314,7 +322,7 @@ export default function DriverWalletPage() {
             className="fixed inset-0 bg-black bg-opacity-50 z-50"
             onClick={() => setShowRequestModal(false)}
           />
-          <div className="fixed top-8 left-1/2 transform -translate-x-1/2 bg-white rounded-2xl shadow-2xl p-6 sm:p-8 z-50 w-11/12 max-w-md">
+          <div className="fixed top-8 left-1/2 transform -translate-x-1/2 bg-white rounded-2xl shadow-2xl p-6 sm:p-8 z-50 w-11/12 max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-start mb-6">
               <h3 className="text-2xl font-bold text-gray-900">Request Payout</h3>
               <button
@@ -351,12 +359,12 @@ export default function DriverWalletPage() {
                     max={availableBalance}
                     step="0.01"
                     placeholder="0.00"
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent text-lg"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
                   />
                   <button
                     type="button"
                     onClick={() => setRequestAmount(availableBalance.toString())}
-                    className="text-sm text-red-600 hover:underline mt-1"
+                    className="text-sm text-[#0072ab] hover:underline mt-1"
                   >
                     Withdraw all
                   </button>
@@ -370,7 +378,7 @@ export default function DriverWalletPage() {
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value)}
                     required
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="bank_transfer">Bank Transfer</option>
                     <option value="paypal">PayPal</option>
@@ -388,7 +396,7 @@ export default function DriverWalletPage() {
                     required
                     rows={3}
                     placeholder="Enter your bank account number, PayPal email, or mailing address"
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent resize-none"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                   />
                 </div>
 
@@ -401,7 +409,7 @@ export default function DriverWalletPage() {
                     onChange={(e) => setNotes(e.target.value)}
                     rows={2}
                     placeholder="Any additional information"
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent resize-none"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                   />
                 </div>
               </div>
@@ -417,7 +425,7 @@ export default function DriverWalletPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition disabled:opacity-50"
+                  className="flex-1 py-3 bg-[#0072ab] text-white rounded-xl font-bold hover:bg-[#005d8c] transition disabled:opacity-50"
                 >
                   {submitting ? "Submitting..." : "Submit Request"}
                 </button>

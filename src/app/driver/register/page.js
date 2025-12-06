@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function DriverRegisterPage() {
   const [formData, setFormData] = useState({
@@ -28,7 +29,6 @@ export default function DriverRegisterPage() {
     setLoading(true);
 
     try {
-      // Create auth user
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -36,7 +36,6 @@ export default function DriverRegisterPage() {
 
       if (authError) throw authError;
 
-      // Create driver record
       const { error: driverError } = await supabase
         .from("drivers")
         .insert([{
@@ -51,7 +50,7 @@ export default function DriverRegisterPage() {
 
       if (driverError) throw driverError;
 
-      alert("✅ Application submitted! Please check your email to verify. You'll be notified once approved.");
+      alert("✅ Application submitted! Please check your email to verify.");
       router.push("/driver/login");
     } catch (err) {
       setError(err.message || "Failed to create account");
@@ -64,14 +63,23 @@ export default function DriverRegisterPage() {
     <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
+          <div className="flex justify-center mb-4">
+            <Image
+              src="/bus-icon.png"
+              alt="Mac Track"
+              width={60}
+              height={60}
+              className="object-contain"
+            />
+          </div>
           <h1 className="text-4xl sm:text-5xl font-black text-[#0072ab] mb-2">
             MAC WITH A VAN
           </h1>
-          <p className="text-base sm:text-lg text-gray-600">Driver Application</p>
         </div>
 
         <div className="bg-white/80 backdrop-blur-sm rounded-3xl shadow-2xl p-6 sm:p-8 border border-gray-100">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Apply to Drive 🚐</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Join Our Team 🚐</h2>
+          <p className="text-gray-600 text-sm mb-6">Apply to become a driver</p>
 
           {error && (
             <div className="mb-6 p-4 bg-red-50 border-2 border-red-200 rounded-2xl">
@@ -82,7 +90,7 @@ export default function DriverRegisterPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2">
-                Full Name *
+                Full Name
               </label>
               <input
                 type="text"
@@ -90,29 +98,31 @@ export default function DriverRegisterPage() {
                 value={formData.name}
                 onChange={handleChange}
                 placeholder="John Doe"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-[#0072ab] transition"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-[#0072ab] transition"
                 required
+                disabled={loading}
               />
             </div>
 
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2">
-                Email Address *
+                Email Address
               </label>
               <input
                 type="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                placeholder="john@example.com"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-[#0072ab] transition"
+                placeholder="your@email.com"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-[#0072ab] transition"
                 required
+                disabled={loading}
               />
             </div>
 
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2">
-                Password *
+                Password
               </label>
               <input
                 type="password"
@@ -120,48 +130,51 @@ export default function DriverRegisterPage() {
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="••••••••"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-[#0072ab] transition"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-[#0072ab] transition"
                 required
+                disabled={loading}
                 minLength={6}
               />
             </div>
 
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2">
-                Phone Number *
+                Phone Number
               </label>
               <input
                 type="tel"
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
-                placeholder="0412 345 678"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-[#0072ab] transition"
+                placeholder="+61 400 000 000"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-[#0072ab] transition"
                 required
+                disabled={loading}
               />
             </div>
 
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2">
-                Vehicle Type *
+                Vehicle Type
               </label>
               <select
                 name="vehicle_type"
                 value={formData.vehicle_type}
                 onChange={handleChange}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-[#0072ab] transition"
-                required
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-[#0072ab] transition"
+                disabled={loading}
               >
                 <option value="van">Van</option>
                 <option value="truck">Truck</option>
                 <option value="car">Car</option>
                 <option value="motorcycle">Motorcycle</option>
+                <option value="bicycle">Bicycle</option>
               </select>
             </div>
 
             <div>
               <label className="block text-sm font-bold text-gray-700 mb-2">
-                License Plate *
+                License Plate
               </label>
               <input
                 type="text"
@@ -169,23 +182,24 @@ export default function DriverRegisterPage() {
                 value={formData.license_plate}
                 onChange={handleChange}
                 placeholder="ABC123"
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-100 focus:border-[#0072ab] transition"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-4 focus:ring-blue-100 focus:border-[#0072ab] transition"
                 required
+                disabled={loading}
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 bg-gradient-to-r from-[#0072ab] to-[#005d8c] text-white rounded-2xl font-black text-lg shadow-xl hover:shadow-2xl hover:from-[#005d8c] hover:to-[#004d73] transition disabled:opacity-50"
+              className="w-full py-4 bg-gradient-to-r from-[#0072ab] to-[#005d8c] text-white rounded-2xl font-black text-lg shadow-xl hover:shadow-2xl hover:from-[#005d8c] hover:to-[#004d73] transition-all disabled:opacity-50 disabled:cursor-not-allowed mt-6"
             >
-              {loading ? "Submitting..." : "Submit Application"}
+              {loading ? "Submitting..." : "Submit Application →"}
             </button>
           </form>
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
-              Already have an account?{' '}
+              Already have an account?{" "}
               <Link 
                 href="/driver/login" 
                 className="font-bold text-[#0072ab] hover:text-[#005d8c] underline"
@@ -195,6 +209,10 @@ export default function DriverRegisterPage() {
             </p>
           </div>
         </div>
+
+        <p className="text-center text-sm text-gray-500 mt-6">
+          Powered by Mac Track
+        </p>
       </div>
     </div>
   );
