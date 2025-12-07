@@ -180,7 +180,7 @@
 /* Medium screens (tablets) */
 @media (min-width: 641px) and (max-width: 1024px) {
   
-  .lg\\:grid-cols-5 {
+  .lg\:grid-cols-5 {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   }
 
