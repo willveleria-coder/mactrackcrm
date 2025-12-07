@@ -80,8 +80,8 @@
   }
 
   /* Stats cards on mobile */
-  .lg\\:grid-cols-5,
-  .sm\\:grid-cols-5 {
+  .lg\:grid-cols-5,
+.sm\:grid-cols-5 {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 
