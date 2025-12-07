@@ -103,12 +103,12 @@
   }
 
   /* Hide less important text on mobile */
-  .hidden.sm\\:inline {
+  .hidden.sm\:inline {
     display: none !important;
   }
 
   /* Better spacing for modals */
-  .lg\\:grid-cols-2 {
+  .lg\:grid-cols-2 {
     grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
   }
 
@@ -184,7 +184,7 @@
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
   }
 
-  .lg\\:grid-cols-2 {
+  .lg\:grid-cols-2 {
     grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
   }
 
@@ -195,7 +195,7 @@
 
 /* Print styles - for shipping labels */
 @media print {
-  nav, .print\\:hidden {
+  nav, .print\:hidden {
     display: none !important;
   }
   
@@ -203,7 +203,7 @@
     background: white !important;
   }
   
-  .print\\:border-2 {
+  .print\:border-2 {
     border-width: 2px !important;
   }
 }
