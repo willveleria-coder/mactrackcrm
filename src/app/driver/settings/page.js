@@ -13,7 +13,7 @@ export default function DriverSettingsPage() {
   const [message, setMessage] = useState("");
   const [activeTab, setActiveTab] = useState("profile");
   const [stats, setStats] = useState({
-    totalEarnings: 0,
+    totalHours: 0,
     completedOrders: 0,
     completionRate: 0,
     avgDeliveryTime: 0
@@ -52,10 +52,8 @@ export default function DriverSettingsPage() {
   });
 
   const [preferences, setPreferences] = useState({
-    emailNotifications: true,
     smsNotifications: true,
     newOrderAlerts: true,
-    locationTracking: true
   });
 
   const router = useRouter();
@@ -63,9 +61,10 @@ export default function DriverSettingsPage() {
 
   const menuItems = [
     { href: "/driver/dashboard", icon: "🏠", label: "Dashboard" },
-    { href: "/driver/available-orders", icon: "📦", label: "Available Orders" },
-    { href: "/driver/my-orders", icon: "🚚", label: "My Orders" },
-    { href: "/driver/earnings", icon: "💰", label: "Earnings" },
+    { href: "/driver/orders", icon: "📦", label: "Deliveries" },
+    { href: "/driver/hours", icon: "⏱️", label: "Hours" },
+    { href: "/driver/wallet", icon: "💳", label: "Wallet" },
+    { href: "/driver/feedback", icon: "⭐", label: "Feedback" },
     { href: "/driver/settings", icon: "⚙️", label: "Settings" },
   ];
 
@@ -122,7 +121,7 @@ export default function DriverSettingsPage() {
 
       const { data: driverData } = await supabase
         .from("drivers")
-        .select("id")
+        .select("id, hours_worked")
         .eq("user_id", user.id)
         .single();
 
@@ -135,7 +134,7 @@ export default function DriverSettingsPage() {
 
       if (orders) {
         const completed = orders.filter(o => o.status === "delivered");
-        const totalEarnings = completed.reduce((sum, o) => sum + (Number(o.price) || 0), 0);
+        const totalHours = driverData.hours_worked || 0;
         const completionRate = orders.length > 0 ? (completed.length / orders.length) * 100 : 0;
         
         // Calculate average delivery time
@@ -152,7 +151,7 @@ export default function DriverSettingsPage() {
         const avgDeliveryTime = count > 0 ? totalTime / count : 0;
 
         setStats({
-          totalEarnings,
+          totalHours,
           completedOrders: completed.length,
           completionRate,
           avgDeliveryTime
@@ -335,15 +334,15 @@ export default function DriverSettingsPage() {
 
         {/* Performance Stats Banner */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
-          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-4 text-white shadow-lg">
-            <p className="text-xs font-semibold opacity-90 mb-1">Total Earnings</p>
-            <p className="text-2xl sm:text-3xl font-black">${stats.totalEarnings.toFixed(0)}</p>
+          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-4 text-white shadow-lg">
+            <p className="text-xs font-semibold opacity-90 mb-1">Total Hours</p>
+            <p className="text-2xl sm:text-3xl font-black">{stats.totalHours.toFixed(1)}</p>
           </div>
           <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 text-white shadow-lg">
             <p className="text-xs font-semibold opacity-90 mb-1">Completed</p>
             <p className="text-2xl sm:text-3xl font-black">{stats.completedOrders}</p>
           </div>
-          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-4 text-white shadow-lg">
+          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-4 text-white shadow-lg">
             <p className="text-xs font-semibold opacity-90 mb-1">Success Rate</p>
             <p className="text-2xl sm:text-3xl font-black">{stats.completionRate.toFixed(0)}%</p>
           </div>
@@ -680,19 +679,6 @@ export default function DriverSettingsPage() {
                 <div className="space-y-4">
                   <label className="flex items-center justify-between p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50">
                     <div>
-                      <p className="font-bold text-gray-900">Email Notifications</p>
-                      <p className="text-sm text-gray-600">Receive updates via email</p>
-                    </div>
-                    <input
-                      type="checkbox"
-                      checked={preferences.emailNotifications}
-                      onChange={(e) => setPreferences({...preferences, emailNotifications: e.target.checked})}
-                      className="w-6 h-6"
-                    />
-                  </label>
-
-                  <label className="flex items-center justify-between p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50">
-                    <div>
                       <p className="font-bold text-gray-900">SMS Notifications</p>
                       <p className="text-sm text-gray-600">Receive text message alerts</p>
                     </div>
@@ -717,18 +703,16 @@ export default function DriverSettingsPage() {
                     />
                   </label>
 
-                  <label className="flex items-center justify-between p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50">
-                    <div>
-                      <p className="font-bold text-gray-900">Location Tracking</p>
-                      <p className="text-sm text-gray-600">Share your location during deliveries</p>
+                  {/* Location Tracking Info - Always On */}
+                  <div className="p-4 bg-blue-50 border-2 border-blue-200 rounded-xl">
+                    <div className="flex items-start gap-3">
+                      <span className="text-2xl">📍</span>
+                      <div>
+                        <p className="font-bold text-blue-900">Location Tracking</p>
+                        <p className="text-sm text-blue-700">Location tracking is always enabled while on duty for delivery coordination and safety purposes.</p>
+                      </div>
                     </div>
-                    <input
-                      type="checkbox"
-                      checked={preferences.locationTracking}
-                      onChange={(e) => setPreferences({...preferences, locationTracking: e.target.checked})}
-                      className="w-6 h-6"
-                    />
-                  </label>
+                  </div>
                 </div>
 
                 <button
@@ -748,7 +732,7 @@ export default function DriverSettingsPage() {
                 <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6">
                   <h4 className="text-lg font-bold text-red-900 mb-2">Delete Account</h4>
                   <p className="text-sm text-red-700 mb-4">
-                    Once you delete your account, there is no going back. All your earnings history will be preserved for records, but you will lose access to your account.
+                    Once you delete your account, there is no going back. All your hours history will be preserved for records, but you will lose access to your account.
                   </p>
                   <button
                     onClick={handleDeleteAccount}

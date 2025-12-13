@@ -17,7 +17,6 @@ function ClientDashboardContent() {
     completed: 0,
     totalSpent: 0,
     thisMonth: 0,
-    avgDeliveryTime: 0
   });
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -78,25 +77,12 @@ function ClientDashboardContent() {
           .reduce((sum, o) => sum + (Number(o.price) || 0), 0);
         const thisMonth = ordersData.filter(o => new Date(o.created_at) >= monthStart).length;
 
-        let totalTime = 0;
-        let count = 0;
-        ordersData.forEach(order => {
-          if (order.delivered_at && order.created_at && order.status === 'delivered') {
-            const diff = new Date(order.delivered_at) - new Date(order.created_at);
-            const days = diff / (1000 * 60 * 60 * 24);
-            totalTime += days;
-            count++;
-          }
-        });
-        const avgDeliveryTime = count > 0 ? totalTime / count : 0;
-
         setStats({
           totalOrders,
           inProgress,
           completed,
           totalSpent,
           thisMonth,
-          avgDeliveryTime
         });
       }
 
@@ -163,7 +149,7 @@ function ClientDashboardContent() {
         </div>
 
         {/* Enhanced Stats Grid - Uses dynamic theme gradients */}
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 mb-6 sm:mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
           <div className={`bg-gradient-to-br ${theme.gradient} rounded-2xl p-4 sm:p-5 text-white shadow-lg hover:shadow-xl transition transform hover:scale-105`}>
             <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">Total Orders</p>
             <p className="text-3xl sm:text-4xl font-black mb-1">{stats.totalOrders}</p>
@@ -192,12 +178,6 @@ function ClientDashboardContent() {
             <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">This Month</p>
             <p className="text-3xl sm:text-4xl font-black mb-1">{stats.thisMonth}</p>
             <p className="text-xs opacity-75">Orders</p>
-          </div>
-
-          <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-4 sm:p-5 text-white shadow-lg hover:shadow-xl transition transform hover:scale-105">
-            <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">Avg Time</p>
-            <p className="text-3xl sm:text-4xl font-black mb-1">{stats.avgDeliveryTime.toFixed(1)}</p>
-            <p className="text-xs opacity-75">Days</p>
           </div>
         </div>
 

@@ -1,11 +1,14 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { createClient } from "../../../../../lib/supabase/client";
 import { QRCodeSVG } from "qrcode.react";
 import Image from "next/image";
 
-export default function LabelPage({ params }) {
+export default function LabelPage() {
+  const params = useParams();
+  const orderId = params.id;
+  
   const [order, setOrder] = useState(null);
   const [client, setClient] = useState(null);
   const [notes, setNotes] = useState("");
@@ -14,10 +17,11 @@ export default function LabelPage({ params }) {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const supabase = createClient();
-  const orderId = params.id;
 
   useEffect(() => {
-    loadOrder();
+    if (orderId) {
+      loadOrder();
+    }
   }, [orderId]);
 
   async function loadOrder() {
@@ -50,7 +54,7 @@ export default function LabelPage({ params }) {
         .single();
 
       if (orderError || !orderData) {
-        router.push("/client-portal/dashboard");
+        router.push("/client-portal/orders");
         return;
       }
 
@@ -92,7 +96,7 @@ export default function LabelPage({ params }) {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-600 text-lg">Loading...</div>
+        <div className="text-gray-600 text-lg">Loading label...</div>
       </div>
     );
   }
@@ -100,7 +104,16 @@ export default function LabelPage({ params }) {
   if (!order) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-600 text-lg">Order not found</div>
+        <div className="text-center">
+          <div className="text-6xl mb-4">📦</div>
+          <div className="text-gray-600 text-lg mb-4">Order not found</div>
+          <button
+            onClick={() => router.push("/client-portal/orders")}
+            className="px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition"
+          >
+            ← Back to Orders
+          </button>
+        </div>
       </div>
     );
   }
@@ -126,10 +139,10 @@ export default function LabelPage({ params }) {
             </div>
             <div className="flex items-center gap-4">
               <button
-                onClick={() => router.push("/client-portal/dashboard")}
+                onClick={() => router.push("/client-portal/orders")}
                 className="text-sm font-semibold text-gray-700 hover:text-red-600"
               >
-                ← Back to Dashboard
+                ← Back to Orders
               </button>
               <button
                 onClick={handlePrint}
@@ -154,7 +167,7 @@ export default function LabelPage({ params }) {
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             maxLength={500}
-            placeholder="Enter delivery notes here... (e.g., &apos;Leave at front door&apos;, &apos;Ring doorbell&apos;, &apos;Gate code: 1234&apos;)"
+            placeholder="Enter delivery notes here... (e.g., 'Leave at front door', 'Ring doorbell', 'Gate code: 1234')"
             className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent resize-none"
             rows={4}
           />
@@ -215,7 +228,7 @@ export default function LabelPage({ params }) {
             <div className="text-right">
               <p className="text-sm text-gray-600 mb-2">Service Type</p>
               <div className="inline-block px-4 py-2 bg-red-600 text-white rounded-xl font-bold text-lg uppercase">
-                {order.service_type?.replace("_", " ")}
+                {order.service_type?.replace(/_/g, " ")}
               </div>
               {order.scheduled_date && (
                 <div className="mt-3">
@@ -238,6 +251,12 @@ export default function LabelPage({ params }) {
               <p className="text-base font-semibold text-gray-900 leading-relaxed">
                 {order.pickup_address}
               </p>
+              {order.pickup_contact_name && (
+                <div className="mt-3 text-sm text-gray-700">
+                  <p>👤 {order.pickup_contact_name}</p>
+                  <p>📞 {order.pickup_contact_phone}</p>
+                </div>
+              )}
             </div>
 
             <div className="bg-green-50 rounded-xl p-6 border-2 border-green-200">
@@ -248,23 +267,35 @@ export default function LabelPage({ params }) {
               <p className="text-base font-semibold text-gray-900 leading-relaxed">
                 {order.dropoff_address}
               </p>
+              {order.dropoff_contact_name && (
+                <div className="mt-3 text-sm text-gray-700">
+                  <p>👤 {order.dropoff_contact_name}</p>
+                  <p>📞 {order.dropoff_contact_phone}</p>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Parcel Details */}
           <div className="bg-gray-50 rounded-xl p-6 mb-8">
             <h3 className="text-lg font-black text-gray-900 mb-4">📦 PARCEL DETAILS</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div>
                 <p className="text-xs text-gray-600 mb-1">Size</p>
-                <p className="text-base font-bold text-gray-900 uppercase">
-                  {order.parcel_size}
+                <p className="text-base font-bold text-gray-900 capitalize">
+                  {order.parcel_size?.replace(/_/g, " ")}
                 </p>
               </div>
               <div>
                 <p className="text-xs text-gray-600 mb-1">Weight</p>
                 <p className="text-base font-bold text-gray-900">
                   {order.parcel_weight} kg
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-600 mb-1">Quantity</p>
+                <p className="text-base font-bold text-gray-900">
+                  {order.quantity || 1}
                 </p>
               </div>
             </div>
@@ -278,6 +309,12 @@ export default function LabelPage({ params }) {
                   {order.length || 0} cm × {order.width || 0} cm ×{" "}
                   {order.height || 0} cm
                 </p>
+              </div>
+            )}
+
+            {order.fragile && (
+              <div className="mt-4 inline-block px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-bold">
+                ⚠️ FRAGILE - Handle with care
               </div>
             )}
           </div>
@@ -303,7 +340,9 @@ export default function LabelPage({ params }) {
                   {client?.name}
                 </p>
                 <p className="text-sm text-gray-600">{client?.email}</p>
-                <p className="text-sm text-gray-600">{client?.phone}</p>
+                {client?.phone && (
+                  <p className="text-sm text-gray-600">{client?.phone}</p>
+                )}
               </div>
               <div className="text-right">
                 <p className="text-xs text-gray-600 mb-1">Created</p>
@@ -320,7 +359,7 @@ export default function LabelPage({ params }) {
           {/* Footer */}
           <div className="mt-8 pt-6 border-t-2 border-gray-200 text-center">
             <p className="text-sm font-semibold text-gray-900 mb-1">
-              📞 Questions? Contact us: support@mactrack.com.au
+              📞 Questions? Contact us: macwithavan@mail.com | 0430 233 811
             </p>
             <p className="text-xs text-gray-500">
               Please keep this label visible during transit
@@ -343,6 +382,7 @@ export default function LabelPage({ params }) {
         </div>
       </main>
 
+      {/* Print Styles */}
       <style jsx global>{`
         @media print {
           body {

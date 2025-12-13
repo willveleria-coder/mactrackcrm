@@ -201,6 +201,7 @@ function AdminDashboardContent() {
   const menuItems = [
     { href: "/admin/dashboard", icon: "🏠", label: "Dashboard" },
     { href: "/admin/orders", icon: "📦", label: "Orders" },
+    { href: "/admin/orders/create", icon: "➕", label: "Create Order" },
     { href: "/admin/clients", icon: "👥", label: "Clients" },
     { href: "/admin/drivers", icon: "🚐", label: "Drivers" },
     { href: "/admin/analytics", icon: "📊", label: "Analytics" },
@@ -210,6 +211,12 @@ function AdminDashboardContent() {
   ];
 
   const quickActions = [
+    { 
+      label: "Create Client Order", 
+      icon: "➕", 
+      href: "/admin/orders/create",
+      color: "from-red-500 to-red-600"
+    },
     { 
       label: "View All Orders", 
       icon: "📦", 
@@ -238,7 +245,7 @@ function AdminDashboardContent() {
       label: "Manage Invoices", 
       icon: "💰", 
       href: "/admin/invoices",
-      color: "from-red-500 to-red-600"
+      color: "from-pink-500 to-pink-600"
     },
     { 
       label: "Live Tracking", 
@@ -354,6 +361,24 @@ function AdminDashboardContent() {
           </div>
         </div>
 
+        {/* Create Order Banner */}
+        <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-2xl p-5 sm:p-6 text-white shadow-lg mb-6 sm:mb-8 hover:shadow-xl transition">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div>
+              <h3 className="text-xl sm:text-2xl font-bold mb-2">➕ Create Client Order</h3>
+              <p className="text-sm opacity-90">
+                Create a new delivery order on behalf of a client
+              </p>
+            </div>
+            <Link
+              href="/admin/orders/create"
+              className="px-6 py-3 bg-white text-red-600 rounded-xl font-bold text-sm hover:bg-gray-50 transition shadow-lg"
+            >
+              Create Order →
+            </Link>
+          </div>
+        </div>
+
         {/* Enhanced Stats Grid - 2 cols mobile, 3 tablet, 6 desktop */}
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 mb-6 sm:mb-8">
           {/* Total Orders */}
@@ -401,7 +426,7 @@ function AdminDashboardContent() {
 
         {/* Live Tracking Banner */}
         {stats.activeOrders > 0 && (
-          <div className="bg-gradient-to-br from-red-500 to-red-600 rounded-2xl p-5 sm:p-6 text-white shadow-lg mb-6 sm:mb-8 hover:shadow-xl transition">
+          <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-5 sm:p-6 text-white shadow-lg mb-6 sm:mb-8 hover:shadow-xl transition">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <h3 className="text-xl sm:text-2xl font-bold mb-2">🗺️ Live Tracking</h3>

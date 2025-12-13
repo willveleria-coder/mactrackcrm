@@ -26,9 +26,38 @@ export default function AdminOrdersPage() {
   const [selectedDriver, setSelectedDriver] = useState(null);
   const [viewOrderDetails, setViewOrderDetails] = useState(null);
   const [viewDriverDetails, setViewDriverDetails] = useState(null);
+  const [editOrder, setEditOrder] = useState(null);
+  const [editFormData, setEditFormData] = useState({});
+  const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const supabase = createClient();
+
+  const sizeOptions = {
+    "small_box": "Envelope/Small Box (up to 25×20×10cm)",
+    "medium_box": "Medium Box (up to 50×40×30cm)",
+    "large_box": "Large Box (up to 80×60×50cm)",
+    "pelican_case": "Pelican Case",
+    "road_case_single": "Road Case Single",
+    "road_case_double": "Road Case Double",
+    "blue_tub": "Blue Tub",
+    "tube": "Tube",
+    "aga_kit": "AGA Kit",
+    "custom": "Custom Dimensions"
+  };
+
+  const serviceOptions = {
+    "standard": "Standard (3-5 Hours)",
+    "next_day": "Next Day (Delivery Tomorrow)",
+    "local_overnight": "Local/Overnight (Next Day)",
+    "emergency": "Emergency (1-2 Hours)",
+    "scheduled": "Scheduled (Schedule A Delivery Day)",
+    "vip": "VIP (2-3 Hours)",
+    "same_day": "Same Day (12 Hours)",
+    "priority": "Priority (1-1.5 Hours)",
+  };
+
+  const statusOptions = ["pending", "active", "delivered", "cancelled"];
 
   useEffect(() => {
     loadData();
@@ -117,9 +146,9 @@ export default function AdminOrdersPage() {
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
       const matchesId = order.id.toLowerCase().includes(search);
-      const matchesPickup = order.pickup_address.toLowerCase().includes(search);
-      const matchesDropoff = order.dropoff_address.toLowerCase().includes(search);
-      const matchesClient = order.client?.name.toLowerCase().includes(search);
+      const matchesPickup = order.pickup_address?.toLowerCase().includes(search);
+      const matchesDropoff = order.dropoff_address?.toLowerCase().includes(search);
+      const matchesClient = order.client?.name?.toLowerCase().includes(search);
       
       if (!matchesId && !matchesPickup && !matchesDropoff && !matchesClient) {
         return false;
@@ -182,10 +211,137 @@ export default function AdminOrdersPage() {
       alert("✅ Driver assigned successfully!");
       setSelectedOrder(null);
       setSelectedDriver(null);
-      loadData();
+      await loadData();
     } catch (error) {
       console.error("Error assigning driver:", error);
       alert("Failed to assign driver: " + error.message);
+    }
+  }
+
+  function handleEditOrder(order) {
+    setEditFormData({
+      pickup_address: order.pickup_address || '',
+      pickup_contact_name: order.pickup_contact_name || '',
+      pickup_contact_phone: order.pickup_contact_phone || '',
+      dropoff_address: order.dropoff_address || '',
+      dropoff_contact_name: order.dropoff_contact_name || '',
+      dropoff_contact_phone: order.dropoff_contact_phone || '',
+      parcel_size: order.parcel_size || 'small_box',
+      quantity: order.quantity || 1,
+      parcel_weight: order.parcel_weight || '',
+      length: order.length || '',
+      width: order.width || '',
+      height: order.height || '',
+      service_type: order.service_type || 'standard',
+      scheduled_date: order.scheduled_date || '',
+      scheduled_time: order.scheduled_time || '',
+      notes: order.notes || '',
+      fragile: order.fragile || false,
+      driver_id: order.driver_id || '',
+      status: order.status || 'pending',
+      price: order.price || 0,
+      base_price: order.base_price || order.price || 0,
+      fuel_levy: order.fuel_levy || 0,
+      fuel_levy_percent: order.fuel_levy_percent || 10,
+      gst: order.gst || 0,
+    });
+    setEditOrder(order);
+  }
+
+  function handleEditInputChange(e) {
+    const { name, value, type, checked } = e.target;
+    setEditFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+  }
+
+  function recalculatePrice() {
+    const basePrice = parseFloat(editFormData.base_price) || 0;
+    const fuelLevyPercent = parseFloat(editFormData.fuel_levy_percent) || 10;
+    const fuelLevy = basePrice * (fuelLevyPercent / 100);
+    const subtotal = basePrice + fuelLevy;
+    const gst = subtotal * 0.10;
+    const total = subtotal + gst;
+
+    setEditFormData(prev => ({
+      ...prev,
+      fuel_levy: fuelLevy,
+      gst: gst,
+      price: total,
+    }));
+  }
+
+  async function handleSaveEdit() {
+    if (!editOrder) return;
+
+    setSaving(true);
+    try {
+      const updateData = {
+        pickup_address: editFormData.pickup_address,
+        pickup_contact_name: editFormData.pickup_contact_name,
+        pickup_contact_phone: editFormData.pickup_contact_phone,
+        dropoff_address: editFormData.dropoff_address,
+        dropoff_contact_name: editFormData.dropoff_contact_name,
+        dropoff_contact_phone: editFormData.dropoff_contact_phone,
+        parcel_size: editFormData.parcel_size,
+        quantity: parseInt(editFormData.quantity) || 1,
+        parcel_weight: parseFloat(editFormData.parcel_weight) || 0,
+        length: parseFloat(editFormData.length) || null,
+        width: parseFloat(editFormData.width) || null,
+        height: parseFloat(editFormData.height) || null,
+        service_type: editFormData.service_type,
+        scheduled_date: editFormData.scheduled_date || null,
+        scheduled_time: editFormData.scheduled_time || null,
+        notes: editFormData.notes || null,
+        fragile: editFormData.fragile,
+        driver_id: editFormData.driver_id || null,
+        status: editFormData.status,
+        price: parseFloat(editFormData.price) || 0,
+        base_price: parseFloat(editFormData.base_price) || 0,
+        fuel_levy: parseFloat(editFormData.fuel_levy) || 0,
+        fuel_levy_percent: parseFloat(editFormData.fuel_levy_percent) || 10,
+        gst: parseFloat(editFormData.gst) || 0,
+      };
+
+      const { error } = await supabase
+        .from("orders")
+        .update(updateData)
+        .eq("id", editOrder.id);
+
+      if (error) throw error;
+
+      alert("✅ Order updated successfully!");
+      setEditOrder(null);
+      setEditFormData({});
+      await loadData();
+    } catch (error) {
+      console.error("Error updating order:", error);
+      alert("Failed to update order: " + error.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDeleteOrder(orderId) {
+    if (!confirm("Are you sure you want to delete this order? This action cannot be undone.")) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .delete()
+        .eq("id", orderId);
+
+      if (error) throw error;
+
+      alert("✅ Order deleted successfully!");
+      setEditOrder(null);
+      await loadData();
+    } catch (error) {
+      console.error("Error deleting order:", error);
+      alert("Failed to delete order: " + error.message);
     }
   }
 
@@ -212,6 +368,7 @@ export default function AdminOrdersPage() {
   const menuItems = [
     { href: "/admin/dashboard", icon: "🏠", label: "Dashboard" },
     { href: "/admin/orders", icon: "📦", label: "Orders" },
+    { href: "/admin/orders/create", icon: "➕", label: "Create Order" },
     { href: "/admin/clients", icon: "👥", label: "Clients" },
     { href: "/admin/drivers", icon: "🚐", label: "Drivers" },
     { href: "/admin/analytics", icon: "📊", label: "Analytics" },
@@ -259,9 +416,17 @@ export default function AdminOrdersPage() {
       </nav>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">Order Management</h2>
-          <p className="text-gray-600">View and manage all delivery orders</p>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Order Management</h2>
+            <p className="text-gray-600">View and manage all delivery orders</p>
+          </div>
+          <Link
+            href="/admin/orders/create"
+            className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-bold hover:from-red-600 hover:to-red-700 transition shadow-lg"
+          >
+            ➕ Create Order
+          </Link>
         </div>
 
         {/* Filter Buttons */}
@@ -423,7 +588,7 @@ export default function AdminOrdersPage() {
                           onClick={() => setViewOrderDetails(order)}
                           className="text-sm font-mono text-red-600 hover:underline font-bold"
                         >
-                          #{order.id.slice(0, 8)} 👁️
+                          #{order.id.slice(0, 8)}
                         </button>
                       </td>
                       <td className="px-4 sm:px-6 py-4">
@@ -457,12 +622,26 @@ export default function AdminOrdersPage() {
                         ${order.price?.toFixed(2)}
                       </td>
                       <td className="px-4 sm:px-6 py-4">
-                        <button
-                          onClick={() => setSelectedOrder(selectedOrder === order.id ? null : order.id)}
-                          className="px-3 sm:px-4 py-2 bg-red-600 text-white rounded-lg text-xs sm:text-sm font-semibold hover:bg-red-700 transition"
-                        >
-                          {selectedOrder === order.id ? "Close" : "Assign"}
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setViewOrderDetails(order)}
+                            className="px-2 py-1 bg-blue-500 text-white rounded-lg text-xs font-semibold hover:bg-blue-600 transition"
+                          >
+                            👁️
+                          </button>
+                          <button
+                            onClick={() => handleEditOrder(order)}
+                            className="px-2 py-1 bg-yellow-500 text-white rounded-lg text-xs font-semibold hover:bg-yellow-600 transition"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={() => setSelectedOrder(selectedOrder === order.id ? null : order.id)}
+                            className="px-2 py-1 bg-green-500 text-white rounded-lg text-xs font-semibold hover:bg-green-600 transition"
+                          >
+                            🚐
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -493,9 +672,9 @@ export default function AdminOrdersPage() {
                 className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent"
               >
                 <option value="">Choose a driver...</option>
-                {drivers.map((driver) => (
+                {drivers.filter(d => d.is_active !== false).map((driver) => (
                   <option key={driver.id} value={driver.id}>
-                    {driver.name} - {driver.vehicle_type}
+                    {driver.name} - {driver.vehicle_type} {driver.is_on_duty ? '🟢' : '⚪'}
                   </option>
                 ))}
               </select>
@@ -523,6 +702,353 @@ export default function AdminOrdersPage() {
         </>
       )}
 
+      {/* Edit Order Modal */}
+      {editOrder && (
+        <>
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-50"
+            onClick={() => setEditOrder(null)}
+          />
+          <div className="fixed inset-4 sm:top-8 sm:left-1/2 sm:-translate-x-1/2 sm:inset-auto bg-white rounded-2xl shadow-2xl z-50 sm:w-full sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white p-6 flex justify-between items-start sticky top-0 z-10">
+              <div>
+                <h3 className="text-2xl font-black">Edit Order</h3>
+                <p className="text-sm opacity-90">#{editOrder.id.slice(0, 8)}</p>
+              </div>
+              <button
+                onClick={() => setEditOrder(null)}
+                className="text-white hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-2xl font-bold"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Status & Driver */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Status</label>
+                  <select
+                    name="status"
+                    value={editFormData.status}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                  >
+                    {statusOptions.map(status => (
+                      <option key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Driver</label>
+                  <select
+                    name="driver_id"
+                    value={editFormData.driver_id}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                  >
+                    <option value="">Unassigned</option>
+                    {drivers.filter(d => d.is_active !== false).map(driver => (
+                      <option key={driver.id} value={driver.id}>{driver.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Pickup Details */}
+              <div className="bg-blue-50 rounded-xl p-4">
+                <h4 className="font-bold text-blue-900 mb-3">📍 Pickup Details</h4>
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    name="pickup_address"
+                    value={editFormData.pickup_address}
+                    onChange={handleEditInputChange}
+                    placeholder="Pickup Address"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl"
+                  />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <input
+                      type="text"
+                      name="pickup_contact_name"
+                      value={editFormData.pickup_contact_name}
+                      onChange={handleEditInputChange}
+                      placeholder="Contact Name"
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl"
+                    />
+                    <input
+                      type="tel"
+                      name="pickup_contact_phone"
+                      value={editFormData.pickup_contact_phone}
+                      onChange={handleEditInputChange}
+                      placeholder="Contact Phone"
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Dropoff Details */}
+              <div className="bg-green-50 rounded-xl p-4">
+                <h4 className="font-bold text-green-900 mb-3">🎯 Delivery Details</h4>
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    name="dropoff_address"
+                    value={editFormData.dropoff_address}
+                    onChange={handleEditInputChange}
+                    placeholder="Delivery Address"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl"
+                  />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <input
+                      type="text"
+                      name="dropoff_contact_name"
+                      value={editFormData.dropoff_contact_name}
+                      onChange={handleEditInputChange}
+                      placeholder="Contact Name"
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl"
+                    />
+                    <input
+                      type="tel"
+                      name="dropoff_contact_phone"
+                      value={editFormData.dropoff_contact_phone}
+                      onChange={handleEditInputChange}
+                      placeholder="Contact Phone"
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Parcel Details */}
+              <div className="bg-gray-50 rounded-xl p-4">
+                <h4 className="font-bold text-gray-900 mb-3">📦 Parcel Details</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1">Size</label>
+                    <select
+                      name="parcel_size"
+                      value={editFormData.parcel_size}
+                      onChange={handleEditInputChange}
+                      className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm"
+                    >
+                      {Object.entries(sizeOptions).map(([value, label]) => (
+                        <option key={value} value={value}>{label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1">Quantity</label>
+                    <input
+                      type="number"
+                      name="quantity"
+                      value={editFormData.quantity}
+                      onChange={handleEditInputChange}
+                      min="1"
+                      className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1">Weight (kg)</label>
+                    <input
+                      type="number"
+                      name="parcel_weight"
+                      value={editFormData.parcel_weight}
+                      onChange={handleEditInputChange}
+                      step="0.1"
+                      className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1">Length (cm)</label>
+                    <input
+                      type="number"
+                      name="length"
+                      value={editFormData.length}
+                      onChange={handleEditInputChange}
+                      className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1">Width (cm)</label>
+                    <input
+                      type="number"
+                      name="width"
+                      value={editFormData.width}
+                      onChange={handleEditInputChange}
+                      className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1">Height (cm)</label>
+                    <input
+                      type="number"
+                      name="height"
+                      value={editFormData.height}
+                      onChange={handleEditInputChange}
+                      className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg"
+                    />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <label className="block text-xs font-bold text-gray-600 mb-1">Service Type</label>
+                  <select
+                    name="service_type"
+                    value={editFormData.service_type}
+                    onChange={handleEditInputChange}
+                    className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm"
+                  >
+                    {Object.entries(serviceOptions).map(([value, label]) => (
+                      <option key={value} value={value}>{label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="mt-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="fragile"
+                      checked={editFormData.fragile}
+                      onChange={handleEditInputChange}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm font-semibold">⚠️ Fragile Item</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Schedule */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Scheduled Date</label>
+                  <input
+                    type="date"
+                    name="scheduled_date"
+                    value={editFormData.scheduled_date}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Scheduled Time</label>
+                  <input
+                    type="time"
+                    name="scheduled_time"
+                    value={editFormData.scheduled_time}
+                    onChange={handleEditInputChange}
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl"
+                  />
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Notes</label>
+                <textarea
+                  name="notes"
+                  value={editFormData.notes}
+                  onChange={handleEditInputChange}
+                  rows={3}
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl resize-none"
+                />
+              </div>
+
+              {/* Pricing */}
+              <div className="bg-yellow-50 rounded-xl p-4">
+                <h4 className="font-bold text-yellow-900 mb-3">💰 Pricing</h4>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1">Base Price ($)</label>
+                    <input
+                      type="number"
+                      name="base_price"
+                      value={editFormData.base_price}
+                      onChange={(e) => {
+                        handleEditInputChange(e);
+                        setTimeout(recalculatePrice, 0);
+                      }}
+                      step="0.01"
+                      className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1">Fuel Levy %</label>
+                    <input
+                      type="number"
+                      name="fuel_levy_percent"
+                      value={editFormData.fuel_levy_percent}
+                      onChange={(e) => {
+                        handleEditInputChange(e);
+                        setTimeout(recalculatePrice, 0);
+                      }}
+                      step="1"
+                      className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1">Fuel Levy ($)</label>
+                    <input
+                      type="number"
+                      name="fuel_levy"
+                      value={editFormData.fuel_levy?.toFixed?.(2) || editFormData.fuel_levy}
+                      readOnly
+                      className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg bg-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-600 mb-1">GST ($)</label>
+                    <input
+                      type="number"
+                      name="gst"
+                      value={editFormData.gst?.toFixed?.(2) || editFormData.gst}
+                      readOnly
+                      className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg bg-gray-100"
+                    />
+                  </div>
+                </div>
+                <div className="mt-3 flex justify-between items-center">
+                  <button
+                    type="button"
+                    onClick={recalculatePrice}
+                    className="px-4 py-2 bg-yellow-500 text-white rounded-lg text-sm font-bold hover:bg-yellow-600"
+                  >
+                    Recalculate
+                  </button>
+                  <div className="text-right">
+                    <p className="text-xs text-gray-600">Total (inc. GST)</p>
+                    <p className="text-2xl font-black text-green-600">${parseFloat(editFormData.price || 0).toFixed(2)}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="p-6 border-t border-gray-200 bg-gray-50 flex flex-col sm:flex-row gap-3 sticky bottom-0">
+              <button
+                onClick={handleSaveEdit}
+                disabled={saving}
+                className="flex-1 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition disabled:opacity-50"
+              >
+                {saving ? "Saving..." : "💾 Save Changes"}
+              </button>
+              <button
+                onClick={() => handleDeleteOrder(editOrder.id)}
+                className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition"
+              >
+                🗑️ Delete Order
+              </button>
+              <button
+                onClick={() => setEditOrder(null)}
+                className="flex-1 py-3 bg-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-400 transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Order Details Modal */}
       {viewOrderDetails && (
         <>
@@ -536,12 +1062,23 @@ export default function AdminOrdersPage() {
                 <h3 className="text-2xl sm:text-3xl font-bold text-gray-900">Order Details</h3>
                 <p className="text-sm text-gray-500 mt-1">#{viewOrderDetails.id.slice(0, 8)}</p>
               </div>
-              <button 
-                onClick={() => setViewOrderDetails(null)}
-                className="text-gray-500 hover:text-gray-700 text-3xl font-bold leading-none"
-              >
-                ×
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    handleEditOrder(viewOrderDetails);
+                    setViewOrderDetails(null);
+                  }}
+                  className="px-4 py-2 bg-yellow-500 text-white rounded-lg font-bold hover:bg-yellow-600 transition"
+                >
+                  ✏️ Edit
+                </button>
+                <button 
+                  onClick={() => setViewOrderDetails(null)}
+                  className="text-gray-500 hover:text-gray-700 text-3xl font-bold leading-none"
+                >
+                  ×
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -582,22 +1119,26 @@ export default function AdminOrdersPage() {
                 <div className="bg-blue-50 rounded-xl p-4">
                   <h4 className="text-sm font-bold text-blue-700 mb-2">📍 Pickup Address</h4>
                   <p className="text-sm text-gray-900">{viewOrderDetails.pickup_address}</p>
+                  {viewOrderDetails.pickup_contact_name && (
+                    <p className="text-xs text-gray-600 mt-1">
+                      {viewOrderDetails.pickup_contact_name} - {viewOrderDetails.pickup_contact_phone}
+                    </p>
+                  )}
                 </div>
 
                 <div className="bg-green-50 rounded-xl p-4">
                   <h4 className="text-sm font-bold text-green-700 mb-2">🎯 Dropoff Address</h4>
                   <p className="text-sm text-gray-900">{viewOrderDetails.dropoff_address}</p>
+                  {viewOrderDetails.dropoff_contact_name && (
+                    <p className="text-xs text-gray-600 mt-1">
+                      {viewOrderDetails.dropoff_contact_name} - {viewOrderDetails.dropoff_contact_phone}
+                    </p>
+                  )}
                 </div>
 
                 {/* Route Map */}
                 <div className="bg-gray-50 rounded-xl p-4">
                   <h4 className="text-sm font-bold text-gray-700 mb-3">🗺️ Route Map</h4>
-                  <div className="bg-gray-200 rounded-lg h-48 flex items-center justify-center mb-2">
-                    <p className="text-gray-600 text-sm text-center px-4">
-                      Map preview<br/>
-                      <span className="text-xs">Click button below to view route</span>
-                    </p>
-                  </div>
                   <button 
                     onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(viewOrderDetails.pickup_address)}&destination=${encodeURIComponent(viewOrderDetails.dropoff_address)}`, '_blank')}
                     className="w-full py-2 bg-blue-500 text-white rounded-lg text-sm font-semibold hover:bg-blue-600 transition"
@@ -648,7 +1189,7 @@ export default function AdminOrdersPage() {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-gray-600">Size:</span>
-                      <span className="font-semibold capitalize">{viewOrderDetails.parcel_size}</span>
+                      <span className="font-semibold capitalize">{viewOrderDetails.parcel_size?.replace('_', ' ')}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-600">Weight:</span>
@@ -666,24 +1207,43 @@ export default function AdminOrdersPage() {
                       <span className="text-gray-600">Service:</span>
                       <span className="font-semibold capitalize">{viewOrderDetails.service_type?.replace('_', ' ')}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Price:</span>
+                    {viewOrderDetails.fragile && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Fragile:</span>
+                        <span className="font-semibold text-red-600">⚠️ Yes</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Pricing */}
+                <div className="bg-yellow-50 rounded-xl p-4">
+                  <h4 className="text-sm font-bold text-yellow-700 mb-3">💰 Pricing</h4>
+                  <div className="space-y-2 text-sm">
+                    {viewOrderDetails.base_price && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Base Price:</span>
+                        <span className="font-semibold">${viewOrderDetails.base_price?.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {viewOrderDetails.fuel_levy && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Fuel Levy ({viewOrderDetails.fuel_levy_percent || 10}%):</span>
+                        <span className="font-semibold">${viewOrderDetails.fuel_levy?.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {viewOrderDetails.gst && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">GST (10%):</span>
+                        <span className="font-semibold">${viewOrderDetails.gst?.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between border-t pt-2">
+                      <span className="text-gray-900 font-bold">Total:</span>
                       <span className="font-bold text-green-600 text-lg">${viewOrderDetails.price?.toFixed(2)}</span>
                     </div>
                   </div>
                 </div>
-
-                {/* Parcel Image */}
-                {viewOrderDetails.image_url && (
-                  <div className="bg-gray-50 rounded-xl p-4">
-                    <h4 className="text-sm font-bold text-gray-700 mb-3">📸 Parcel Image</h4>
-                    <img 
-                      src={viewOrderDetails.image_url} 
-                      alt="Parcel" 
-                      className="w-full rounded-lg shadow"
-                    />
-                  </div>
-                )}
 
                 {/* Notes */}
                 {viewOrderDetails.notes && (
@@ -805,21 +1365,6 @@ export default function AdminOrdersPage() {
                 </div>
               </div>
 
-              {/* Insurance & License */}
-              <div className="bg-green-50 rounded-xl p-4">
-                <h4 className="text-sm font-bold text-green-700 mb-3">📋 Insurance & License</h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Insurance Type:</span>
-                    <span className="font-semibold">{viewDriverDetails.insurance_type || 'Not specified'}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">License Number:</span>
-                    <span className="font-semibold">{viewDriverDetails.license_number || 'Not specified'}</span>
-                  </div>
-                </div>
-              </div>
-
               {/* Performance Stats */}
               <div className="bg-purple-50 rounded-xl p-4">
                 <h4 className="text-sm font-bold text-purple-700 mb-3">📊 Performance</h4>
@@ -843,14 +1388,6 @@ export default function AdminOrdersPage() {
                   <span className="font-semibold">{viewDriverDetails.is_on_duty ? 'On Duty' : 'Off Duty'}</span>
                 </div>
               </div>
-
-              {/* Notes */}
-              {viewDriverDetails.notes && (
-                <div className="bg-yellow-50 rounded-xl p-4">
-                  <h4 className="text-sm font-bold text-gray-700 mb-2">📝 Notes</h4>
-                  <p className="text-sm text-gray-900 whitespace-pre-wrap">{viewDriverDetails.notes}</p>
-                </div>
-              )}
             </div>
 
             <button 

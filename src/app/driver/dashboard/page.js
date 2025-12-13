@@ -12,7 +12,7 @@ function DriverDashboardContent() {
   const { theme } = useTheme();
   const [driver, setDriver] = useState(null);
   const [orders, setOrders] = useState([]);
-  const [stats, setStats] = useState({ assigned: 0, completed: 0, earnings: 0, pending: 0, active: 0, thisWeek: 0 });
+  const [stats, setStats] = useState({ assigned: 0, completed: 0, pending: 0, active: 0, hoursWorked: 0 });
   const [loading, setLoading] = useState(true);
   const [showContactPopup, setShowContactPopup] = useState(false);
   const [adminContact, setAdminContact] = useState(null);
@@ -59,18 +59,11 @@ function DriverDashboardContent() {
         const pending = ordersData.filter(o => o.status === "pending").length;
         const active = ordersData.filter(o => o.status === "active").length;
         const completed = ordersData.filter(o => o.status === "delivered").length;
-        const earnings = ordersData
-          .filter(o => o.status === "delivered")
-          .reduce((sum, o) => sum + Number(o.price), 0);
         
-        // This week's deliveries
-        const oneWeekAgo = new Date();
-        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-        const thisWeek = ordersData.filter(o => 
-          o.status === "delivered" && new Date(o.created_at) > oneWeekAgo
-        ).length;
+        // Calculate hours worked from driver's hours_worked field or default to 0
+        const hoursWorked = driverData.hours_worked || 0;
         
-        setStats({ assigned, completed, earnings, pending, active, thisWeek });
+        setStats({ assigned, completed, pending, active, hoursWorked });
       }
     } catch (error) {
       console.error("Error loading dashboard:", error);
@@ -201,23 +194,19 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
   }
 
   function handleCall() {
-    // Hardcoded admin phone number
-    window.location.href = `tel:+61399998877`;
+    window.location.href = `tel:0430233811`;
   }
 
   function handleSMS() {
-    // Hardcoded admin phone number
-    window.location.href = `sms:+61399998877`;
+    window.location.href = `sms:0430233811`;
   }
 
   function handleEmail() {
-    // Hardcoded admin email
-    window.location.href = `mailto:driversupport@mactrack.com.au`;
+    window.location.href = `mailto:macwithavan@mail.com`;
   }
 
   function handleWhatsApp() {
-    // Hardcoded WhatsApp number (remove spaces/dashes)
-    const phone = '61399998877';
+    const phone = '61430233811';
     window.open(`https://wa.me/${phone}`, '_blank');
   }
 
@@ -231,7 +220,7 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
   const menuItems = [
     { href: "/driver/dashboard", icon: "🏠", label: "Dashboard" },
     { href: "/driver/orders", icon: "📦", label: "Deliveries" },
-    { href: "/driver/earnings", icon: "💰", label: "Earnings" },
+    { href: "/driver/hours", icon: "⏱️", label: "Hours" },
     { href: "/driver/wallet", icon: "💳", label: "Wallet" },
     { href: "/driver/feedback", icon: "⭐", label: "Feedback" },
     { href: "/driver/settings", icon: "⚙️", label: "Settings" },
@@ -288,8 +277,8 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
           <p className="text-sm sm:text-base text-gray-600">Here&apos;s your delivery overview</p>
         </div>
 
-        {/* Enhanced Stats - 2 rows on mobile, 3 columns on desktop */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
+        {/* Stats Grid - 4 cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
           <div className="bg-gradient-to-br from-yellow-500 to-orange-500 rounded-2xl p-4 sm:p-5 text-white shadow-lg">
             <p className="text-xs sm:text-sm font-medium opacity-90 mb-1">Pending</p>
             <p className="text-3xl sm:text-4xl font-black">{stats.pending}</p>
@@ -309,21 +298,9 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
           </div>
           
           <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-4 sm:p-5 text-white shadow-lg">
-            <p className="text-xs sm:text-sm font-medium opacity-90 mb-1">Total Earnings</p>
-            <p className="text-2xl sm:text-4xl font-black">${stats.earnings.toFixed(2)}</p>
-            <p className="text-xs opacity-75 mt-1">Lifetime</p>
-          </div>
-          
-          <div className="bg-gradient-to-br from-pink-500 to-rose-500 rounded-2xl p-4 sm:p-5 text-white shadow-lg">
-            <p className="text-xs sm:text-sm font-medium opacity-90 mb-1">This Week</p>
-            <p className="text-3xl sm:text-4xl font-black">{stats.thisWeek}</p>
-            <p className="text-xs opacity-75 mt-1">Deliveries</p>
-          </div>
-          
-          <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-4 sm:p-5 text-white shadow-lg">
-            <p className="text-xs sm:text-sm font-medium opacity-90 mb-1">Vehicle</p>
-            <p className="text-2xl sm:text-3xl font-black capitalize">{driver?.vehicle_type}</p>
-            <p className="text-xs opacity-75 mt-1">{driver?.license_plate}</p>
+            <p className="text-xs sm:text-sm font-medium opacity-90 mb-1">Hours Worked</p>
+            <p className="text-3xl sm:text-4xl font-black">{stats.hoursWorked.toFixed(1)}</p>
+            <p className="text-xs opacity-75 mt-1">Total hours</p>
           </div>
         </div>
 
@@ -360,11 +337,11 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
           </Link>
           
           <Link
-            href="/driver/earnings"
+            href="/driver/hours"
             className="bg-white/80 backdrop-blur-sm rounded-xl p-4 shadow-md border border-gray-100 hover:shadow-lg transition text-center"
           >
-            <div className="text-3xl mb-2">💰</div>
-            <p className="text-sm font-bold text-gray-900">My Earnings</p>
+            <div className="text-3xl mb-2">⏱️</div>
+            <p className="text-sm font-bold text-gray-900">My Hours</p>
           </Link>
           
           <Link
@@ -517,7 +494,7 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
                 <span className="text-2xl">📞</span>
                 <div>
                   <p className="font-bold text-gray-900 text-sm">Call Admin</p>
-                  <p className="text-xs text-gray-600">+61 3 9999 8877</p>
+                  <p className="text-xs text-gray-600">0430 233 811</p>
                 </div>
               </button>
 
@@ -528,7 +505,7 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
                 <span className="text-2xl">💬</span>
                 <div>
                   <p className="font-bold text-gray-900 text-sm">Send SMS</p>
-                  <p className="text-xs text-gray-600">+61 3 9999 8877</p>
+                  <p className="text-xs text-gray-600">0430 233 811</p>
                 </div>
               </button>
 
@@ -539,7 +516,7 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
                 <span className="text-2xl">📧</span>
                 <div>
                   <p className="font-bold text-gray-900 text-sm">Email Admin</p>
-                  <p className="text-xs text-gray-600">driversupport@mactrack.com.au</p>
+                  <p className="text-xs text-gray-600">macwithavan@mail.com</p>
                 </div>
               </button>
 
@@ -550,7 +527,7 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
                 <span className="text-2xl">📱</span>
                 <div>
                   <p className="font-bold text-gray-900 text-sm">WhatsApp</p>
-                  <p className="text-xs text-gray-600">+61 3 9999 8877</p>
+                  <p className="text-xs text-gray-600">0430 233 811</p>
                 </div>
               </button>
             </div>

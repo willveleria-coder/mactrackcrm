@@ -11,6 +11,7 @@ export default function AdminDriversPage() {
   const [drivers, setDrivers] = useState([]);
   const [filteredDrivers, setFilteredDrivers] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showInactive, setShowInactive] = useState(false);
   const [viewDriverDetails, setViewDriverDetails] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState(null);
@@ -22,6 +23,7 @@ export default function AdminDriversPage() {
   const menuItems = [
     { href: "/admin/dashboard", icon: "🏠", label: "Dashboard" },
     { href: "/admin/orders", icon: "📦", label: "Orders" },
+    { href: "/admin/orders/create", icon: "➕", label: "Create Order" },
     { href: "/admin/clients", icon: "👥", label: "Clients" },
     { href: "/admin/drivers", icon: "🚐", label: "Drivers" },
     { href: "/admin/analytics", icon: "📊", label: "Analytics" },
@@ -30,7 +32,7 @@ export default function AdminDriversPage() {
 
   useEffect(() => {
     loadDrivers();
-  }, []);
+  }, [showInactive]);
 
   useEffect(() => {
     filterDrivers();
@@ -58,12 +60,22 @@ export default function AdminDriversPage() {
 
       setAdmin(adminData);
 
-      // Only load active drivers
-      const { data: driversData } = await supabase
+      let query = supabase
         .from("drivers")
         .select("*")
-        .eq("is_active", true)
         .order("created_at", { ascending: false });
+
+      // If showing inactive, get all drivers
+      // Otherwise, get active drivers (is_active = true OR is_active is null for legacy)
+      if (!showInactive) {
+        query = query.or("is_active.eq.true,is_active.is.null");
+      }
+
+      const { data: driversData, error: driversError } = await query;
+
+      if (driversError) {
+        console.error("Error loading drivers:", driversError);
+      }
 
       setDrivers(driversData || []);
       setFilteredDrivers(driversData || []);
@@ -112,9 +124,8 @@ export default function AdminDriversPage() {
 
       if (error) throw error;
 
-      // Remove from list (make disappear)
-      setDrivers(prev => prev.filter(d => d.id !== driverId));
-      setFilteredDrivers(prev => prev.filter(d => d.id !== driverId));
+      // Refresh list
+      await loadDrivers();
 
       if (viewDriverDetails) {
         setViewDriverDetails(null);
@@ -126,40 +137,49 @@ export default function AdminDriversPage() {
     }
   }
 
+  async function handleReactivateDriver(driverId) {
+    try {
+      const { error } = await supabase
+        .from("drivers")
+        .update({ is_active: true })
+        .eq("id", driverId);
+
+      if (error) throw error;
+
+      // Refresh list
+      await loadDrivers();
+
+      if (viewDriverDetails) {
+        setViewDriverDetails(null);
+      }
+
+      alert("✅ Driver reactivated successfully!");
+    } catch (error) {
+      alert("Failed to reactivate driver: " + error.message);
+    }
+  }
+
   async function handleDeleteDriver() {
     if (!selectedDriver) return;
 
     try {
-      // First, check if driver has any orders
-      const { data: orders } = await supabase
-        .from("orders")
-        .select("id")
-        .eq("driver_id", selectedDriver.id);
-
-      if (orders && orders.length > 0) {
-        alert(`⚠️ Cannot delete driver with ${orders.length} existing orders. Please deactivate instead.`);
-        setShowDeleteModal(false);
-        return;
-      }
-
-      // Delete the driver
+      // Soft delete - just set is_active to false
       const { error } = await supabase
         .from("drivers")
-        .delete()
+        .update({ is_active: false })
         .eq("id", selectedDriver.id);
 
       if (error) throw error;
 
-      // Remove from list
-      setDrivers(prev => prev.filter(d => d.id !== selectedDriver.id));
-      setFilteredDrivers(prev => prev.filter(d => d.id !== selectedDriver.id));
+      // Refresh list
+      await loadDrivers();
 
-      alert("✅ Driver deleted successfully!");
+      alert("✅ Driver removed successfully!");
       setShowDeleteModal(false);
       setSelectedDriver(null);
       setViewDriverDetails(null);
     } catch (error) {
-      alert("Failed to delete driver: " + error.message);
+      alert("Failed to remove driver: " + error.message);
     }
   }
 
@@ -224,6 +244,15 @@ export default function AdminDriversPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="flex-1 px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent"
             />
+            <label className="flex items-center gap-2 px-4 py-3 bg-gray-100 rounded-xl cursor-pointer hover:bg-gray-200 transition">
+              <input
+                type="checkbox"
+                checked={showInactive}
+                onChange={(e) => setShowInactive(e.target.checked)}
+                className="w-4 h-4"
+              />
+              <span className="text-sm font-semibold text-gray-700">Show Inactive</span>
+            </label>
             <button 
               onClick={loadDrivers}
               className="px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition"
@@ -240,7 +269,7 @@ export default function AdminDriversPage() {
               <div className="text-6xl mb-4">🚐</div>
               <p className="text-gray-500 text-lg font-semibold">No drivers found</p>
               <p className="text-gray-400 text-sm mt-2">
-                {drivers.length === 0 ? "No active drivers" : "Try adjusting your search"}
+                {drivers.length === 0 ? "No drivers in database" : "Try adjusting your search"}
               </p>
             </div>
           ) : (
@@ -248,15 +277,20 @@ export default function AdminDriversPage() {
               {/* Mobile View */}
               <div className="block lg:hidden divide-y divide-gray-100">
                 {filteredDrivers.map((driver) => (
-                  <div key={driver.id} className="p-4">
+                  <div key={driver.id} className={`p-4 ${driver.is_active === false ? 'bg-gray-50 opacity-75' : ''}`}>
                     <div className="flex justify-between items-start mb-3">
                       <div>
-                        <button
-                          onClick={() => handleViewDriver(driver)}
-                          className="text-sm font-bold text-gray-900 hover:text-red-600"
-                        >
-                          {driver.name}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleViewDriver(driver)}
+                            className="text-sm font-bold text-gray-900 hover:text-red-600"
+                          >
+                            {driver.name}
+                          </button>
+                          {driver.is_active === false && (
+                            <span className="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs rounded-full">Inactive</span>
+                          )}
+                        </div>
                         <p className="text-xs text-gray-500">{driver.email}</p>
                         <p className="text-xs text-gray-600 mt-1">🚗 {driver.vehicle_type || 'N/A'}</p>
                         {driver.vehicle_plate && (
@@ -281,12 +315,21 @@ export default function AdminDriversPage() {
                       >
                         👁️ View
                       </button>
-                      <button
-                        onClick={() => handleDeactivateDriver(driver.id)}
-                        className="flex-1 py-2 bg-yellow-500 text-white rounded-lg text-xs font-bold hover:bg-yellow-600"
-                      >
-                        ⏸️ Deactivate
-                      </button>
+                      {driver.is_active === false ? (
+                        <button
+                          onClick={() => handleReactivateDriver(driver.id)}
+                          className="flex-1 py-2 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600"
+                        >
+                          ✅ Reactivate
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleDeactivateDriver(driver.id)}
+                          className="flex-1 py-2 bg-yellow-500 text-white rounded-lg text-xs font-bold hover:bg-yellow-600"
+                        >
+                          ⏸️ Deactivate
+                        </button>
+                      )}
                       <button
                         onClick={() => {
                           setSelectedDriver(driver);
@@ -310,14 +353,14 @@ export default function AdminDriversPage() {
                       <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">Email</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">Phone</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">Vehicle</th>
-                      <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">Plate</th>
+                      <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">Status</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">Duty</th>
                       <th className="text-center py-4 px-6 text-xs font-bold text-gray-600 uppercase">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
                     {filteredDrivers.map((driver) => (
-                      <tr key={driver.id} className="hover:bg-gray-50 transition">
+                      <tr key={driver.id} className={`hover:bg-gray-50 transition ${driver.is_active === false ? 'bg-gray-50 opacity-75' : ''}`}>
                         <td className="py-4 px-6">
                           <button
                             onClick={() => handleViewDriver(driver)}
@@ -329,7 +372,13 @@ export default function AdminDriversPage() {
                         <td className="py-4 px-6 text-sm text-gray-600">{driver.email}</td>
                         <td className="py-4 px-6 text-sm text-gray-600">{driver.phone || "—"}</td>
                         <td className="py-4 px-6 text-sm text-gray-600 capitalize">{driver.vehicle_type || "—"}</td>
-                        <td className="py-4 px-6 text-sm font-mono text-gray-600">{driver.vehicle_plate || "—"}</td>
+                        <td className="py-4 px-6">
+                          {driver.is_active === false ? (
+                            <span className="px-2 py-1 bg-gray-200 text-gray-600 text-xs font-bold rounded-full">Inactive</span>
+                          ) : (
+                            <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full">Active</span>
+                          )}
+                        </td>
                         <td className="py-4 px-6">
                           <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${
                             driver.is_on_duty 
@@ -347,12 +396,21 @@ export default function AdminDriversPage() {
                             >
                               👁️ View
                             </button>
-                            <button
-                              onClick={() => handleDeactivateDriver(driver.id)}
-                              className="px-3 py-1 bg-yellow-500 text-white rounded-lg text-xs font-bold hover:bg-yellow-600"
-                            >
-                              ⏸️ Deactivate
-                            </button>
+                            {driver.is_active === false ? (
+                              <button
+                                onClick={() => handleReactivateDriver(driver.id)}
+                                className="px-3 py-1 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600"
+                              >
+                                ✅ Reactivate
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleDeactivateDriver(driver.id)}
+                                className="px-3 py-1 bg-yellow-500 text-white rounded-lg text-xs font-bold hover:bg-yellow-600"
+                              >
+                                ⏸️ Deactivate
+                              </button>
+                            )}
                             <button
                               onClick={() => {
                                 setSelectedDriver(driver);
@@ -378,14 +436,15 @@ export default function AdminDriversPage() {
           <div className="mt-6 bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-gray-100 p-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 text-sm">
               <span className="text-gray-600">
-                Showing <span className="font-bold text-gray-900">{filteredDrivers.length}</span> active driver{filteredDrivers.length !== 1 ? 's' : ''}
+                Showing <span className="font-bold text-gray-900">{filteredDrivers.length}</span> driver{filteredDrivers.length !== 1 ? 's' : ''}
+                {showInactive && ' (including inactive)'}
               </span>
               <div className="flex gap-4">
                 <span className="text-gray-600">
-                  On Duty: <span className="font-bold text-green-600">{drivers.filter(d => d.is_on_duty).length}</span>
+                  On Duty: <span className="font-bold text-green-600">{drivers.filter(d => d.is_on_duty && d.is_active !== false).length}</span>
                 </span>
                 <span className="text-gray-600">
-                  Off Duty: <span className="font-bold text-gray-600">{drivers.filter(d => !d.is_on_duty).length}</span>
+                  Off Duty: <span className="font-bold text-gray-600">{drivers.filter(d => !d.is_on_duty && d.is_active !== false).length}</span>
                 </span>
               </div>
             </div>
@@ -402,13 +461,13 @@ export default function AdminDriversPage() {
           />
           <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl p-6 sm:p-8 z-50 w-11/12 max-w-md">
             <div className="text-center mb-6">
-              <div className="text-6xl mb-4">⚠️</div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Delete Driver?</h3>
+              <div className="text-6xl mb-4">🗑️</div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-2">Remove Driver?</h3>
               <p className="text-gray-600">
-                Are you sure you want to permanently delete <span className="font-bold">{selectedDriver.name}</span>?
+                Are you sure you want to remove <span className="font-bold">{selectedDriver.name}</span>?
               </p>
-              <p className="text-sm text-red-600 mt-2">
-                This action cannot be undone!
+              <p className="text-sm text-gray-500 mt-2">
+                They will be moved to inactive and can be reactivated later.
               </p>
             </div>
 
@@ -423,7 +482,7 @@ export default function AdminDriversPage() {
                 onClick={handleDeleteDriver}
                 className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition"
               >
-                Delete
+                Remove
               </button>
             </div>
           </div>
@@ -440,7 +499,12 @@ export default function AdminDriversPage() {
           <div className="fixed inset-4 sm:top-8 sm:left-1/2 sm:-translate-x-1/2 sm:inset-auto bg-white rounded-2xl shadow-2xl z-50 sm:w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="bg-gradient-to-r from-red-600 to-red-700 text-white p-6 flex justify-between items-start">
               <div>
-                <h3 className="text-2xl font-black mb-1">Driver Details</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-2xl font-black mb-1">Driver Details</h3>
+                  {viewDriverDetails.is_active === false && (
+                    <span className="px-2 py-0.5 bg-white/20 text-white text-xs rounded-full">Inactive</span>
+                  )}
+                </div>
                 <p className="text-sm opacity-90">{viewDriverDetails.name}</p>
               </div>
               <button
@@ -509,6 +573,10 @@ export default function AdminDriversPage() {
                     <div className={`w-4 h-4 rounded-full ${viewDriverDetails.is_on_duty ? 'bg-green-500' : 'bg-gray-400'}`}></div>
                     <span className="font-semibold">{viewDriverDetails.is_on_duty ? 'On Duty' : 'Off Duty'}</span>
                   </div>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-4 h-4 rounded-full ${viewDriverDetails.is_active === false ? 'bg-gray-400' : 'bg-green-500'}`}></div>
+                    <span className="font-semibold">{viewDriverDetails.is_active === false ? 'Inactive' : 'Active'}</span>
+                  </div>
                 </div>
               </div>
 
@@ -557,12 +625,21 @@ export default function AdminDriversPage() {
 
             <div className="p-6 border-t border-gray-200 bg-gray-50">
               <div className="flex gap-3">
-                <button
-                  onClick={() => handleDeactivateDriver(viewDriverDetails.id)}
-                  className="flex-1 py-3 bg-yellow-500 text-white rounded-xl font-bold hover:bg-yellow-600 transition"
-                >
-                  ⏸️ Deactivate
-                </button>
+                {viewDriverDetails.is_active === false ? (
+                  <button
+                    onClick={() => handleReactivateDriver(viewDriverDetails.id)}
+                    className="flex-1 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition"
+                  >
+                    ✅ Reactivate
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleDeactivateDriver(viewDriverDetails.id)}
+                    className="flex-1 py-3 bg-yellow-500 text-white rounded-xl font-bold hover:bg-yellow-600 transition"
+                  >
+                    ⏸️ Deactivate
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     setSelectedDriver(viewDriverDetails);
@@ -570,7 +647,7 @@ export default function AdminDriversPage() {
                   }}
                   className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition"
                 >
-                  🗑️ Delete
+                  🗑️ Remove
                 </button>
               </div>
               <button

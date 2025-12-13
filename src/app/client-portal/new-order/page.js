@@ -14,7 +14,7 @@ export default function NewOrderPage() {
     pickup_contact_phone: "",
     dropoff_contact_name: "",
     dropoff_contact_phone: "",
-    parcel_size: "small",
+    parcel_size: "small_box",
     quantity: "1",
     parcel_weight: "",
     length: "",
@@ -25,7 +25,6 @@ export default function NewOrderPage() {
     scheduled_time: "",
     notes: "",
     fragile: false,
-    insurance_required: false,
   });
   const [parcelImages, setParcelImages] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
@@ -42,11 +41,15 @@ export default function NewOrderPage() {
   const supabase = createClient();
 
   const sizeReference = {
-    "extra-small": "📦 Envelope/Small Box (up to 25×20×10cm) - Documents, phone, small items",
-    "small": "📦 Shoebox (up to 35×25×15cm) - Shoes, books, toys",
-    "medium": "📦 Microwave Size (up to 50×40×30cm) - Electronics, clothing boxes",
-    "large": "📦 TV/Monitor Box (up to 80×60×50cm) - Large electronics, multiple items",
-    "extra-large": "📦 Furniture Item (up to 120×80×60cm) - Chair, small furniture",
+    "small_box": "📦 Envelope/Small Box (up to 25×20×10cm) - Documents, phone, small items",
+    "medium_box": "📦 Medium Box (up to 50×40×30cm) - Electronics, clothing boxes, medium items",
+    "large_box": "📦 Large Box (up to 80×60×50cm) - Large electronics, multiple items, bulky goods",
+    "pelican_case": "🧳 Pelican Case - Heavy-duty protective case",
+    "road_case_single": "🎸 Road Case Single - Single equipment road case",
+    "road_case_double": "🎸 Road Case Double - Double/large equipment road case",
+    "blue_tub": "🗑️ Blue Tub - Standard blue storage tub",
+    "tube": "📜 Tube - Posters, blueprints, rolled items",
+    "aga_kit": "🧰 AGA Kit - AGA equipment kit",
     "custom": "📐 Custom Dimensions - Enter your exact measurements"
   };
 
@@ -70,7 +73,6 @@ export default function NewOrderPage() {
     formData.length,
     formData.width,
     formData.height,
-    formData.insurance_required
   ]);
 
   async function loadClient() {
@@ -108,11 +110,15 @@ export default function NewOrderPage() {
 
     // Size pricing
     const sizePricing = {
-      "extra-small": 15,
-      "small": 20,
-      "medium": 35,
-      "large": 55,
-      "extra-large": 80,
+      "small_box": 15,
+      "medium_box": 35,
+      "large_box": 55,
+      "pelican_case": 45,
+      "road_case_single": 60,
+      "road_case_double": 85,
+      "blue_tub": 30,
+      "tube": 20,
+      "aga_kit": 50,
       "custom": 20
     };
 
@@ -136,15 +142,14 @@ export default function NewOrderPage() {
     const serviceMultipliers = {
       standard: 1,
       next_day: 1.5,
-      express: 1.8,
-      same_day: 2.5,
-      overnight: 2.2,
-      scheduled: 1.3
+      local_overnight: 1.8,
+      emergency: 2.5,
+      scheduled: 1.3,
+      vip: 2.2,
+      same_day: 2.0,
+      priority: 2.8
     };
     basePrice *= serviceMultipliers[formData.service_type] || 1;
-
-    // Insurance
-    if (formData.insurance_required) basePrice += 10;
 
     // Quantity
     const totalPrice = basePrice * quantity;
@@ -299,7 +304,6 @@ export default function NewOrderPage() {
         scheduled_time: formData.scheduled_time || null,
         notes: formData.notes || null,
         fragile: formData.fragile || false,
-        insurance_required: formData.insurance_required || false,
         price: price,
         status: "pending_payment",
         signature_data: signature || null,
@@ -683,23 +687,27 @@ export default function NewOrderPage() {
                     onChange={handleInputChange}
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent"
                   >
-                    <option value="standard">⏰ Standard (3-5 business days)</option>
-                    <option value="next_day">📅 Next Day (delivered tomorrow)</option>
-                    <option value="express">🚀 Express (1-2 business days)</option>
-                    <option value="same_day">⚡ Same Day (within 12 hours)</option>
-                    <option value="overnight">🌙 Overnight (next morning)</option>
-                    <option value="scheduled">📅 Scheduled (pick specific date/time)</option>
+                    <option value="standard">⏰ Standard (3-5 Hours)</option>
+                    <option value="next_day">📅 Next Day (Delivery Tomorrow)</option>
+                    <option value="local_overnight">🌙 Local/Overnight (Next Day)</option>
+                    <option value="emergency">🚨 Emergency (1-2 Hours)</option>
+                    <option value="scheduled">📆 Scheduled (Schedule A Delivery Day)</option>
+                    <option value="vip">⭐ VIP (2-3 Hours)</option>
+                    <option value="same_day">⚡ Same Day (12 Hours)</option>
+                    <option value="priority">🔥 Priority (1-1.5 Hours)</option>
                   </select>
                   
                   {/* Service Type Info */}
                   <div className="mt-2 p-3 bg-blue-50 rounded-lg">
                     <p className="text-xs text-blue-900">
-                      {formData.service_type === 'standard' && '⏰ Standard: Economical delivery in 3-5 business days'}
-                      {formData.service_type === 'next_day' && '📅 Next Day: Guaranteed delivery by tomorrow (1.5x base price)'}
-                      {formData.service_type === 'express' && '🚀 Express: Fast delivery in 1-2 business days (1.8x base price)'}
-                      {formData.service_type === 'same_day' && '⚡ Same Day: Delivered within 12 hours (2.5x base price)'}
-                      {formData.service_type === 'overnight' && '🌙 Overnight: Delivered next morning before 9am (2.2x base price)'}
-                      {formData.service_type === 'scheduled' && '📅 Scheduled: Choose exact date and time for delivery (1.3x base price)'}
+                      {formData.service_type === 'standard' && '⏰ Standard: Delivery within 3-5 hours'}
+                      {formData.service_type === 'next_day' && '📅 Next Day: Pickup today, delivery by 10:00 AM tomorrow'}
+                      {formData.service_type === 'local_overnight' && '🌙 Local/Overnight: Pickup after 12:00 PM, delivery by 11:00 AM next day'}
+                      {formData.service_type === 'emergency' && '🚨 Emergency: Urgent delivery within 1-2 hours'}
+                      {formData.service_type === 'scheduled' && '📆 Scheduled: Choose your preferred delivery date and time'}
+                      {formData.service_type === 'vip' && '⭐ VIP: Priority handling with delivery in 2-3 hours'}
+                      {formData.service_type === 'same_day' && '⚡ Same Day: Delivered within 12 hours'}
+                      {formData.service_type === 'priority' && '🔥 Priority: Fastest option - delivery in 1-1.5 hours'}
                     </p>
                   </div>
                 </div>
@@ -727,7 +735,7 @@ export default function NewOrderPage() {
                   </div>
                 </div>
 
-                {/* Special Options */}
+                {/* Special Options - Only Fragile now */}
                 <div className="space-y-3">
                   <label className="flex items-center p-4 border-2 border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50">
                     <input
@@ -740,19 +748,6 @@ export default function NewOrderPage() {
                     <div>
                       <span className="font-bold text-gray-900">⚠️ Fragile Item</span>
                       <p className="text-xs text-gray-600">Handle with extra care</p>
-                    </div>
-                  </label>
-                  <label className="flex items-center p-4 border-2 border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50">
-                    <input
-                      type="checkbox"
-                      name="insurance_required"
-                      checked={formData.insurance_required}
-                      onChange={handleInputChange}
-                      className="mr-3"
-                    />
-                    <div>
-                      <span className="font-bold text-gray-900">🛡️ Add Insurance (+$10)</span>
-                      <p className="text-xs text-gray-600">Protect your parcel up to $1000</p>
                     </div>
                   </label>
                 </div>
@@ -895,7 +890,7 @@ export default function NewOrderPage() {
                   <div>
                     <p className="text-sm opacity-90 mb-1">Total Price</p>
                     <p className="text-5xl font-black">${price.toFixed(2)}</p>
-                    <p className="text-xs opacity-75 mt-2">{formData.quantity} {formData.quantity > 1 ? 'parcels' : 'parcel'} • {formData.service_type}</p>
+                    <p className="text-xs opacity-75 mt-2">{formData.quantity} {formData.quantity > 1 ? 'parcels' : 'parcel'} • {formData.service_type.replace('_', ' ')}</p>
                   </div>
                   <div className="text-7xl">💰</div>
                 </div>
@@ -917,11 +912,11 @@ export default function NewOrderPage() {
                   </div>
                   <div className="pb-3 border-b">
                     <p className="font-bold text-gray-700 mb-1">Parcel:</p>
-                    <p className="text-gray-900">{formData.quantity} × {formData.parcel_size} • {formData.parcel_weight}kg</p>
+                    <p className="text-gray-900">{formData.quantity} × {formData.parcel_size.replace(/_/g, ' ')} • {formData.parcel_weight}kg</p>
                   </div>
                   <div>
                     <p className="font-bold text-gray-700 mb-1">Service:</p>
-                    <p className="text-gray-900">{formData.service_type}</p>
+                    <p className="text-gray-900">{formData.service_type.replace(/_/g, ' ')}</p>
                   </div>
                 </div>
               </div>
