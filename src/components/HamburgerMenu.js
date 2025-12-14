@@ -20,18 +20,6 @@ export default function HamburgerMenu({ items = [], onLogout, userName, userRole
     if (onMenuToggle) onMenuToggle(false);
   }, [pathname]);
 
-  // Prevent body scroll when menu is open (mobile only)
-  useEffect(() => {
-    if (isOpen && window.innerWidth < 640) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
-
   return (
     <div className="relative inline-block">
       {/* Hamburger Button */}
@@ -54,91 +42,32 @@ export default function HamburgerMenu({ items = [], onLogout, userName, userRole
         )}
       </button>
 
-      {/* Menu Dropdown */}
+      {/* Dropdown Menu */}
       {isOpen && (
         <>
-          {/* Backdrop - visible so users know to click it */}
-          <div 
-            className="fixed inset-0 bg-black/30 z-40"
-            onClick={() => toggleMenu(false)}
-          />
+          {/* Invisible backdrop to close menu */}
+<div 
+  className="fixed inset-0 z-40"
+  onClick={() => toggleMenu(false)}
+/>
 
-          {/* Mobile Full Screen Menu */}
-          <div className="sm:hidden fixed right-0 top-0 w-full max-w-sm h-full bg-white shadow-2xl z-50 animate-slideIn flex flex-col">
-            {/* Header */}
-            <div className="bg-red-600 p-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold border-2 border-white/30 text-white">
-                  {userName?.charAt(0)?.toUpperCase() || "U"}
-                </div>
-                <div>
-                  <p className="font-bold text-white text-sm">{userName || "User"}</p>
-                  <p className="text-xs text-white/80">{userRole || "User"}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => toggleMenu(false)}
-                className="w-10 h-10 rounded-lg bg-white/20 hover:bg-white/30 flex items-center justify-center text-white font-bold text-2xl"
-              >
-                ×
-              </button>
-            </div>
-
-            {/* Menu Items */}
-            <div className="flex-1 bg-white p-3 overflow-y-auto">
-              {items.map((item, index) => {
-                const isActive = pathname === item.href;
-                return (
-                  <Link
-                    key={index}
-                    href={item.href}
-                    onClick={() => toggleMenu(false)}
-                    className={`flex items-center gap-3 px-4 py-4 rounded-xl mb-1 ${
-                      isActive
-                        ? "bg-red-50 text-red-600 font-bold"
-                        : "text-gray-700 active:bg-gray-100"
-                    }`}
-                  >
-                    <span className="text-xl">{item.icon}</span>
-                    <span>{item.label}</span>
-                    {isActive && <span className="ml-auto w-2 h-2 bg-red-600 rounded-full" />}
-                  </Link>
-                );
-              })}
-            </div>
-
-            {/* Logout */}
-            <div className="border-t border-gray-200 p-3 bg-white">
-              <button
-                onClick={() => {
-                  toggleMenu(false);
-                  onLogout?.();
-                }}
-                className="w-full flex items-center gap-3 px-4 py-4 rounded-xl text-red-600 active:bg-red-100 font-bold"
-              >
-                <span className="text-xl">🚪</span>
-                <span>Logout</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Desktop Dropdown */}
-          <div className="hidden sm:block absolute right-0 top-full mt-3 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden z-50">
+          {/* Menu - Dropdown style for both mobile and desktop */}
+          <div className="absolute right-0 top-full mt-2 w-screen max-w-xs sm:w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden z-50 max-h-[80vh] overflow-y-auto">
             {/* User Header */}
-            <div className="bg-red-600 p-5 text-white">
+            <div className="bg-red-600 p-4 text-white">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-xl font-bold border-2 border-white/30">
+                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-lg font-bold border-2 border-white/30">
                   {userName?.charAt(0)?.toUpperCase() || "U"}
                 </div>
                 <div>
-                  <p className="font-bold">{userName || "User"}</p>
+                  <p className="font-bold text-sm">{userName || "User"}</p>
                   <p className="text-xs text-white/80">{userRole || "User"}</p>
                 </div>
               </div>
             </div>
 
             {/* Menu Items */}
-            <div className="p-3 bg-white">
+            <div className="p-2 bg-white">
               {items.map((item, index) => {
                 const isActive = pathname === item.href;
                 return (
@@ -149,7 +78,7 @@ export default function HamburgerMenu({ items = [], onLogout, userName, userRole
                     className={`flex items-center gap-3 px-4 py-3 rounded-xl mb-1 ${
                       isActive
                         ? "bg-red-50 text-red-600 font-bold"
-                        : "text-gray-700 hover:bg-gray-50"
+                        : "text-gray-700 hover:bg-gray-50 active:bg-gray-100"
                     }`}
                   >
                     <span className="text-lg">{item.icon}</span>
@@ -161,13 +90,13 @@ export default function HamburgerMenu({ items = [], onLogout, userName, userRole
             </div>
 
             {/* Logout */}
-            <div className="border-t border-gray-200 p-3 bg-white">
+            <div className="border-t border-gray-200 p-2 bg-white">
               <button
                 onClick={() => {
                   toggleMenu(false);
                   onLogout?.();
                 }}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 font-bold"
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 active:bg-red-100 font-bold"
               >
                 <span className="text-lg">🚪</span>
                 <span className="text-sm">Logout</span>
@@ -176,16 +105,6 @@ export default function HamburgerMenu({ items = [], onLogout, userName, userRole
           </div>
         </>
       )}
-
-      <style jsx>{`
-        @keyframes slideIn {
-          from { transform: translateX(100%); }
-          to { transform: translateX(0); }
-        }
-        .animate-slideIn {
-          animation: slideIn 0.3s ease-out;
-        }
-      `}</style>
     </div>
   );
 }
