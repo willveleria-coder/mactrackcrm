@@ -260,7 +260,7 @@ export default function PublicTrackingPage() {
         {/* Footer */}
         <div className="text-center mt-8 text-sm text-gray-500">
           <p>Mac With A Van | ABN: 18 616 164 875</p>
-          <p className="mt-1">Professional Courier Service</p>
+          <p className="mt-1">Courier Service</p>
         </div>
       </main>
     </div>

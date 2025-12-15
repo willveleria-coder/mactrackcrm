@@ -9,32 +9,44 @@ export default function NewOrderPage() {
   const [client, setClient] = useState(null);
   const [formData, setFormData] = useState({
     pickup_address: "",
-    dropoff_address: "",
     pickup_contact_name: "",
     pickup_contact_phone: "",
+    dropoff_address: "",
     dropoff_contact_name: "",
     dropoff_contact_phone: "",
-    parcel_size: "small_box",
-    quantity: "1",
-    parcel_weight: "",
-    length: "",
-    width: "",
-    height: "",
     service_type: "standard",
     scheduled_date: "",
     scheduled_time: "",
     notes: "",
-    fragile: false,
   });
+
+  // Multiple items support
+  const [items, setItems] = useState([
+    {
+      id: 1,
+      item_type: "small_box",
+      quantity: 1,
+      weight_per_unit: "",
+      is_under_10kg: false,
+      length: "",
+      width: "",
+      height: "",
+      fragile: false,
+      description: "",
+    }
+  ]);
+
   const [parcelImages, setParcelImages] = useState([]);
   const [imagePreviews, setImagePreviews] = useState([]);
   const [signature, setSignature] = useState(null);
   
   // Pricing state
   const [pricing, setPricing] = useState({
-    basePrice: 0,
-    distanceCharge: 0,
-    chargeableDistance: 0,
+    basePrice: 39.50,
+    distanceCost: 0,
+    weightCost: 0,
+    urgentMultiplier: 1,
+    waitingFee: 0,
     subtotal: 0,
     fuelLevy: 0,
     fuelLevyPercent: 10,
@@ -43,9 +55,15 @@ export default function NewOrderPage() {
     requiresQuote: false,
     distance: 0,
     duration: 0,
-    perKmRate: 0
+    totalWeight: 0,
+    totalVolumetricWeight: 0,
+    chargeableWeight: 0,
+    effectiveDistance: 0,
   });
   const [calculatingDistance, setCalculatingDistance] = useState(false);
+  const [waitingTime, setWaitingTime] = useState(0);
+  const [manualDistance, setManualDistance] = useState("");
+  const [distanceError, setDistanceError] = useState(false);
   
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -56,21 +74,23 @@ export default function NewOrderPage() {
   const router = useRouter();
   const supabase = createClient();
 
-  // Debounce timer ref
   const distanceTimerRef = useRef(null);
 
-  const sizeReference = {
-    "small_box": "📦 Envelope/Small Box (up to 25×20×10cm) - Documents, phone, small items",
-    "medium_box": "📦 Medium Box (up to 50×40×30cm) - Electronics, clothing boxes, medium items",
-    "large_box": "📦 Large Box (up to 80×60×50cm) - Large electronics, multiple items, bulky goods",
-    "pelican_case": "🧳 Pelican Case - Heavy-duty protective case",
-    "road_case_single": "🎸 Road Case Single - Single equipment road case",
-    "road_case_double": "🎸 Road Case Double - Double/large equipment road case",
-    "blue_tub": "🗑️ Blue Tub - Standard blue storage tub",
-    "tube": "📜 Tube - Posters, blueprints, rolled items",
-    "aga_kit": "🧰 AGA Kit - AGA equipment kit",
-    "custom": "📐 Custom Dimensions - Enter your exact measurements"
-  };
+  // Item type options (dropdown)
+  const itemTypeOptions = [
+    { value: "envelope", label: "📄 Envelope" },
+    { value: "small_box", label: "📦 Small Box (up to 25×20×10cm)" },
+    { value: "medium_box", label: "📦 Medium Box (up to 50×40×30cm)" },
+    { value: "large_box", label: "📦 Large Box (up to 80×60×50cm)" },
+    { value: "pelican_case", label: "🧳 Pelican Case" },
+    { value: "road_case_single", label: "🎸 Road Case Single" },
+    { value: "road_case_double", label: "🎸 Road Case Double" },
+    { value: "blue_tub", label: "🗑️ Blue Tub" },
+    { value: "tube", label: "📜 Tube (Posters, Blueprints)" },
+    { value: "aga_kit", label: "🧰 AGA Kit" },
+    { value: "pallet", label: "📦 Pallet" },
+    { value: "custom", label: "📐 Custom (Enter Dimensions)" },
+  ];
 
   const menuItems = [
     { href: "/client-portal/dashboard", icon: "🏠", label: "Dashboard" },
@@ -104,7 +124,7 @@ export default function NewOrderPage() {
   // Recalculate price when relevant fields change
   useEffect(() => {
     calculatePrice();
-  }, [formData.service_type, formData.parcel_weight, pricing.distance]);
+  }, [formData.service_type, items, pricing.distance, waitingTime, manualDistance]);
 
   async function loadClient() {
     try {
@@ -139,6 +159,7 @@ export default function NewOrderPage() {
     if (!formData.pickup_address || !formData.dropoff_address) return;
     
     setCalculatingDistance(true);
+    setDistanceError(false);
     
     try {
       const response = await fetch('/api/calculate-distance', {
@@ -156,10 +177,12 @@ export default function NewOrderPage() {
 
       const data = await response.json();
       
-      if (data.error) {
+      if (data.error || data.distance === 0) {
         console.warn('Distance calculation error:', data.error);
+        setDistanceError(true);
         setPricing(prev => ({ ...prev, distance: 0, duration: 0 }));
       } else {
+        setDistanceError(false);
         setPricing(prev => ({
           ...prev,
           distance: data.distance || 0,
@@ -168,6 +191,7 @@ export default function NewOrderPage() {
       }
     } catch (error) {
       console.error('Distance calculation failed:', error);
+      setDistanceError(true);
       setPricing(prev => ({ ...prev, distance: 0, duration: 0 }));
     } finally {
       setCalculatingDistance(false);
@@ -175,87 +199,57 @@ export default function NewOrderPage() {
   }
 
   function calculatePrice() {
-    const weight = parseFloat(formData.parcel_weight) || 0;
-    const distance = pricing.distance || 0;
+    // Use manual distance if API failed, otherwise use API distance
+    const distance = manualDistance ? parseFloat(manualDistance) : (pricing.distance || 0);
     const serviceType = formData.service_type;
-    const fuelLevyPercent = 10;
 
-    let basePrice = 0;
-    let perKmRate = 0;
-    const perKmStartsAt = 10;
+    // Pricing rates from Mac's formula
+    const BASE_FEE = 39.50;
+    const RATE_PER_KM = 1.70;
+    const RATE_PER_KG = 2.50;
+    const FUEL_LEVY_PERCENT = 10;
+
+    // Calculate total actual weight and volumetric weight from all items
+    let totalActualWeight = 0;
+    let totalVolumetricWeight = 0;
+
+    items.forEach(item => {
+      const qty = parseInt(item.quantity) || 1;
+      
+      if (item.is_under_10kg) {
+        // If under 10kg checkbox is checked, assume 5kg per item
+        totalActualWeight += qty * 5;
+      } else {
+        const weightPerUnit = parseFloat(item.weight_per_unit) || 0;
+        totalActualWeight += qty * weightPerUnit;
+      }
+
+      // Calculate volumetric weight if dimensions provided
+      const length = parseFloat(item.length) || 0;
+      const width = parseFloat(item.width) || 0;
+      const height = parseFloat(item.height) || 0;
+
+      if (length > 0 && width > 0 && height > 0) {
+        // Volumetric Weight = (L × W × H) ÷ 6000
+        const volumetric = (length * width * height) / 6000;
+        totalVolumetricWeight += qty * volumetric;
+      }
+    });
+
+    // Chargeable Weight = MAX(Actual Weight, Volumetric Weight)
+    const chargeableWeight = Math.max(totalActualWeight, totalVolumetricWeight);
+
+    // Check if requires quote
     let requiresQuote = false;
+    let urgentMultiplier = 1;
 
-    // Mac's pricing logic from MWAV_Pricing_Dec_25
-    switch (serviceType) {
-      case 'standard':
-        // Same-day Delivery (3-5 hours)
-        if (weight <= 10) {
-          basePrice = 39.50;
-          perKmRate = distance > 10 ? 1.70 : 0;
-        } else {
-          basePrice = 45.00;
-          perKmRate = distance > 10 ? 1.70 : 0;
-        }
-        break;
+    if (serviceType === 'scheduled' || serviceType === 'after_hours') {
+      requiresQuote = true;
+    }
 
-      case 'same_day':
-        // Same-day Flexible (may be >5 hours)
-        if (weight <= 10) {
-          basePrice = 35.00;
-          perKmRate = distance > 10 ? 1.25 : 0;
-        } else {
-          basePrice = 40.00;
-          perKmRate = distance > 10 ? 1.70 : 0;
-        }
-        break;
-
-      case 'local_overnight':
-      case 'next_day':
-        // Local overnight - pick up today deliver tomorrow
-        basePrice = 32.00;
-        perKmRate = distance > 10 ? 1.70 : 0;
-        break;
-
-      case 'emergency':
-        // Express (2 hours from pickup)
-        if (weight <= 10) {
-          basePrice = 60.00;
-          perKmRate = 0;
-        } else {
-          basePrice = 67.00;
-          if (distance > 10 && distance <= 30) {
-            perKmRate = 1.70;
-          }
-        }
-        break;
-
-      case 'priority':
-      case 'vip':
-        // Priority (within 1hr)
-        if (weight <= 10) {
-          basePrice = 120.00;
-          perKmRate = 0;
-        } else {
-          basePrice = 150.00;
-          perKmRate = distance > 10 ? 1.70 : 0;
-        }
-        break;
-
-      case 'scheduled':
-      case 'after_hours':
-        requiresQuote = true;
-        basePrice = 0;
-        perKmRate = 0;
-        break;
-
-      default:
-        if (weight <= 10) {
-          basePrice = 39.50;
-          perKmRate = distance > 10 ? 1.70 : 0;
-        } else {
-          basePrice = 45.00;
-          perKmRate = distance > 10 ? 1.70 : 0;
-        }
+    // Urgent multiplier
+    if (serviceType === 'emergency' || serviceType === 'priority' || serviceType === 'vip') {
+      urgentMultiplier = 1.25;
     }
 
     if (requiresQuote) {
@@ -263,25 +257,36 @@ export default function NewOrderPage() {
         ...prev,
         requiresQuote: true,
         basePrice: 0,
-        distanceCharge: 0,
+        distanceCost: 0,
+        weightCost: 0,
         subtotal: 0,
         fuelLevy: 0,
         gst: 0,
         total: 0,
-        perKmRate: 0
+        totalWeight: totalActualWeight,
+        totalVolumetricWeight,
+        chargeableWeight,
       }));
       return;
     }
 
-    // Calculate distance charge
-    const chargeableDistance = Math.max(0, distance - perKmStartsAt);
-    const distanceCharge = perKmRate > 0 ? chargeableDistance * perKmRate : 0;
+    // Distance Cost = Distance (km) × Rate per km
+    const distanceCost = distance * RATE_PER_KM;
 
-    // Subtotal
-    const subtotal = basePrice + distanceCharge;
+    // Weight Cost = Chargeable Weight (kg) × Rate per kg
+    const weightCost = chargeableWeight * RATE_PER_KG;
+
+    // Waiting Fee = Minutes × $1 per minute
+    const waitingFee = waitingTime * 1;
+
+    // Total before multiplier = Base Fee + Distance Cost + Weight Cost + Waiting Fee
+    let subtotalBeforeMultiplier = BASE_FEE + distanceCost + weightCost + waitingFee;
+
+    // Apply urgent multiplier
+    let subtotal = subtotalBeforeMultiplier * urgentMultiplier;
 
     // Fuel levy
-    const fuelLevy = subtotal * (fuelLevyPercent / 100);
+    const fuelLevy = subtotal * (FUEL_LEVY_PERCENT / 100);
 
     // GST (10% of subtotal + fuel levy)
     const beforeGst = subtotal + fuelLevy;
@@ -293,15 +298,20 @@ export default function NewOrderPage() {
     setPricing(prev => ({
       ...prev,
       requiresQuote: false,
-      basePrice: parseFloat(basePrice.toFixed(2)),
-      perKmRate,
-      distanceCharge: parseFloat(distanceCharge.toFixed(2)),
-      chargeableDistance: parseFloat(chargeableDistance.toFixed(2)),
+      basePrice: BASE_FEE,
+      distanceCost: parseFloat(distanceCost.toFixed(2)),
+      weightCost: parseFloat(weightCost.toFixed(2)),
+      urgentMultiplier,
+      waitingFee,
       subtotal: parseFloat(subtotal.toFixed(2)),
       fuelLevy: parseFloat(fuelLevy.toFixed(2)),
-      fuelLevyPercent,
+      fuelLevyPercent: FUEL_LEVY_PERCENT,
       gst: parseFloat(gst.toFixed(2)),
-      total: parseFloat(total.toFixed(2))
+      total: parseFloat(total.toFixed(2)),
+      totalWeight: parseFloat(totalActualWeight.toFixed(2)),
+      totalVolumetricWeight: parseFloat(totalVolumetricWeight.toFixed(2)),
+      chargeableWeight: parseFloat(chargeableWeight.toFixed(2)),
+      effectiveDistance: distance,
     }));
   }
 
@@ -311,6 +321,46 @@ export default function NewOrderPage() {
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
+  }
+
+  function handleItemChange(itemId, field, value) {
+    setItems(prev => prev.map(item => {
+      if (item.id === itemId) {
+        return { ...item, [field]: value };
+      }
+      return item;
+    }));
+  }
+
+  function addItem() {
+    const newId = Math.max(...items.map(i => i.id)) + 1;
+    setItems(prev => [...prev, {
+      id: newId,
+      item_type: "small_box",
+      quantity: 1,
+      weight_per_unit: "",
+      is_under_10kg: false,
+      length: "",
+      width: "",
+      height: "",
+      fragile: false,
+      description: "",
+    }]);
+  }
+
+  function removeItem(itemId) {
+    if (items.length <= 1) {
+      alert("You must have at least one item");
+      return;
+    }
+    setItems(prev => prev.filter(item => item.id !== itemId));
+  }
+
+  function getTotalWeight(item) {
+    if (item.is_under_10kg) {
+      return (parseInt(item.quantity) || 1) * 5;
+    }
+    return (parseInt(item.quantity) || 1) * (parseFloat(item.weight_per_unit) || 0);
   }
 
   function handleImageChange(e) {
@@ -401,22 +451,32 @@ export default function NewOrderPage() {
     }
 
     if (!formData.pickup_address || !formData.dropoff_address) {
-      setError("Pickup and dropoff addresses are required.");
+      setError("Pickup and delivery addresses are required.");
       return;
     }
 
     if (!formData.pickup_contact_name || !formData.dropoff_contact_name) {
-      setError("Contact names are required for both pickup and dropoff.");
+      setError("Contact names are required for both pickup and delivery.");
       return;
     }
 
     if (!formData.pickup_contact_phone || !formData.dropoff_contact_phone) {
-      setError("Contact phone numbers are required for both pickup and dropoff.");
+      setError("Contact phone numbers are required for both pickup and delivery.");
       return;
     }
 
-    if (!formData.parcel_weight || parseFloat(formData.parcel_weight) <= 0) {
-      setError("Please enter the parcel weight.");
+    // Validate items
+    for (const item of items) {
+      if (!item.is_under_10kg && (!item.weight_per_unit || parseFloat(item.weight_per_unit) <= 0)) {
+        setError("Please enter weight for all items or check 'Under 10kg'.");
+        return;
+      }
+    }
+
+    // Validate distance
+    const finalDistance = manualDistance ? parseFloat(manualDistance) : pricing.distance;
+    if (!finalDistance || finalDistance <= 0) {
+      setError("Please enter the delivery distance.");
       return;
     }
 
@@ -444,6 +504,23 @@ export default function NewOrderPage() {
         }
       }
 
+      // Combine items info for storage
+      const itemsSummary = items.map(item => ({
+        type: item.item_type,
+        quantity: parseInt(item.quantity) || 1,
+        weight_per_unit: item.is_under_10kg ? 5 : parseFloat(item.weight_per_unit) || 0,
+        total_weight: getTotalWeight(item),
+        dimensions: item.length && item.width && item.height 
+          ? `${item.length}×${item.width}×${item.height}cm` 
+          : null,
+        fragile: item.fragile,
+        description: item.description,
+      }));
+
+      const totalQuantity = items.reduce((sum, item) => sum + (parseInt(item.quantity) || 1), 0);
+      const primaryItem = items[0];
+      const finalDistance = manualDistance ? parseFloat(manualDistance) : pricing.distance;
+
       const orderData = {
         client_id: client.id,
         pickup_address: formData.pickup_address,
@@ -452,19 +529,22 @@ export default function NewOrderPage() {
         dropoff_address: formData.dropoff_address,
         dropoff_contact_name: formData.dropoff_contact_name,
         dropoff_contact_phone: formData.dropoff_contact_phone,
-        parcel_size: formData.parcel_size,
-        quantity: parseInt(formData.quantity) || 1,
-        parcel_weight: parseFloat(formData.parcel_weight) || 0,
-        length: parseFloat(formData.length) || null,
-        width: parseFloat(formData.width) || null,
-        height: parseFloat(formData.height) || null,
+        parcel_size: primaryItem.item_type,
+        quantity: totalQuantity,
+        parcel_weight: pricing.totalWeight,
+        length: parseFloat(primaryItem.length) || null,
+        width: parseFloat(primaryItem.width) || null,
+        height: parseFloat(primaryItem.height) || null,
         service_type: formData.service_type,
         scheduled_date: formData.scheduled_date || null,
         scheduled_time: formData.scheduled_time || null,
         notes: formData.notes || null,
-        fragile: formData.fragile || false,
-        distance_km: pricing.distance,
+        fragile: items.some(item => item.fragile),
+        distance_km: finalDistance,
         base_price: pricing.basePrice,
+        distance_charge: pricing.distanceCost,
+        weight_charge: pricing.weightCost,
+        waiting_fee: pricing.waitingFee,
         fuel_levy: pricing.fuelLevy,
         fuel_levy_percent: pricing.fuelLevyPercent,
         gst: pricing.gst,
@@ -472,6 +552,7 @@ export default function NewOrderPage() {
         status: "pending_payment",
         signature_data: signature || null,
         parcel_images: uploadedImageUrls.length > 0 ? uploadedImageUrls : null,
+        items_detail: itemsSummary,
       };
 
       const { data: order, error: orderError } = await supabase
@@ -553,9 +634,9 @@ export default function NewOrderPage() {
             ))}
           </div>
           <div className="grid grid-cols-4 mt-2 text-xs sm:text-sm font-semibold text-gray-600">
-            <span className="text-left">Addresses</span>
-            <span className="text-center">Parcel</span>
-            <span className="text-center">Photos</span>
+            <span className="text-left">Pickup</span>
+            <span className="text-center">Items</span>
+            <span className="text-center">Service</span>
             <span className="text-right">Review</span>
           </div>
         </div>
@@ -576,7 +657,11 @@ export default function NewOrderPage() {
               ) : (
                 <p className="text-3xl font-black">${pricing.total.toFixed(2)}</p>
               )}
-              {pricing.distance > 0 && <p className="text-xs opacity-75 mt-1">{pricing.distance.toFixed(1)}km • ~{pricing.duration} mins</p>}
+              <div className="flex flex-wrap gap-2 mt-1 text-xs opacity-75">
+                {(pricing.distance > 0 || manualDistance) && <span>{manualDistance ? parseFloat(manualDistance).toFixed(1) : pricing.distance.toFixed(1)}km</span>}
+                {pricing.chargeableWeight > 0 && <span>• {pricing.chargeableWeight.toFixed(1)}kg chargeable</span>}
+                {pricing.duration > 0 && !manualDistance && <span>• ~{pricing.duration} mins</span>}
+              </div>
               {calculatingDistance && <p className="text-xs opacity-75 mt-1">Calculating distance...</p>}
             </div>
             <div className="text-5xl">💰</div>
@@ -584,10 +669,10 @@ export default function NewOrderPage() {
         </div>
 
         <form onSubmit={handleSubmit}>
-          {/* Step 1: Addresses */}
+          {/* Step 1: Pickup Location */}
           {currentStep === 1 && (
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-6 sm:p-8 mb-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-6">📍 Pickup & Delivery Addresses</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-6">📍 Pickup & Delivery Location</h3>
               
               <div className="space-y-6">
                 <div className="bg-blue-50 rounded-xl p-4">
@@ -630,7 +715,7 @@ export default function NewOrderPage() {
                   </div>
                 </div>
 
-                {pricing.distance > 0 && (
+                {pricing.distance > 0 && !distanceError && (
                   <div className="bg-gray-50 rounded-xl p-4 border-2 border-gray-200">
                     <div className="flex items-center justify-between">
                       <div>
@@ -644,77 +729,274 @@ export default function NewOrderPage() {
                     </div>
                   </div>
                 )}
+
+                {/* Manual Distance Entry - shown when API fails or distance is 0 */}
+                {(distanceError || (formData.pickup_address.length > 5 && formData.dropoff_address.length > 5 && pricing.distance === 0 && !calculatingDistance)) && (
+                  <div className="bg-yellow-50 rounded-xl p-4 border-2 border-yellow-300">
+                    <p className="text-sm font-bold text-yellow-900 mb-2">⚠️ Auto-distance unavailable</p>
+                    <p className="text-xs text-yellow-800 mb-3">Please enter the approximate distance manually, or use Google Maps to check.</p>
+                    <div className="flex gap-3 items-end">
+                      <div className="flex-1">
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Distance (km) *</label>
+                        <input
+                          type="number"
+                          value={manualDistance}
+                          onChange={(e) => setManualDistance(e.target.value)}
+                          min="0.1"
+                          step="0.1"
+                          placeholder="e.g. 15"
+                          className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent"
+                        />
+                      </div>
+                      <a
+                        href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(formData.pickup_address)}&destination=${encodeURIComponent(formData.dropoff_address)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-4 py-3 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600 transition text-sm"
+                      >
+                        🗺️ Check Maps
+                      </a>
+                    </div>
+                    {manualDistance && (
+                      <p className="text-sm text-green-700 mt-2 font-semibold">✓ Using {manualDistance}km for pricing</p>
+                    )}
+                  </div>
+                )}
               </div>
 
               <button type="button" onClick={() => setCurrentStep(2)} className="w-full mt-6 py-4 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition">
-                Next: Parcel Details →
+                Next: Item/s Information →
               </button>
             </div>
           )}
 
-          {/* Step 2: Parcel Details */}
+          {/* Step 2: Item/s Information */}
           {currentStep === 2 && (
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-6 sm:p-8 mb-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-6">📦 Parcel Information</h3>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-gray-900">📦 Item/s Information</h3>
+                <button
+                  type="button"
+                  onClick={addItem}
+                  className="px-4 py-2 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition text-sm"
+                >
+                  ➕ Add Item
+                </button>
+              </div>
               
               <div className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Quantity *</label>
-                    <input type="number" name="quantity" value={formData.quantity} onChange={handleInputChange} required min="1" max="99" className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2">Weight (kg) * <span className="text-xs text-gray-500">(affects price)</span></label>
-                    <input type="number" name="parcel_weight" value={formData.parcel_weight} onChange={handleInputChange} required min="0.1" step="0.1" placeholder="e.g. 5" className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent" />
-                    <p className="text-xs text-gray-500 mt-1">{parseFloat(formData.parcel_weight || 0) <= 10 ? '✓ Under 10kg rate' : '⚠️ Over 10kg rate'}</p>
-                  </div>
-                </div>
+                {items.map((item, index) => (
+                  <div key={item.id} className="bg-gray-50 rounded-xl p-4 border-2 border-gray-200 relative">
+                    {items.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeItem(item.id)}
+                        className="absolute top-2 right-2 w-8 h-8 bg-red-500 text-white rounded-full font-bold hover:bg-red-600"
+                      >
+                        ×
+                      </button>
+                    )}
+                    
+                    <h4 className="font-bold text-gray-900 mb-4">Item {index + 1}</h4>
+                    
+                    {/* Item Type Dropdown */}
+                    <div className="mb-4">
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Item/s Details *</label>
+                      <select
+                        value={item.item_type}
+                        onChange={(e) => handleItemChange(item.id, 'item_type', e.target.value)}
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent"
+                      >
+                        {itemTypeOptions.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-3">Parcel Size *</label>
-                  <div className="space-y-3 max-h-64 overflow-y-auto">
-                    {Object.entries(sizeReference).map(([value, description]) => (
-                      <label key={value} className={`flex items-start p-3 border-2 rounded-xl cursor-pointer transition ${formData.parcel_size === value ? 'border-red-600 bg-red-50' : 'border-gray-300 hover:border-red-300'}`}>
-                        <input type="radio" name="parcel_size" value={value} checked={formData.parcel_size === value} onChange={handleInputChange} className="mt-1 mr-3" />
-                        <span className="text-sm font-semibold text-gray-900">{description}</span>
+                    {/* Under 10kg checkbox */}
+                    <div className="mb-4">
+                      <label className="flex items-center p-3 border-2 border-gray-300 rounded-xl cursor-pointer hover:bg-gray-100">
+                        <input
+                          type="checkbox"
+                          checked={item.is_under_10kg}
+                          onChange={(e) => handleItemChange(item.id, 'is_under_10kg', e.target.checked)}
+                          className="mr-3 w-5 h-5"
+                        />
+                        <div>
+                          <span className="font-bold text-gray-900">Item is under 10kg</span>
+                          <p className="text-xs text-gray-600">Check this if each item weighs less than 10kg</p>
+                        </div>
                       </label>
-                    ))}
-                  </div>
-                </div>
+                    </div>
 
-                {formData.parcel_size === 'custom' && (
-                  <div className="bg-yellow-50 rounded-xl p-4 border-2 border-yellow-200">
-                    <p className="text-sm font-bold text-yellow-900 mb-3">📏 Enter Dimensions</p>
-                    <div className="grid grid-cols-3 gap-3">
+                    {/* Quantity and Weight */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                       <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-1">Length (cm)</label>
-                        <input type="number" name="length" value={formData.length} onChange={handleInputChange} min="1" placeholder="50" className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm" />
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Quantity *</label>
+                        <input
+                          type="number"
+                          value={item.quantity}
+                          onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)}
+                          min="1"
+                          className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent"
+                        />
                       </div>
+                      
+                      {!item.is_under_10kg && (
+                        <div>
+                          <label className="block text-sm font-bold text-gray-700 mb-2">Weight per Unit (kg) *</label>
+                          <input
+                            type="number"
+                            value={item.weight_per_unit}
+                            onChange={(e) => handleItemChange(item.id, 'weight_per_unit', e.target.value)}
+                            min="0.1"
+                            step="0.1"
+                            placeholder="e.g. 5"
+                            className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent"
+                          />
+                        </div>
+                      )}
+                      
                       <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-1">Width (cm)</label>
-                        <input type="number" name="width" value={formData.width} onChange={handleInputChange} min="1" placeholder="30" className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-gray-700 mb-1">Height (cm)</label>
-                        <input type="number" name="height" value={formData.height} onChange={handleInputChange} min="1" placeholder="20" className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm" />
+                        <label className="block text-sm font-bold text-gray-700 mb-2">Total Weight</label>
+                        <div className="w-full px-4 py-3 bg-gray-200 rounded-xl font-bold text-gray-900">
+                          {getTotalWeight(item).toFixed(1)} kg
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
 
+                    {/* Dimensions (for custom or if they want to provide) */}
+                    {(item.item_type === 'custom' || item.item_type === 'large_box' || item.item_type === 'pallet') && (
+                      <div className="bg-yellow-50 rounded-xl p-4 border-2 border-yellow-200 mb-4">
+                        <p className="text-sm font-bold text-yellow-900 mb-3">📏 Dimensions (for volumetric weight calculation)</p>
+                        <div className="grid grid-cols-3 gap-3">
+                          <div>
+                            <label className="block text-xs font-bold text-gray-700 mb-1">Length (cm)</label>
+                            <input
+                              type="number"
+                              value={item.length}
+                              onChange={(e) => handleItemChange(item.id, 'length', e.target.value)}
+                              min="1"
+                              placeholder="50"
+                              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-gray-700 mb-1">Width (cm)</label>
+                            <input
+                              type="number"
+                              value={item.width}
+                              onChange={(e) => handleItemChange(item.id, 'width', e.target.value)}
+                              min="1"
+                              placeholder="30"
+                              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-gray-700 mb-1">Height (cm)</label>
+                            <input
+                              type="number"
+                              value={item.height}
+                              onChange={(e) => handleItemChange(item.id, 'height', e.target.value)}
+                              min="1"
+                              placeholder="20"
+                              className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg text-sm"
+                            />
+                          </div>
+                        </div>
+                        {item.length && item.width && item.height && (
+                          <p className="text-xs text-yellow-800 mt-2">
+                            Volumetric: {((parseFloat(item.length) * parseFloat(item.width) * parseFloat(item.height)) / 6000).toFixed(2)} kg
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Fragile checkbox */}
+                    <label className="flex items-center p-3 border-2 border-gray-300 rounded-xl cursor-pointer hover:bg-gray-100 mb-4">
+                      <input
+                        type="checkbox"
+                        checked={item.fragile}
+                        onChange={(e) => handleItemChange(item.id, 'fragile', e.target.checked)}
+                        className="mr-3 w-5 h-5"
+                      />
+                      <div>
+                        <span className="font-bold text-gray-900">⚠️ Fragile Item</span>
+                        <p className="text-xs text-gray-600">Handle with extra care</p>
+                      </div>
+                    </label>
+
+                    {/* Description */}
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Item Description (Optional)</label>
+                      <input
+                        type="text"
+                        value={item.description}
+                        onChange={(e) => handleItemChange(item.id, 'description', e.target.value)}
+                        placeholder="e.g. Electronic equipment, documents, etc."
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+                ))}
+
+                {/* Weight Summary */}
+                <div className="bg-blue-50 rounded-xl p-4 border-2 border-blue-200">
+                  <h4 className="font-bold text-blue-900 mb-3">📊 Weight Summary</h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <p className="text-gray-600">Total Items</p>
+                      <p className="font-bold text-gray-900">{items.reduce((sum, i) => sum + (parseInt(i.quantity) || 1), 0)}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">Actual Weight</p>
+                      <p className="font-bold text-gray-900">{pricing.totalWeight.toFixed(1)} kg</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">Volumetric Weight</p>
+                      <p className="font-bold text-gray-900">{pricing.totalVolumetricWeight.toFixed(1)} kg</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600">Chargeable Weight</p>
+                      <p className="font-bold text-green-600">{pricing.chargeableWeight.toFixed(1)} kg</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-blue-800 mt-2">
+                    * Chargeable weight = whichever is higher: actual or volumetric
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button type="button" onClick={() => setCurrentStep(1)} className="flex-1 py-4 bg-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-400 transition">← Back</button>
+                <button type="button" onClick={() => setCurrentStep(3)} className="flex-1 py-4 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition">Next: Service Type →</button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Service Type & Notes */}
+          {currentStep === 3 && (
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-6 sm:p-8 mb-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-6">🚚 Service Type</h3>
+              
+              <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Service Type * <span className="text-xs text-gray-500">(affects price)</span></label>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Select Service *</label>
                   <select name="service_type" value={formData.service_type} onChange={handleInputChange} className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent">
                     <option value="standard">⏰ Standard (3-5 Hours)</option>
                     <option value="same_day">⚡ Same Day (12 Hours)</option>
                     <option value="next_day">📅 Next Day (Delivery Tomorrow)</option>
                     <option value="local_overnight">🌙 Local/Overnight (Next Day)</option>
-                    <option value="emergency">🚨 Emergency (1-2 Hours)</option>
-                    <option value="vip">⭐ VIP (2-3 Hours)</option>
-                    <option value="priority">🔥 Priority (1-1.5 Hours)</option>
+                    <option value="emergency">🚨 Emergency (1-2 Hours) +25%</option>
+                    <option value="vip">⭐ VIP (2-3 Hours) +25%</option>
+                    <option value="priority">🔥 Priority (1-1.5 Hours) +25%</option>
                     <option value="scheduled">📆 Scheduled - Contact for Quote</option>
                     <option value="after_hours">🌃 After Hours/Weekend - Contact for Quote</option>
                   </select>
+                  
+                  {pricing.urgentMultiplier > 1 && (
+                    <p className="text-sm text-orange-600 font-semibold mt-2">⚡ Urgent service: +25% applied</p>
+                  )}
                   
                   {pricing.requiresQuote && (
                     <div className="mt-3 p-4 bg-yellow-50 border-2 border-yellow-300 rounded-xl">
@@ -738,30 +1020,26 @@ export default function NewOrderPage() {
                   </div>
                 )}
 
-                <label className="flex items-center p-4 border-2 border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50">
-                  <input type="checkbox" name="fragile" checked={formData.fragile} onChange={handleInputChange} className="mr-3" />
-                  <div>
-                    <span className="font-bold text-gray-900">⚠️ Fragile Item</span>
-                    <p className="text-xs text-gray-600">Handle with extra care</p>
-                  </div>
-                </label>
-              </div>
-
-              <div className="flex gap-3 mt-6">
-                <button type="button" onClick={() => setCurrentStep(1)} className="flex-1 py-4 bg-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-400 transition">← Back</button>
-                <button type="button" onClick={() => setCurrentStep(3)} className="flex-1 py-4 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition">Next: Photos →</button>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Photos & Notes */}
-          {currentStep === 3 && (
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-6 sm:p-8 mb-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-6">📸 Photos & Notes</h3>
-              
-              <div className="space-y-6">
+                {/* Waiting Time */}
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-3">📷 Parcel Photos (Max 5)</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Expected Waiting Time (minutes)</label>
+                  <p className="text-xs text-gray-500 mb-2">If the driver needs to wait at pickup/delivery ($1 per minute)</p>
+                  <input
+                    type="number"
+                    value={waitingTime}
+                    onChange={(e) => setWaitingTime(parseInt(e.target.value) || 0)}
+                    min="0"
+                    placeholder="0"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent"
+                  />
+                  {waitingTime > 0 && (
+                    <p className="text-sm text-gray-600 mt-1">Waiting fee: ${waitingTime.toFixed(2)}</p>
+                  )}
+                </div>
+
+                {/* Photos */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-3">📷 Item Photos (Max 5)</label>
                   <input type="file" accept="image/*" multiple onChange={handleImageChange} className="hidden" id="image-upload" />
                   <label htmlFor="image-upload" className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition">
                     <p className="text-4xl mb-2">📸</p>
@@ -780,6 +1058,7 @@ export default function NewOrderPage() {
                   )}
                 </div>
 
+                {/* Signature */}
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-3">✍️ Signature (Optional)</label>
                   <div className="border-2 border-gray-300 rounded-xl overflow-hidden bg-white">
@@ -788,6 +1067,7 @@ export default function NewOrderPage() {
                   <button type="button" onClick={clearSignature} className="mt-2 text-sm text-red-600 hover:underline font-semibold">Clear Signature</button>
                 </div>
 
+                {/* Notes */}
                 <div>
                   <label className="block text-sm font-bold text-gray-700 mb-3">📝 Delivery Instructions</label>
                   <textarea name="notes" value={formData.notes} onChange={handleInputChange} rows={4} placeholder="Leave at front door, call on arrival, gate code, etc..." className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent resize-none" />
@@ -818,17 +1098,31 @@ export default function NewOrderPage() {
                 </div>
               ) : (
                 <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-xl">
-                  <p className="text-sm opacity-90 mb-3">Price Breakdown</p>
+                  <p className="text-sm opacity-90 mb-3">Price Breakdown (Mac's Formula)</p>
                   
                   <div className="space-y-2 text-sm mb-4">
                     <div className="flex justify-between">
-                      <span>Base ({formData.parcel_weight || 0}kg, {formData.service_type.replace(/_/g, ' ')})</span>
+                      <span>Base Fee</span>
                       <span className="font-bold">${pricing.basePrice.toFixed(2)}</span>
                     </div>
-                    {pricing.distanceCharge > 0 && (
+                    <div className="flex justify-between">
+                      <span>Distance ({manualDistance ? parseFloat(manualDistance).toFixed(1) : pricing.distance.toFixed(1)}km × $1.70)</span>
+                      <span className="font-bold">${pricing.distanceCost.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Weight ({pricing.chargeableWeight.toFixed(1)}kg × $2.50)</span>
+                      <span className="font-bold">${pricing.weightCost.toFixed(2)}</span>
+                    </div>
+                    {pricing.waitingFee > 0 && (
                       <div className="flex justify-between">
-                        <span>Distance ({pricing.chargeableDistance.toFixed(1)}km × ${pricing.perKmRate.toFixed(2)})</span>
-                        <span className="font-bold">${pricing.distanceCharge.toFixed(2)}</span>
+                        <span>Waiting Time ({waitingTime} mins × $1)</span>
+                        <span className="font-bold">${pricing.waitingFee.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {pricing.urgentMultiplier > 1 && (
+                      <div className="flex justify-between text-yellow-200">
+                        <span>⚡ Urgent Service (+25%)</span>
+                        <span className="font-bold">Applied</span>
                       </div>
                     )}
                     <div className="flex justify-between border-t border-white/30 pt-2">
@@ -866,17 +1160,24 @@ export default function NewOrderPage() {
                     <p className="text-gray-600">{formData.dropoff_contact_name} • {formData.dropoff_contact_phone}</p>
                   </div>
                   <div className="pb-3 border-b">
-                    <p className="font-bold text-gray-700 mb-1">📦 Parcel:</p>
-                    <p className="text-gray-900">{formData.quantity} × {formData.parcel_size.replace(/_/g, ' ')} • {formData.parcel_weight}kg {formData.fragile && '• ⚠️ Fragile'}</p>
+                    <p className="font-bold text-gray-700 mb-1">📦 Items ({items.length}):</p>
+                    {items.map((item, idx) => (
+                      <p key={item.id} className="text-gray-900">
+                        {item.quantity}× {itemTypeOptions.find(o => o.value === item.item_type)?.label || item.item_type} 
+                        {' '}• {getTotalWeight(item).toFixed(1)}kg
+                        {item.fragile && ' • ⚠️ Fragile'}
+                      </p>
+                    ))}
+                    <p className="text-gray-600 mt-1">Total: {pricing.chargeableWeight.toFixed(1)}kg chargeable weight</p>
                   </div>
                   <div className="pb-3 border-b">
                     <p className="font-bold text-gray-700 mb-1">🚚 Service:</p>
                     <p className="text-gray-900 capitalize">{formData.service_type.replace(/_/g, ' ')}</p>
                   </div>
-                  {pricing.distance > 0 && (
+                  {(pricing.distance > 0 || manualDistance) && (
                     <div>
                       <p className="font-bold text-gray-700 mb-1">📏 Distance:</p>
-                      <p className="text-gray-900">{pricing.distance.toFixed(1)} km</p>
+                      <p className="text-gray-900">{manualDistance ? parseFloat(manualDistance).toFixed(1) : pricing.distance.toFixed(1)} km {pricing.duration > 0 && !manualDistance && `• ~${pricing.duration} mins`}</p>
                     </div>
                   )}
                 </div>

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
 import Link from "next/link";
@@ -16,12 +16,95 @@ function DriverDashboardContent() {
   const [loading, setLoading] = useState(true);
   const [showContactPopup, setShowContactPopup] = useState(false);
   const [adminContact, setAdminContact] = useState(null);
+  
+  // Notification states
+  const [newJobAlert, setNewJobAlert] = useState(null);
+  const [showNotification, setShowNotification] = useState(false);
+  const audioRef = useRef(null);
+  const previousOrdersRef = useRef([]);
+  
   const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
     loadDashboard();
     loadAdminContact();
+  }, []);
+
+  // Set up real-time subscription for new orders
+  useEffect(() => {
+    if (!driver?.id) return;
+
+    const channel = supabase
+      .channel('driver-orders')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `driver_id=eq.${driver.id}`
+        },
+        (payload) => {
+          console.log('Order change received:', payload);
+          
+          // Check if this is a new assignment
+          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+            const newOrder = payload.new;
+            
+            // Check if this order wasn't in our previous list (new assignment)
+            const wasAlreadyAssigned = previousOrdersRef.current.some(o => o.id === newOrder.id);
+            
+            if (!wasAlreadyAssigned && newOrder.status === 'pending') {
+              // New job assigned!
+              triggerNewJobAlert(newOrder);
+            }
+          }
+          
+          // Reload dashboard to get fresh data
+          loadDashboard();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [driver?.id]);
+
+  function triggerNewJobAlert(order) {
+    setNewJobAlert(order);
+    setShowNotification(true);
+    
+    // Play notification sound
+    try {
+      if (audioRef.current) {
+        audioRef.current.play().catch(e => console.log('Audio play failed:', e));
+      }
+    } catch (e) {
+      console.log('Audio error:', e);
+    }
+    
+    // Also try browser notification
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('🚚 New Job Assigned!', {
+        body: `Pickup: ${order.pickup_address?.slice(0, 50)}...`,
+        icon: '/bus-icon.png',
+        requireInteraction: true
+      });
+    }
+    
+    // Vibrate on mobile
+    if ('vibrate' in navigator) {
+      navigator.vibrate([200, 100, 200, 100, 200]);
+    }
+  }
+
+  // Request notification permission on load
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
   }, []);
 
   async function loadDashboard() {
@@ -53,6 +136,18 @@ function DriverDashboardContent() {
         .order("created_at", { ascending: false });
 
       if (!ordersError && ordersData) {
+        // Check for new orders before updating state
+        if (previousOrdersRef.current.length > 0) {
+          const newOrders = ordersData.filter(
+            newOrder => !previousOrdersRef.current.some(oldOrder => oldOrder.id === newOrder.id) && newOrder.status === 'pending'
+          );
+          
+          if (newOrders.length > 0) {
+            triggerNewJobAlert(newOrders[0]);
+          }
+        }
+        
+        previousOrdersRef.current = ordersData;
         setOrders(ordersData);
         
         const assigned = ordersData.filter(o => o.status === "pending" || o.status === "active").length;
@@ -60,7 +155,6 @@ function DriverDashboardContent() {
         const active = ordersData.filter(o => o.status === "active").length;
         const completed = ordersData.filter(o => o.status === "delivered").length;
         
-        // Calculate hours worked from driver's hours_worked field or default to 0
         const hoursWorked = driverData.hours_worked || 0;
         
         setStats({ assigned, completed, pending, active, hoursWorked });
@@ -105,6 +199,8 @@ function DriverDashboardContent() {
 
       if (error) throw error;
 
+      setShowNotification(false);
+      setNewJobAlert(null);
       loadDashboard();
       alert("✅ Order accepted successfully!");
     } catch (error) {
@@ -139,6 +235,8 @@ function DriverDashboardContent() {
 
       if (error) throw error;
 
+      setShowNotification(false);
+      setNewJobAlert(null);
       loadDashboard();
       alert("✅ Order rejected. It will be reassigned to another driver.");
     } catch (error) {
@@ -237,6 +335,76 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff]">
       
+      {/* Hidden audio element for notification sound */}
+      <audio ref={audioRef} preload="auto">
+        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleymS5+7LgEocSJvLzIpLHS5zl7WteS8MMIF+lK+jdjkkLYGYo6STYzEiLXSLnpqKWy4jLWt/joJ0TyMlKlt7g3pqRSYnKFZ0eXRqRScpKlVxdXRqRykrLFhxc3NqSCorLFhxc3NqSCkrLFhxc3NqSSkrK1ZvcXJpRygqKlNtb3BoRScpKVFrbm9nRCYoKE9pbG1mQyUnJ01namtlQiQmJktmZ2ljQSQlJEljZWdgPyMkI0dhY2VePiIjIkRfYWNcPSEiIkJdX2FaPiAhIUBbXV9YPR8gID5ZW11WOx4fHzxXWVtUOh0eHjpVV1lSOBwdHTlTVVdQNxscHDhRU1VONRINDS5ERUlLMwcICS45PEFELgEBBSkxMzMtAP36/ywpJx0k/vXt7ygjGxgk/fHl5CQgGxok/e7h3yYfGxsm/uvd2ygeGxsn/und2CoeGxso/uXY1SseGhsp/uPT0i0fGhsq/uDP0C8gGhsr/t7LzjEhGhss/tzIyzMiGhsu/trFyTQjGRsv/tfBxjUkGRsx/tS+wjclGBsy/tK7vzkoGBs0/s+4vDopFxs1/sy0uTwqFxs2/sm0tz0rFhs3/saxsz4sFRs5/sSvrD8uFBs6/cKrqEAvExs7/cCnpUEwERs8/b2koEIyERs+/bunm0Q0DxtA/bidl0Y2DhtB/bWZk0g4DRtC/bKVj0o6DBtD/bCRjEw8CxtF/a6NiE4+CRtG/auJhVFACBtI/aiGgVNCBhtJ/aWCfVVEBRpK/aJ+elZGBBpM/aB6dlhIAhpN/Z12clpKARpP/Ztyb1xMABlQ/Zlva15O/xdS/ZZrZ2BQ/hZT/ZNnY2JS/RVV/ZFjX2RU/BRW/Y5fW2ZW+xJY/YtbV2hY+hFZ/YlXU2pa+RBb/YZTTmxc9w5c/YNPSm5e9Q1e/YFLRnBh8wtf/X5HQnNj8Qpg/Xs+O3Vm7gZi/XU1MHlo6gJk/3AAAAAA" type="audio/wav"/>
+      </audio>
+
+      {/* NEW JOB NOTIFICATION POPUP */}
+      {showNotification && newJobAlert && (
+        <>
+          <div className="fixed inset-0 bg-black bg-opacity-70 z-[100]" />
+          <div className="fixed inset-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-lg bg-white rounded-3xl shadow-2xl z-[101] overflow-hidden animate-bounce-in">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 text-white text-center">
+              <div className="text-6xl mb-2 animate-pulse">🚚</div>
+              <h2 className="text-3xl font-black">NEW JOB ASSIGNED!</h2>
+              <p className="text-sm opacity-90 mt-1">You have a new delivery request</p>
+            </div>
+            
+            {/* Content */}
+            <div className="p-6 space-y-4">
+              <div className="bg-blue-50 rounded-xl p-4 border-2 border-blue-200">
+                <p className="text-xs font-bold text-blue-700 mb-1">📍 PICKUP</p>
+                <p className="text-sm font-semibold text-gray-900">{newJobAlert.pickup_address}</p>
+                {newJobAlert.pickup_contact_name && (
+                  <p className="text-xs text-gray-600 mt-1">👤 {newJobAlert.pickup_contact_name} - {newJobAlert.pickup_contact_phone}</p>
+                )}
+              </div>
+              
+              <div className="bg-green-50 rounded-xl p-4 border-2 border-green-200">
+                <p className="text-xs font-bold text-green-700 mb-1">🎯 DROPOFF</p>
+                <p className="text-sm font-semibold text-gray-900">{newJobAlert.dropoff_address}</p>
+                {newJobAlert.dropoff_contact_name && (
+                  <p className="text-xs text-gray-600 mt-1">👤 {newJobAlert.dropoff_contact_name} - {newJobAlert.dropoff_contact_phone}</p>
+                )}
+              </div>
+              
+              <div className="flex flex-wrap gap-2 justify-center">
+                <span className="bg-gray-100 px-3 py-1 rounded-full text-sm font-semibold">📦 {newJobAlert.parcel_size}</span>
+                <span className="bg-gray-100 px-3 py-1 rounded-full text-sm font-semibold">⚖️ {newJobAlert.parcel_weight}kg</span>
+                <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-bold">⚡ {newJobAlert.service_type}</span>
+              </div>
+            </div>
+            
+            {/* Actions */}
+            <div className="p-6 bg-gray-50 space-y-3">
+              <button
+                onClick={() => handleAcceptOrder(newJobAlert.id)}
+                className="w-full py-5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-2xl font-black text-xl hover:from-green-600 hover:to-green-700 transition-all shadow-xl transform hover:scale-105"
+              >
+                ✅ ACCEPT JOB
+              </button>
+              <button
+                onClick={() => handleRejectOrder(newJobAlert.id)}
+                className="w-full py-4 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-2xl font-bold text-lg hover:from-red-600 hover:to-red-700 transition-all shadow-lg"
+              >
+                ❌ REJECT JOB
+              </button>
+              <button
+                onClick={() => {
+                  setShowNotification(false);
+                  setNewJobAlert(null);
+                }}
+                className="w-full py-3 bg-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-300 transition"
+              >
+                View Later
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Navigation */}
       <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 shadow-sm sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
@@ -255,6 +423,15 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
               </div>
             </div>
             <div className="flex items-center gap-4">
+              {/* Notification bell with count */}
+              {stats.pending > 0 && (
+                <div className="relative">
+                  <span className="text-2xl">🔔</span>
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center animate-pulse">
+                    {stats.pending}
+                  </span>
+                </div>
+              )}
               <span className="text-sm text-gray-600 hidden sm:inline">👋 {driver?.name}</span>
               <HamburgerMenu 
                 items={menuItems}
@@ -276,6 +453,24 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
           </h2>
           <p className="text-sm sm:text-base text-gray-600">Here&apos;s your delivery overview</p>
         </div>
+
+        {/* Pending Jobs Alert Banner */}
+        {stats.pending > 0 && (
+          <div className="bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-2xl p-4 mb-6 shadow-lg animate-pulse">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">⚠️</span>
+                <div>
+                  <p className="font-black text-lg">You have {stats.pending} pending job{stats.pending > 1 ? 's' : ''}!</p>
+                  <p className="text-sm opacity-90">Please accept or reject to continue</p>
+                </div>
+              </div>
+              <a href="#orders" className="bg-white text-red-600 px-4 py-2 rounded-xl font-bold hover:bg-gray-100 transition">
+                View Jobs
+              </a>
+            </div>
+          </div>
+        )}
 
         {/* Stats Grid - 4 cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
@@ -362,7 +557,7 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
         </div>
 
         {/* Your Orders */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-5 sm:p-6">
+        <div id="orders" className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-5 sm:p-6">
           <h3 className="text-xl font-bold text-gray-900 mb-5">Your Orders</h3>
           
           {orders.length === 0 ? (
@@ -376,13 +571,20 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
               {orders.map((order) => (
                 <div 
                   key={order.id} 
-                  className="border-2 border-gray-200 rounded-2xl p-4 sm:p-5 hover:shadow-md transition bg-white"
+                  className={`border-2 rounded-2xl p-4 sm:p-5 hover:shadow-md transition bg-white ${
+                    order.status === 'pending' ? 'border-red-400 ring-2 ring-red-200' : 'border-gray-200'
+                  }`}
                 >
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <p className="text-xs text-gray-500 mb-1">Order #{order.id.slice(0, 8)}</p>
                       <StatusBadge status={order.status} />
                     </div>
+                    {order.status === 'pending' && (
+                      <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-pulse">
+                        ACTION REQUIRED
+                      </span>
+                    )}
                   </div>
 
                   <div className="space-y-3 mb-4">
@@ -538,6 +740,18 @@ Size: ${order.parcel_size} (${order.parcel_weight}kg)`;
       {driver && driver.is_on_duty && (
         <DriverLocationTracker driverId={driver.id} />
       )}
+
+      {/* CSS for bounce animation */}
+      <style jsx global>{`
+        @keyframes bounce-in {
+          0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+          50% { transform: translate(-50%, -50%) scale(1.05); }
+          100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+        }
+        .animate-bounce-in {
+          animation: bounce-in 0.4s ease-out forwards;
+        }
+      `}</style>
     </div>
   );
 }
