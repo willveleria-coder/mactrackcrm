@@ -18,6 +18,8 @@ export default function LabelPage() {
   const router = useRouter();
   const supabase = createClient();
 
+  // Get the base URL for QR codes
+  const baseUrl = 'https://mactrackcrm-xatn.vercel.app';
   useEffect(() => {
     if (orderId) {
       loadOrder();
@@ -118,6 +120,9 @@ export default function LabelPage() {
     );
   }
 
+  // Generate tracking URL
+  const trackingUrl = `${baseUrl}/track/${order.id}`;
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Navigation - Hidden when printing */}
@@ -211,19 +216,21 @@ export default function LabelPage() {
             </div>
             <div className="text-right">
               <p className="text-xs text-gray-500">ORDER ID</p>
-              <p className="text-lg font-black font-mono text-gray-900">#{order.id.slice(0, 8)}</p>
+              <p className="text-lg font-black font-mono text-gray-900">#{order.id.slice(0, 8).toUpperCase()}</p>
             </div>
           </div>
 
           {/* QR Code */}
           <div className="flex justify-between items-start mb-8">
-            <div>
+            <div className="text-center">
               <QRCodeSVG 
-                value={`https://mactrack.com/track/${order.id}`} 
+                value={trackingUrl} 
                 size={120}
                 level="H"
+                includeMargin={true}
               />
-              <p className="text-xs text-gray-500 text-center mt-2">Scan to Track</p>
+              <p className="text-xs text-gray-500 mt-2">Scan to Track</p>
+              <p className="text-xs text-gray-400 font-mono">{order.id.slice(0, 8).toUpperCase()}</p>
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-600 mb-2">Service Type</p>
