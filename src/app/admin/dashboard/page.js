@@ -13,6 +13,7 @@ function AdminDashboardContent() {
   const [orders, setOrders] = useState([]);
   const [clients, setClients] = useState([]);
   const [drivers, setDrivers] = useState([]);
+  const [reviews, setReviews] = useState([]);
   const [stats, setStats] = useState({
     totalOrders: 0,
     pendingOrders: 0,
@@ -24,7 +25,9 @@ function AdminDashboardContent() {
     thisMonthRevenue: 0,
     avgOrderValue: 0,
     completionRate: 0,
-    activeClients: 0
+    activeClients: 0,
+    avgRating: 0,
+    totalReviews: 0
   });
   const [topDrivers, setTopDrivers] = useState([]);
   const [recentActivity, setRecentActivity] = useState([]);
@@ -113,6 +116,15 @@ function AdminDashboardContent() {
 
       setDrivers(driversData || []);
 
+      // Load reviews
+      const { data: reviewsData } = await supabase
+        .from("reviews")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      setReviews(reviewsData || []);
+
       // Calculate enhanced stats
       if (ordersData) {
         const now = new Date();
@@ -138,6 +150,12 @@ function AdminDashboardContent() {
         const completionRate = totalOrders > 0 ? (completedOrders / totalOrders) * 100 : 0;
         const activeClients = clientsData?.filter(c => c.is_active).length || 0;
 
+        // Calculate review stats
+        const avgRating = reviewsData && reviewsData.length > 0 
+          ? reviewsData.reduce((sum, r) => sum + r.rating, 0) / reviewsData.length 
+          : 0;
+        const totalReviews = reviewsData?.length || 0;
+
         setStats({
           totalOrders,
           pendingOrders,
@@ -149,7 +167,9 @@ function AdminDashboardContent() {
           thisMonthRevenue,
           avgOrderValue,
           completionRate,
-          activeClients
+          activeClients,
+          avgRating,
+          totalReviews
         });
 
         // Calculate top drivers
@@ -180,6 +200,19 @@ function AdminDashboardContent() {
             color: order.status === 'delivered' ? 'text-green-600' : order.status === 'active' ? 'text-blue-600' : 'text-gray-600'
           });
         });
+
+        // Add recent reviews
+        if (reviewsData) {
+          reviewsData.forEach(review => {
+            activities.push({
+              type: 'review',
+              icon: '⭐',
+              message: `${review.customer_name} left a ${review.rating}-star review`,
+              time: new Date(review.created_at),
+              color: 'text-yellow-600'
+            });
+          });
+        }
 
         // Sort by time
         activities.sort((a, b) => b.time - a.time);
@@ -264,7 +297,6 @@ function AdminDashboardContent() {
   }
 
   const pendingOrders = orders.filter(o => o.status === 'pending');
-  const activeOrdersList = orders.filter(o => o.status === 'active');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff]">
@@ -379,44 +411,38 @@ function AdminDashboardContent() {
           </div>
         </div>
 
-        {/* Enhanced Stats Grid - 2 cols mobile, 3 tablet, 6 desktop */}
+        {/* Enhanced Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4 mb-6 sm:mb-8">
-          {/* Total Orders */}
           <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 sm:p-5 text-white shadow-lg hover:shadow-xl transition transform hover:scale-105">
             <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">Total Orders</p>
             <p className="text-3xl sm:text-4xl font-black mb-1">{stats.totalOrders}</p>
             <p className="text-xs opacity-75">All time</p>
           </div>
 
-          {/* Pending */}
           <div className="bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-2xl p-4 sm:p-5 text-white shadow-lg hover:shadow-xl transition transform hover:scale-105">
             <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">Pending</p>
             <p className="text-3xl sm:text-4xl font-black mb-1">{stats.pendingOrders}</p>
             <p className="text-xs opacity-75">Awaiting</p>
           </div>
 
-          {/* Active */}
           <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-4 sm:p-5 text-white shadow-lg hover:shadow-xl transition transform hover:scale-105">
             <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">Active</p>
             <p className="text-3xl sm:text-4xl font-black mb-1">{stats.activeOrders}</p>
             <p className="text-xs opacity-75">In transit</p>
           </div>
 
-          {/* Completed */}
           <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-4 sm:p-5 text-white shadow-lg hover:shadow-xl transition transform hover:scale-105">
             <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">Completed</p>
             <p className="text-3xl sm:text-4xl font-black mb-1">{stats.completedOrders}</p>
             <p className="text-xs opacity-75">Delivered</p>
           </div>
 
-          {/* Today's Orders */}
           <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-4 sm:p-5 text-white shadow-lg hover:shadow-xl transition transform hover:scale-105">
             <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">Today</p>
             <p className="text-3xl sm:text-4xl font-black mb-1">{stats.todayOrders}</p>
             <p className="text-xs opacity-75">Orders</p>
           </div>
 
-          {/* Total Revenue */}
           <div className="bg-gradient-to-br from-pink-500 to-rose-500 rounded-2xl p-4 sm:p-5 text-white shadow-lg hover:shadow-xl transition transform hover:scale-105">
             <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">Revenue</p>
             <p className="text-2xl sm:text-3xl font-black mb-1">${stats.totalRevenue.toFixed(0)}</p>
@@ -445,7 +471,7 @@ function AdminDashboardContent() {
         )}
 
         {/* Secondary Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-6 mb-6 sm:mb-8">
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-gray-100 shadow-lg">
             <p className="text-xs sm:text-sm text-gray-600 mb-1">This Month</p>
             <p className="text-2xl sm:text-3xl font-black text-gray-900">${stats.thisMonthRevenue.toFixed(0)}</p>
@@ -469,11 +495,17 @@ function AdminDashboardContent() {
             <p className="text-2xl sm:text-3xl font-black text-gray-900">{stats.activeClients}</p>
             <p className="text-xs text-gray-500 mt-1">Customers</p>
           </div>
+
+          <div className="bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-2xl p-4 sm:p-6 text-white shadow-lg">
+            <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">Avg Rating</p>
+            <p className="text-2xl sm:text-3xl font-black">{stats.avgRating > 0 ? stats.avgRating.toFixed(1) : 'N/A'} ⭐</p>
+            <p className="text-xs opacity-75">{stats.totalReviews} reviews</p>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 mb-8">
           
-          {/* Pending Orders - Priority Alert */}
+          {/* Pending Orders */}
           {pendingOrders.length > 0 && (
             <div className="lg:col-span-2">
               <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-5 sm:p-6">
@@ -514,6 +546,43 @@ function AdminDashboardContent() {
               </div>
             </div>
           )}
+
+          {/* Recent Reviews */}
+          <div className={pendingOrders.length > 0 ? '' : 'lg:col-span-2'}>
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-5 sm:p-6">
+              <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">⭐ Recent Reviews</h3>
+              
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {reviews.length === 0 ? (
+                  <div className="text-center py-8">
+                    <div className="text-5xl mb-3">⭐</div>
+                    <p className="text-gray-500 font-semibold text-sm">No reviews yet</p>
+                  </div>
+                ) : (
+                  reviews.map((review) => (
+                    <div key={review.id} className="p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm font-bold text-gray-900">{review.customer_name}</p>
+                        <div className="flex text-sm">
+                          {[...Array(5)].map((_, i) => (
+                            <span key={i} className={i < review.rating ? 'text-yellow-500' : 'text-gray-300'}>
+                              ⭐
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                      {review.comment && (
+                        <p className="text-xs text-gray-600 line-clamp-2 mb-1">{review.comment}</p>
+                      )}
+                      <p className="text-xs text-gray-400">
+                        {new Date(review.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
 
           {/* Top Drivers */}
           <div className={pendingOrders.length > 0 ? '' : 'lg:col-span-2'}>

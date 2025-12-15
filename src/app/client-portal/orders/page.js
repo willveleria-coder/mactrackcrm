@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import Image from "next/image";
 import HamburgerMenu from "@/components/HamburgerMenu";
+import { ReviewForm } from "@/components/ReviewForm";
+import { awardLoyaltyPoints } from "@/components/LoyaltyProgram";
 
 export default function OrdersHistoryPage() {
   const [client, setClient] = useState(null);
@@ -15,6 +17,8 @@ export default function OrdersHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [loyaltyPoints, setLoyaltyPoints] = useState(0);
   const router = useRouter();
   const supabase = createClient();
 
@@ -22,6 +26,7 @@ export default function OrdersHistoryPage() {
     { href: "/client-portal/dashboard", icon: "🏠", label: "Dashboard" },
     { href: "/client-portal/orders", icon: "📦", label: "My Orders" },
     { href: "/client-portal/new-order", icon: "➕", label: "New Order" },
+    { href: "/client-portal/loyalty", icon: "⭐", label: "Loyalty Rewards" },
   ];
 
   useEffect(() => {
@@ -65,6 +70,17 @@ export default function OrdersHistoryPage() {
       }
 
       setClient(clientData);
+
+      // Load loyalty points
+      const { data: loyaltyData } = await supabase
+        .from("loyalty_points")
+        .select("points")
+        .eq("customer_email", clientData.email)
+        .single();
+      
+      if (loyaltyData) {
+        setLoyaltyPoints(loyaltyData.points);
+      }
 
       const { data, error } = await supabase
         .from("orders")
@@ -116,6 +132,17 @@ export default function OrdersHistoryPage() {
     setSelectedOrder(null);
   }
 
+  function openReviewModal(order) {
+    setSelectedOrder(order);
+    setShowOrderModal(false);
+    setShowReviewModal(true);
+  }
+
+  function closeReviewModal() {
+    setShowReviewModal(false);
+    setSelectedOrder(null);
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff] flex items-center justify-center">
@@ -145,12 +172,23 @@ export default function OrdersHistoryPage() {
               </div>
             </div>
             
-            <HamburgerMenu 
-              items={menuItems}
-              onLogout={handleLogout}
-              userName={client?.name}
-              userRole="Client"
-            />
+            <div className="flex items-center gap-4">
+              {/* Loyalty Points Badge */}
+              <Link 
+                href="/client-portal/loyalty"
+                className="hidden sm:flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-yellow-400 to-yellow-500 text-white rounded-full font-bold text-sm shadow-lg hover:shadow-xl transition"
+              >
+                <span>⭐</span>
+                <span>{loyaltyPoints} pts</span>
+              </Link>
+              
+              <HamburgerMenu 
+                items={menuItems}
+                onLogout={handleLogout}
+                userName={client?.name}
+                userRole="Client"
+              />
+            </div>
           </div>
         </div>
       </nav>
@@ -251,6 +289,11 @@ export default function OrdersHistoryPage() {
                           <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full font-semibold">
                             {order.service_type}
                           </span>
+                          {order.status === 'delivered' && !order.review_submitted && (
+                            <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full font-semibold">
+                              ⭐ Review Pending
+                            </span>
+                          )}
                         </div>
                       </div>
                       
@@ -320,6 +363,9 @@ export default function OrdersHistoryPage() {
                         </td>
                         <td className="py-4 px-6">
                           <StatusBadge status={order.status} />
+                          {order.status === 'delivered' && !order.review_submitted && (
+                            <div className="text-xs text-yellow-600 font-semibold mt-1">⭐ Review pending</div>
+                          )}
                         </td>
                         <td className="py-4 px-6 text-sm font-bold text-gray-900 text-right">
                           ${Number(order.price).toFixed(2)}
@@ -387,6 +433,30 @@ export default function OrdersHistoryPage() {
                   <p className="text-3xl font-black">${Number(selectedOrder.price).toFixed(2)}</p>
                 </div>
               </div>
+
+              {/* Review Prompt for Delivered Orders */}
+              {selectedOrder.status === 'delivered' && !selectedOrder.review_submitted && (
+                <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-xl p-4 text-white">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-bold mb-1">⭐ Rate Your Experience</p>
+                      <p className="text-sm opacity-90">Help us improve our service!</p>
+                    </div>
+                    <button
+                      onClick={() => openReviewModal(selectedOrder)}
+                      className="px-4 py-2 bg-white text-yellow-600 rounded-lg font-bold text-sm hover:bg-gray-50 transition"
+                    >
+                      Leave Review
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {selectedOrder.review_submitted && (
+                <div className="bg-green-50 rounded-xl p-4 border border-green-200">
+                  <p className="text-sm font-bold text-green-900">✅ Thank you for your review!</p>
+                </div>
+              )}
 
               {/* Date & Time */}
               <div className="bg-blue-50 rounded-xl p-4">
@@ -504,13 +574,22 @@ export default function OrdersHistoryPage() {
             {/* Footer Actions */}
             <div className="p-6 border-t border-gray-200 bg-gray-50">
               <div className="flex gap-3">
-                <Link
-                  href={`/client-portal/orders/${selectedOrder.id}/track`}
-                  className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold text-center hover:bg-red-700 transition"
-                  onClick={closeOrderModal}
-                >
-                  📍 Track Order
-                </Link>
+                {selectedOrder.status === 'delivered' && !selectedOrder.review_submitted ? (
+                  <button
+                    onClick={() => openReviewModal(selectedOrder)}
+                    className="flex-1 py-3 bg-yellow-500 text-white rounded-xl font-bold text-center hover:bg-yellow-600 transition"
+                  >
+                    ⭐ Leave Review
+                  </button>
+                ) : (
+                  <Link
+                    href={`/client-portal/orders/${selectedOrder.id}/track`}
+                    className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold text-center hover:bg-red-700 transition"
+                    onClick={closeOrderModal}
+                  >
+                    📍 Track Order
+                  </Link>
+                )}
                 <Link
                   href={`/client-portal/orders/${selectedOrder.id}/label`}
                   className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold text-center hover:bg-gray-300 transition"
@@ -525,6 +604,28 @@ export default function OrdersHistoryPage() {
               >
                 Close
               </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Review Modal */}
+      {showReviewModal && selectedOrder && (
+        <>
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-50"
+            onClick={closeReviewModal}
+          />
+          <div className="fixed inset-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-md bg-white rounded-2xl shadow-2xl z-50 overflow-hidden">
+            <div className="p-6">
+              <ReviewForm 
+                orderId={selectedOrder.id}
+                customerName={client?.name || 'Customer'}
+                onSuccess={() => {
+                  closeReviewModal();
+                  loadOrders(); // Refresh orders to update review status
+                }}
+              />
             </div>
           </div>
         </>
