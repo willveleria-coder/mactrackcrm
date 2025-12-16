@@ -1,63 +1,112 @@
-// public/sw.js
-
-const CACHE_NAME = "mac-track-crm-v1";
-const STATIC_ASSETS = [
-  "/",
-  "/favicon.ico",
-  "/manifest.webmanifest",
-  "/icons/icon-192x192.png",
-  "/icons/icon-512x512.png",
-  "/icons/maskable-icon-512x512.png"
+const CACHE_NAME = 'mactrack-v1';
+const urlsToCache = [
+  '/',
+  '/driver/dashboard',
+  '/driver/login',
+  '/bus-icon.png',
+  '/manifest.json'
 ];
 
-self.addEventListener("install", (event) => {
+// Install event
+self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(urlsToCache))
   );
+  self.skipWaiting();
 });
 
-self.addEventListener("activate", (event) => {
+// Activate event
+self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(
-        keys
-          .filter((key) => key !== CACHE_NAME)
-          .map((key) => caches.delete(key))
-      )
-    )
-  );
-});
-
-// Basic fetch handler
-self.addEventListener("fetch", (event) => {
-  const { request } = event;
-
-  // Only handle GET
-  if (request.method !== "GET") return;
-
-  // Network-first for HTML (pages)
-  if (request.headers.get("accept")?.includes("text/html")) {
-    event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-          return response;
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME) {
+            return caches.delete(cacheName);
+          }
         })
-        .catch(() => caches.match(request).then((res) => res || caches.match("/")))
-    );
-    return;
+      );
+    })
+  );
+  self.clients.claim();
+});
+
+// Fetch event - Network first, fallback to cache
+self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    fetch(event.request)
+      .catch(() => caches.match(event.request))
+  );
+});
+
+// Push notification event
+self.addEventListener('push', (event) => {
+  console.log('Push received:', event);
+  
+  let data = {
+    title: '🚐 Mac Track',
+    body: 'You have a new notification',
+    icon: '/bus-icon.png',
+    badge: '/badge-icon.png'
+  };
+
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      data.body = event.data.text();
+    }
   }
 
-  // Cache-first for everything else (static assets)
-  event.respondWith(
-    caches.match(request).then((cached) => {
-      if (cached) return cached;
-      return fetch(request).then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
-        return response;
-      });
-    })
+  const options = {
+    body: data.body,
+    icon: data.icon || '/bus-icon.png',
+    badge: data.badge || '/badge-icon.png',
+    tag: data.tag || 'default',
+    data: data.data || {},
+    actions: data.actions || [],
+    requireInteraction: data.requireInteraction || false,
+    vibrate: data.vibrate || [200, 100, 200]
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
+});
+
+// Notification click event
+self.addEventListener('notificationclick', (event) => {
+  console.log('Notification clicked:', event);
+  event.notification.close();
+
+  const action = event.action;
+  const data = event.notification.data || {};
+
+  let url = '/driver/dashboard';
+
+  if (action === 'accept' && data.orderId) {
+    url = `/driver/dashboard?accept=${data.orderId}`;
+  } else if (action === 'view' && data.url) {
+    url = data.url;
+  } else if (data.url) {
+    url = data.url;
+  }
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then((windowClients) => {
+        // Check if there's already a window open
+        for (const client of windowClients) {
+          if (client.url.includes('mactrack') && 'focus' in client) {
+            client.navigate(url);
+            return client.focus();
+          }
+        }
+        // Open new window if none exists
+        if (clients.openWindow) {
+          return clients.openWindow(url);
+        }
+      })
   );
 });

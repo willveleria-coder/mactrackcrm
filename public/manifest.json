@@ -1,11 +1,11 @@
 {
-  "name": "Mac With A Van - Driver App",
-  "short_name": "Mac Van",
-  "description": "Professional courier delivery driver app",
+  "name": "Mac Track Driver",
+  "short_name": "Mac Track",
+  "description": "Mac Track Driver Portal - Delivery Management",
   "start_url": "/driver/dashboard",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#0072ab",
+  "theme_color": "#dc2626",
   "orientation": "portrait",
   "icons": [
     {

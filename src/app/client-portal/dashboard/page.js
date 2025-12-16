@@ -5,10 +5,12 @@ import { createClient } from "../../../lib/supabase/client";
 import Link from "next/link";
 import Image from "next/image";
 import HamburgerMenu from "@/components/HamburgerMenu";
+import LiveChat from "@/components/LiveChat";
+import LoyaltyCard from "@/components/LoyaltyCard";
 import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 
 function ClientDashboardContent() {
-  const { theme } = useTheme(); // Get current theme
+  const { theme } = useTheme();
   const [client, setClient] = useState(null);
   const [orders, setOrders] = useState([]);
   const [stats, setStats] = useState({
@@ -77,13 +79,7 @@ function ClientDashboardContent() {
           .reduce((sum, o) => sum + (Number(o.price) || 0), 0);
         const thisMonth = ordersData.filter(o => new Date(o.created_at) >= monthStart).length;
 
-        setStats({
-          totalOrders,
-          inProgress,
-          completed,
-          totalSpent,
-          thisMonth,
-        });
+        setStats({ totalOrders, inProgress, completed, totalSpent, thisMonth });
       }
 
     } catch (error) {
@@ -111,30 +107,18 @@ function ClientDashboardContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff]">
-      {/* Navigation - Uses dynamic theme */}
+      {/* Navigation */}
       <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 shadow-sm sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Image
-                src="/bus-icon.png"
-                alt="Mac Track"
-                width={40}
-                height={40}
-                className="object-contain"
-              />
+              <Image src="/bus-icon.png" alt="Mac Track" width={40} height={40} className="object-contain" />
               <div>
                 <h1 className={`text-xl sm:text-2xl font-black ${theme.text}`}>Mac Track</h1>
                 <p className="text-xs text-gray-500">Client Portal</p>
               </div>
             </div>
-            
-            <HamburgerMenu 
-              items={menuItems}
-              onLogout={handleLogout}
-              userName={client?.name}
-              userRole="Client"
-            />
+            <HamburgerMenu items={menuItems} onLogout={handleLogout} userName={client?.name} userRole="Client" />
           </div>
         </div>
       </nav>
@@ -142,13 +126,16 @@ function ClientDashboardContent() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         
         <div className="mb-6 sm:mb-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-            Welcome back, {client?.name}! 👋
-          </h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Welcome back, {client?.name}! 👋</h2>
           <p className="text-sm sm:text-base text-gray-600">Here's your delivery overview</p>
         </div>
 
-        {/* Enhanced Stats Grid - Uses dynamic theme gradients */}
+        {/* Loyalty Card */}
+        <div className="mb-6">
+          <LoyaltyCard clientId={client?.id} />
+        </div>
+
+        {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
           <div className={`bg-gradient-to-br ${theme.gradient} rounded-2xl p-4 sm:p-5 text-white shadow-lg hover:shadow-xl transition transform hover:scale-105`}>
             <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">Total Orders</p>
@@ -181,44 +168,31 @@ function ClientDashboardContent() {
           </div>
         </div>
 
-        {/* Quick Actions - Uses dynamic theme */}
+        {/* Quick Actions */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
-          <Link
-            href="/client-portal/new-order"
-            className={`p-5 bg-gradient-to-br ${theme.gradient} text-white rounded-2xl shadow-lg hover:shadow-xl transition transform hover:scale-105 text-center`}
-          >
+          <Link href="/client-portal/new-order" className={`p-5 bg-gradient-to-br ${theme.gradient} text-white rounded-2xl shadow-lg hover:shadow-xl transition transform hover:scale-105 text-center`}>
             <div className="text-4xl mb-2">📦</div>
             <p className="font-bold text-sm sm:text-base">New Order</p>
           </Link>
 
-          <Link
-            href="/client-portal/orders"
-            className="p-5 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl shadow-lg hover:shadow-xl transition transform hover:scale-105 text-center"
-          >
+          <Link href="/client-portal/orders" className="p-5 bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl shadow-lg hover:shadow-xl transition transform hover:scale-105 text-center">
             <div className="text-4xl mb-2">📋</div>
             <p className="font-bold text-sm sm:text-base">All Orders</p>
           </Link>
 
-          <a
-            href="mailto:support@mactrack.com.au"
-            className="p-5 bg-gradient-to-br from-green-500 to-green-600 text-white rounded-2xl shadow-lg hover:shadow-xl transition transform hover:scale-105 text-center"
-          >
-            <div className="text-4xl mb-2">💬</div>
-            <p className="font-bold text-sm sm:text-base">Support</p>
-          </a>
+          <Link href="/client-portal/loyalty" className="p-5 bg-gradient-to-br from-yellow-500 to-yellow-600 text-white rounded-2xl shadow-lg hover:shadow-xl transition transform hover:scale-105 text-center">
+            <div className="text-4xl mb-2">🎁</div>
+            <p className="font-bold text-sm sm:text-base">Rewards</p>
+          </Link>
 
-          <a
-            href="tel:+61400000000"
-            className="p-5 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-2xl shadow-lg hover:shadow-xl transition transform hover:scale-105 text-center"
-          >
+          <a href="tel:0430233811" className="p-5 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-2xl shadow-lg hover:shadow-xl transition transform hover:scale-105 text-center">
             <div className="text-4xl mb-2">📞</div>
             <p className="font-bold text-sm sm:text-base">Call Us</p>
           </a>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 mb-8">
-          
-          {/* Active Deliveries - Uses dynamic theme */}
+          {/* Active Deliveries */}
           <div className="lg:col-span-2">
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-5 sm:p-6">
               <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-4">🚚 Active Deliveries</h3>
@@ -227,21 +201,14 @@ function ClientDashboardContent() {
                 <div className="text-center py-12">
                   <div className="text-6xl mb-4">📦</div>
                   <p className="text-gray-500 text-lg font-semibold mb-4">No Active Deliveries</p>
-                  <Link
-                    href="/client-portal/new-order"
-                    className={`inline-block px-6 py-3 ${theme.bg} hover:${theme.bgHover} text-white rounded-xl font-bold transition shadow-lg`}
-                  >
+                  <Link href="/client-portal/new-order" className={`inline-block px-6 py-3 ${theme.bg} text-white rounded-xl font-bold transition shadow-lg`}>
                     Create New Order
                   </Link>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {activeDeliveries.map((order) => (
-                    <div
-                      key={order.id}
-                      onClick={() => setSelectedOrder(order)}
-                      className={`p-4 border-2 border-gray-200 rounded-xl hover:border-${theme.id}-500 transition cursor-pointer bg-white`}
-                    >
+                    <div key={order.id} onClick={() => setSelectedOrder(order)} className="p-4 border-2 border-gray-200 rounded-xl hover:border-red-500 transition cursor-pointer bg-white">
                       <div className="flex justify-between items-start mb-3">
                         <div>
                           <p className="font-bold text-gray-900">Order #{order.id.slice(0, 8)}</p>
@@ -261,11 +228,7 @@ function ClientDashboardContent() {
                         </div>
                       </div>
 
-                      <Link
-                        href={`/client-portal/orders/${order.id}/track`}
-                        className={`block w-full text-center py-2 ${theme.bg} hover:${theme.bgHover} text-white rounded-lg font-semibold text-sm transition`}
-                        onClick={(e) => e.stopPropagation()}
-                      >
+                      <Link href={`/client-portal/orders/${order.id}/track`} className={`block w-full text-center py-2 ${theme.bg} text-white rounded-lg font-semibold text-sm transition`} onClick={(e) => e.stopPropagation()}>
                         Track Live 📍
                       </Link>
                     </div>
@@ -295,24 +258,13 @@ function ClientDashboardContent() {
                     <p className="font-semibold text-gray-900">{client?.phone}</p>
                   </div>
                 )}
-                {client?.company && (
-                  <div>
-                    <p className="text-gray-600 mb-1">Company</p>
-                    <p className="font-semibold text-gray-900">{client?.company}</p>
-                  </div>
-                )}
                 <div>
                   <p className="text-gray-600 mb-1">Member Since</p>
-                  <p className="font-semibold text-gray-900">
-                    {new Date(client?.created_at).toLocaleDateString()}
-                  </p>
+                  <p className="font-semibold text-gray-900">{new Date(client?.created_at).toLocaleDateString()}</p>
                 </div>
               </div>
 
-              <Link
-                href="/client-portal/settings"
-                className={`block w-full text-center mt-4 py-3 ${theme.bg} hover:${theme.bgHover} text-white rounded-xl font-bold transition shadow-lg`}
-              >
+              <Link href="/client-portal/settings" className={`block w-full text-center mt-4 py-3 ${theme.bg} text-white rounded-xl font-bold transition shadow-lg`}>
                 Settings ⚙️
               </Link>
             </div>
@@ -322,23 +274,15 @@ function ClientDashboardContent() {
               <h3 className="text-lg font-bold mb-4">💬 Help & Support</h3>
               
               <div className="space-y-3">
-                <a
-                  href="mailto:support@mactrack.com.au"
-                  className="block w-full text-center py-2 bg-white/20 hover:bg-white/30 rounded-lg font-semibold text-sm transition backdrop-blur-sm"
-                >
+                <a href="mailto:macwithavan@mail.com" className="block w-full text-center py-2 bg-white/20 hover:bg-white/30 rounded-lg font-semibold text-sm transition backdrop-blur-sm">
                   📧 Email Support
                 </a>
-                <a
-                  href="tel:+61400000000"
-                  className="block w-full text-center py-2 bg-white/20 hover:bg-white/30 rounded-lg font-semibold text-sm transition backdrop-blur-sm"
-                >
+                <a href="tel:0430233811" className="block w-full text-center py-2 bg-white/20 hover:bg-white/30 rounded-lg font-semibold text-sm transition backdrop-blur-sm">
                   📞 Call Us
                 </a>
               </div>
 
-              <p className="text-xs opacity-75 mt-4 text-center">
-                Mon-Fri, 9AM-6PM AEST
-              </p>
+              <p className="text-xs opacity-75 mt-4 text-center">Mon-Fri, 9AM-6PM AEST</p>
             </div>
           </div>
         </div>
@@ -347,10 +291,7 @@ function ClientDashboardContent() {
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-5 sm:p-6">
           <div className="flex justify-between items-center mb-5">
             <h3 className="text-lg sm:text-xl font-bold text-gray-900">📦 Recent Orders</h3>
-            <Link
-              href="/client-portal/orders"
-              className={`text-sm font-semibold ${theme.text} hover:underline`}
-            >
+            <Link href="/client-portal/orders" className={`text-sm font-semibold ${theme.text} hover:underline`}>
               View All →
             </Link>
           </div>
@@ -363,11 +304,7 @@ function ClientDashboardContent() {
           ) : (
             <div className="space-y-3">
               {recentOrders.map((order) => (
-                <div
-                  key={order.id}
-                  onClick={() => setSelectedOrder(order)}
-                  className="p-4 border-2 border-gray-200 rounded-xl hover:border-gray-400 transition cursor-pointer bg-white"
-                >
+                <div key={order.id} onClick={() => setSelectedOrder(order)} className="p-4 border-2 border-gray-200 rounded-xl hover:border-gray-400 transition cursor-pointer bg-white">
                   <div className="flex justify-between items-start mb-2">
                     <div>
                       <p className="font-bold text-gray-900">Order #{order.id.slice(0, 8)}</p>
@@ -390,11 +327,13 @@ function ClientDashboardContent() {
       {selectedOrder && (
         <OrderModal order={selectedOrder} onClose={() => setSelectedOrder(null)} theme={theme} />
       )}
+
+      {/* Live Chat Button */}
+      {client && <LiveChat userType="client" userId={client.id} />}
     </div>
   );
 }
 
-// Wrap the component with ThemeProvider
 export default function ClientDashboard() {
   return (
     <ThemeProvider userType="client">
@@ -428,23 +367,14 @@ function StatusBadge({ status }) {
 function OrderModal({ order, onClose, theme }) {
   return (
     <>
-      <div 
-        className="fixed inset-0 bg-black bg-opacity-50 z-40"
-        onClick={onClose}
-      />
-      
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={onClose} />
       <div className="fixed inset-4 sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:inset-auto bg-white rounded-2xl shadow-2xl z-50 sm:w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className={`bg-gradient-to-r ${theme.gradient} text-white p-6 flex justify-between items-start`}>
           <div>
             <h3 className="text-2xl font-black mb-1">Order Details</h3>
             <p className="text-sm opacity-90">#{order.id.slice(0, 8)}</p>
           </div>
-          <button
-            onClick={onClose}
-            className="text-white hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-2xl font-bold"
-          >
-            ×
-          </button>
+          <button onClick={onClose} className="text-white hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-2xl font-bold">×</button>
         </div>
 
         <div className="p-6">
@@ -453,37 +383,24 @@ function OrderModal({ order, onClose, theme }) {
               <p className="text-sm text-gray-600 mb-1">Status</p>
               <StatusBadge status={order.status} />
             </div>
-
             <div>
               <p className="text-sm text-gray-600 mb-1">Total Price</p>
               <p className="text-2xl font-bold text-green-600">${Number(order.price).toFixed(2)}</p>
             </div>
-
             <div>
               <p className="text-sm font-bold text-gray-900 mb-2">📍 Pickup Address</p>
               <p className="text-gray-700">{order.pickup_address}</p>
-              {order.pickup_contact_name && (
-                <p className="text-sm text-gray-600 mt-1">Contact: {order.pickup_contact_name}</p>
-              )}
             </div>
-
             <div>
               <p className="text-sm font-bold text-gray-900 mb-2">🎯 Delivery Address</p>
               <p className="text-gray-700">{order.dropoff_address}</p>
-              {order.dropoff_contact_name && (
-                <p className="text-sm text-gray-600 mt-1">Contact: {order.dropoff_contact_name}</p>
-              )}
             </div>
-
             <div>
               <p className="text-sm font-bold text-gray-900 mb-2">📦 Parcel Details</p>
               <p className="text-gray-700">Size: {order.parcel_size}</p>
-              {order.parcel_weight && (
-                <p className="text-gray-700">Weight: {order.parcel_weight}kg</p>
-              )}
+              {order.parcel_weight && <p className="text-gray-700">Weight: {order.parcel_weight}kg</p>}
               <p className="text-gray-700">Quantity: {order.quantity}</p>
             </div>
-
             {order.notes && (
               <div>
                 <p className="text-sm font-bold text-gray-900 mb-2">📝 Notes</p>
@@ -491,13 +408,7 @@ function OrderModal({ order, onClose, theme }) {
               </div>
             )}
           </div>
-
-          <button
-            onClick={onClose}
-            className="w-full mt-6 py-3 bg-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-400 transition"
-          >
-            Close
-          </button>
+          <button onClick={onClose} className="w-full mt-6 py-3 bg-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-400 transition">Close</button>
         </div>
       </div>
     </>
