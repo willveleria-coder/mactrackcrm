@@ -1,25 +1,31 @@
 import { NextResponse } from 'next/server';
-import { Resend } from 'resend';
-
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(request) {
   try {
     const { to, subject, html } = await request.json();
 
-    const { data, error } = await resend.emails.send({
-      from: 'Mac Track <onboarding@resend.dev>', // Will use this until you verify your domain
-      to: [to],
-      subject: subject,
-      html: html,
+    // Using Resend API (sign up at resend.com for free)
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: 'Mac Track <noreply@mactrack.com.au>',
+        to: [to],
+        subject,
+        html
+      })
     });
 
-    if (error) {
-      return NextResponse.json({ error }, { status: 400 });
+    if (!response.ok) {
+      throw new Error('Failed to send email');
     }
 
-    return NextResponse.json({ data });
+    return NextResponse.json({ success: true });
   } catch (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('Email error:', error);
+    return NextResponse.json({ error: 'Failed to send email' }, { status: 500 });
   }
 }
