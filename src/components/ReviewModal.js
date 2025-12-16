@@ -83,10 +83,7 @@ export default function ReviewModal({ order, onClose, onSubmit }) {
         />
 
         <div className="flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 py-3 border-2 border-gray-300 rounded-xl font-bold text-gray-600 hover:bg-gray-50"
-          >
+          <button onClick={onClose} className="flex-1 py-3 border-2 border-gray-300 rounded-xl font-bold text-gray-600 hover:bg-gray-50">
             Skip
           </button>
           <button

@@ -67,19 +67,13 @@ export default function LoyaltyCard({ clientId }) {
           <span>{tier.next ? `${tier.next} pts to go` : "Max tier!"}</span>
         </div>
         <div className="h-2 bg-white/30 rounded-full overflow-hidden">
-          <div 
-            className="h-full bg-white rounded-full transition-all"
-            style={{ width: tier.next ? `${((500 - tier.next) / 500) * 100}%` : "100%" }}
-          />
+          <div className="h-full bg-white rounded-full transition-all" style={{ width: tier.next ? `${((500 - tier.next) / 500) * 100}%` : "100%" }} />
         </div>
       </div>
 
       <div className="flex justify-between items-center">
         <p className="text-red-200 text-sm">Earn 1 point per $1 spent</p>
-        <button
-          onClick={() => setShowHistory(!showHistory)}
-          className="text-sm underline hover:no-underline"
-        >
+        <button onClick={() => setShowHistory(!showHistory)} className="text-sm underline hover:no-underline">
           {showHistory ? "Hide" : "View"} History
         </button>
       </div>
