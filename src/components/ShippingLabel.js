@@ -1,4 +1,3 @@
-cat > components/ShippingLabel.jsx << 'EOF'
 "use client";
 import { QRCodeSVG } from "qrcode.react";
 
@@ -9,202 +8,153 @@ export default function ShippingLabel({ order, client, showPrintButton = true })
   if (!order) return null;
 
   return (
-    <div className="label-page min-h-screen bg-gray-200 p-4 print:p-0 print:bg-white">
+    <div className="label-page">
       {showPrintButton && (
-        <div className="print:hidden flex justify-center mb-6">
-          <button onClick={() => window.print()} className="px-10 py-4 bg-red-600 text-white rounded-2xl font-bold text-lg hover:bg-red-700 transition shadow-xl flex items-center gap-3">
-            <span className="text-2xl">🖨️</span> Print Label
+        <div className="no-print flex justify-center mb-6">
+          <button onClick={() => window.print()} className="px-10 py-4 bg-red-600 text-white rounded-2xl font-bold text-lg hover:bg-red-700 transition shadow-xl">
+            🖨️ Print Label
           </button>
         </div>
       )}
 
-      <div className="label-container bg-white border-4 border-black overflow-hidden mx-auto shadow-2xl print:shadow-none print:border-[3px] print:min-h-[100vh]" style={{ maxWidth: '210mm', minHeight: '290mm' }}>
+      <div id="printable-label" style={{ width: '210mm', height: '297mm', margin: '0 auto', backgroundColor: 'white', border: '3px solid black', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxSizing: 'border-box' }}>
         
-        {/* Header - Red Banner - BIGGER */}
-        <div className="bg-red-600 text-white px-10 py-8">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-5">
-              <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center shadow-lg">
-                <span className="text-5xl">🚐</span>
-              </div>
-              <div>
-                <h1 className="text-5xl font-black tracking-tight">MAC TRACK</h1>
-                <p className="text-xl opacity-90 font-medium mt-1">Courier Service</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className="text-lg opacity-75 uppercase tracking-wide">Order ID</p>
-              <p className="text-4xl font-black font-mono mt-1">#{order.id?.slice(0, 8).toUpperCase()}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* QR Code & Service Section - BIGGER */}
-        <div className="flex border-b-4 border-black" style={{ minHeight: '180px' }}>
-          <div className="p-8 border-r-4 border-black bg-gray-50 flex flex-col items-center justify-center" style={{ minWidth: '220px' }}>
-            <QRCodeSVG value={trackingUrl} size={150} level="H" includeMargin={false} />
-            <p className="text-base text-gray-600 mt-4 font-bold uppercase tracking-wide">Scan to Track</p>
-            <p className="text-sm text-gray-400 font-mono mt-1">{order.id?.slice(0, 8).toUpperCase()}</p>
-          </div>
-          
-          <div className="flex-1 p-8 bg-white flex flex-col justify-center">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-base text-gray-500 font-bold uppercase tracking-wide mb-3">Service Type</p>
-                <div className="inline-block bg-red-600 text-white px-8 py-4 rounded-xl">
-                  <p className="text-3xl font-black uppercase">{order.service_type?.replace(/_/g, ' ') || 'Standard'}</p>
-                </div>
-              </div>
-              {order.fragile && (
-                <div className="bg-red-100 border-4 border-red-500 rounded-xl px-8 py-5">
-                  <p className="text-3xl font-black text-red-600">⚠️ FRAGILE</p>
-                  <p className="text-base text-red-500 font-bold mt-1">Handle with Care</p>
-                </div>
-              )}
-            </div>
-            {order.scheduled_date && (
-              <div className="mt-6 bg-blue-50 rounded-xl p-5 border-2 border-blue-200">
-                <p className="text-base text-blue-600 font-bold uppercase">📅 Scheduled Delivery</p>
-                <p className="text-2xl font-black text-gray-900 mt-2">{order.scheduled_date} {order.scheduled_time && `at ${order.scheduled_time}`}</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Addresses - MUCH BIGGER */}
-        <div className="grid grid-cols-2 border-b-4 border-black" style={{ minHeight: '240px' }}>
-          <div className="p-8 border-r-4 border-black bg-blue-50 flex flex-col">
-            <div className="flex items-center gap-4 mb-5">
-              <div className="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center"><span className="text-3xl">📍</span></div>
-              <div>
-                <p className="text-lg text-blue-600 font-black uppercase tracking-wide">Pickup From</p>
-                <p className="text-sm text-blue-400">Collection Point</p>
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-gray-900 leading-relaxed mb-5 flex-grow">{order.pickup_address}</p>
-            {order.pickup_contact_name && (
-              <div className="bg-white rounded-xl p-5 border-2 border-blue-200">
-                <p className="text-xl font-bold text-gray-900">👤 {order.pickup_contact_name}</p>
-                {order.pickup_contact_phone && <p className="text-xl text-gray-600 mt-2">📞 {order.pickup_contact_phone}</p>}
-              </div>
-            )}
-          </div>
-
-          <div className="p-8 bg-green-50 flex flex-col">
-            <div className="flex items-center gap-4 mb-5">
-              <div className="w-14 h-14 bg-green-600 rounded-full flex items-center justify-center"><span className="text-3xl">🎯</span></div>
-              <div>
-                <p className="text-lg text-green-600 font-black uppercase tracking-wide">Deliver To</p>
-                <p className="text-sm text-green-400">Destination</p>
-              </div>
-            </div>
-            <p className="text-2xl font-bold text-gray-900 leading-relaxed mb-5 flex-grow">{order.dropoff_address}</p>
-            {order.dropoff_contact_name && (
-              <div className="bg-white rounded-xl p-5 border-2 border-green-200">
-                <p className="text-xl font-bold text-gray-900">👤 {order.dropoff_contact_name}</p>
-                {order.dropoff_contact_phone && <p className="text-xl text-gray-600 mt-2">📞 {order.dropoff_contact_phone}</p>}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Parcel Details - BIGGER */}
-        <div className="p-8 border-b-4 border-black bg-gray-100" style={{ minHeight: '160px' }}>
-          <div className="flex items-center gap-4 mb-6">
-            <span className="text-4xl">📦</span>
-            <p className="text-2xl font-black text-gray-900 uppercase">Parcel Details</p>
-          </div>
-          <div className="grid grid-cols-4 gap-6">
-            <div className="bg-white rounded-xl p-6 text-center border-2 border-gray-200">
-              <p className="text-base text-gray-500 font-bold uppercase mb-3">Size</p>
-              <p className="text-2xl font-black text-gray-900 capitalize">{order.parcel_size?.replace(/_/g, ' ') || 'N/A'}</p>
-            </div>
-            <div className="bg-white rounded-xl p-6 text-center border-2 border-gray-200">
-              <p className="text-base text-gray-500 font-bold uppercase mb-3">Weight</p>
-              <p className="text-2xl font-black text-gray-900">{order.parcel_weight || 0} kg</p>
-            </div>
-            <div className="bg-white rounded-xl p-6 text-center border-2 border-gray-200">
-              <p className="text-base text-gray-500 font-bold uppercase mb-3">Quantity</p>
-              <p className="text-2xl font-black text-gray-900">{order.quantity || 1}</p>
-            </div>
-            <div className="bg-white rounded-xl p-6 text-center border-2 border-gray-200">
-              <p className="text-base text-gray-500 font-bold uppercase mb-3">Dimensions</p>
-              <p className="text-2xl font-black text-gray-900">{order.length && order.width && order.height ? `${order.length}×${order.width}×${order.height}` : 'N/A'}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Notes - BIGGER */}
-        {order.notes ? (
-          <div className="p-8 border-b-4 border-black bg-yellow-50" style={{ minHeight: '140px' }}>
-            <div className="flex items-center gap-4 mb-5">
-              <span className="text-4xl">📝</span>
-              <p className="text-2xl font-black text-yellow-800 uppercase">Delivery Instructions</p>
-            </div>
-            <div className="bg-white rounded-xl p-6 border-2 border-yellow-300">
-              <p className="text-xl text-gray-900 leading-relaxed whitespace-pre-wrap">{order.notes}</p>
-            </div>
-          </div>
-        ) : (
-          <div className="p-8 border-b-4 border-black bg-gray-50" style={{ minHeight: '100px' }}>
-            <div className="flex items-center gap-4">
-              <span className="text-4xl">📝</span>
-              <p className="text-2xl font-black text-gray-400 uppercase">No Special Instructions</p>
-            </div>
-          </div>
-        )}
-
-        {/* Customer & Date - BIGGER */}
-        <div className="grid grid-cols-2 border-b-4 border-black" style={{ minHeight: '120px' }}>
-          <div className="p-8 border-r-4 border-black bg-white flex flex-col justify-center">
-            <p className="text-base text-gray-500 font-bold uppercase mb-2">Customer</p>
-            <p className="text-2xl font-black text-gray-900">{client?.name || order.client?.name || 'N/A'}</p>
-            {(client?.email || order.client?.email) && <p className="text-lg text-gray-500 mt-2">{client?.email || order.client?.email}</p>}
-            {(client?.phone || order.client?.phone) && <p className="text-lg text-gray-500 mt-1">📞 {client?.phone || order.client?.phone}</p>}
-          </div>
-          <div className="p-8 bg-white flex flex-col justify-center">
-            <p className="text-base text-gray-500 font-bold uppercase mb-2">Order Date</p>
-            <p className="text-2xl font-black text-gray-900">{order.created_at ? new Date(order.created_at).toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}</p>
-            <p className="text-lg text-gray-500 mt-2">{order.created_at ? new Date(order.created_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' }) : ''}</p>
-          </div>
-        </div>
-
-        {/* Footer - BIGGER */}
-        <div className="bg-gray-900 text-white px-10 py-8">
-          <div className="flex justify-between items-center">
+        <div style={{ backgroundColor: '#dc2626', color: 'white', padding: '24px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ width: '70px', height: '70px', backgroundColor: 'white', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px' }}>🚐</div>
             <div>
-              <p className="text-2xl font-bold">📞 0430 233 811</p>
-              <p className="text-lg opacity-75 mt-1">macwithavan@mail.com</p>
+              <h1 style={{ fontSize: '42px', fontWeight: '900', margin: 0 }}>MAC TRACK</h1>
+              <p style={{ fontSize: '18px', margin: 0, opacity: 0.9 }}>Courier Service</p>
             </div>
-            <div className="text-center">
-              <p className="text-lg font-bold">ABN: 18 616 164 875</p>
-              <p className="text-base opacity-75 mt-2">⚠️ Keep this label visible during transit</p>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <p style={{ fontSize: '14px', margin: 0, opacity: 0.8 }}>ORDER ID</p>
+            <p style={{ fontSize: '32px', fontWeight: '900', margin: 0, fontFamily: 'monospace' }}>#{order.id?.slice(0, 8).toUpperCase()}</p>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', borderBottom: '3px solid black', flex: '0 0 auto' }}>
+          <div style={{ padding: '24px', borderRight: '3px solid black', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: '180px' }}>
+            <QRCodeSVG value={trackingUrl} size={130} level="H" />
+            <p style={{ fontSize: '14px', fontWeight: 'bold', marginTop: '12px', color: '#666' }}>SCAN TO TRACK</p>
+          </div>
+          <div style={{ flex: 1, padding: '24px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <p style={{ fontSize: '14px', color: '#666', fontWeight: 'bold', marginBottom: '8px' }}>SERVICE TYPE</p>
+            <div style={{ display: 'inline-block', backgroundColor: '#dc2626', color: 'white', padding: '12px 24px', borderRadius: '12px', width: 'fit-content' }}>
+              <p style={{ fontSize: '28px', fontWeight: '900', margin: 0 }}>{order.service_type?.replace(/_/g, ' ').toUpperCase() || 'STANDARD'}</p>
             </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold">Mac Track</p>
-              <p className="text-lg opacity-75 mt-1">Sydney, Australia</p>
+            {order.fragile && (
+              <div style={{ marginTop: '16px', backgroundColor: '#fee2e2', border: '3px solid #dc2626', borderRadius: '12px', padding: '12px 20px', display: 'inline-block', width: 'fit-content' }}>
+                <p style={{ fontSize: '24px', fontWeight: '900', color: '#dc2626', margin: 0 }}>⚠️ FRAGILE</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', borderBottom: '3px solid black', flex: '1 1 auto', minHeight: '200px' }}>
+          <div style={{ flex: 1, padding: '24px', borderRight: '3px solid black', backgroundColor: '#eff6ff', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <div style={{ width: '48px', height: '48px', backgroundColor: '#2563eb', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>📍</div>
+              <p style={{ fontSize: '18px', fontWeight: '900', color: '#2563eb', margin: 0 }}>PICKUP FROM</p>
             </div>
+            <p style={{ fontSize: '22px', fontWeight: 'bold', lineHeight: 1.4, flex: 1 }}>{order.pickup_address}</p>
+            {order.pickup_contact_name && (
+              <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '16px', border: '2px solid #bfdbfe', marginTop: '12px' }}>
+                <p style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>👤 {order.pickup_contact_name}</p>
+                {order.pickup_contact_phone && <p style={{ fontSize: '18px', margin: '8px 0 0 0', color: '#666' }}>📞 {order.pickup_contact_phone}</p>}
+              </div>
+            )}
+          </div>
+          <div style={{ flex: 1, padding: '24px', backgroundColor: '#f0fdf4', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+              <div style={{ width: '48px', height: '48px', backgroundColor: '#16a34a', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>🎯</div>
+              <p style={{ fontSize: '18px', fontWeight: '900', color: '#16a34a', margin: 0 }}>DELIVER TO</p>
+            </div>
+            <p style={{ fontSize: '22px', fontWeight: 'bold', lineHeight: 1.4, flex: 1 }}>{order.dropoff_address}</p>
+            {order.dropoff_contact_name && (
+              <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '16px', border: '2px solid #bbf7d0', marginTop: '12px' }}>
+                <p style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>👤 {order.dropoff_contact_name}</p>
+                {order.dropoff_contact_phone && <p style={{ fontSize: '18px', margin: '8px 0 0 0', color: '#666' }}>📞 {order.dropoff_contact_phone}</p>}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ padding: '24px', borderBottom: '3px solid black', backgroundColor: '#f3f4f6' }}>
+          <p style={{ fontSize: '20px', fontWeight: '900', marginBottom: '16px' }}>📦 PARCEL DETAILS</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+            <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', textAlign: 'center', border: '2px solid #e5e7eb' }}>
+              <p style={{ fontSize: '14px', color: '#666', fontWeight: 'bold', marginBottom: '8px' }}>SIZE</p>
+              <p style={{ fontSize: '24px', fontWeight: '900', margin: 0 }}>{order.parcel_size?.replace(/_/g, ' ') || 'N/A'}</p>
+            </div>
+            <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', textAlign: 'center', border: '2px solid #e5e7eb' }}>
+              <p style={{ fontSize: '14px', color: '#666', fontWeight: 'bold', marginBottom: '8px' }}>WEIGHT</p>
+              <p style={{ fontSize: '24px', fontWeight: '900', margin: 0 }}>{order.parcel_weight || 0} kg</p>
+            </div>
+            <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', textAlign: 'center', border: '2px solid #e5e7eb' }}>
+              <p style={{ fontSize: '14px', color: '#666', fontWeight: 'bold', marginBottom: '8px' }}>QTY</p>
+              <p style={{ fontSize: '24px', fontWeight: '900', margin: 0 }}>{order.quantity || 1}</p>
+            </div>
+            <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', textAlign: 'center', border: '2px solid #e5e7eb' }}>
+              <p style={{ fontSize: '14px', color: '#666', fontWeight: 'bold', marginBottom: '8px' }}>DIMENSIONS</p>
+              <p style={{ fontSize: '24px', fontWeight: '900', margin: 0 }}>{order.length && order.width && order.height ? `${order.length}x${order.width}x${order.height}` : 'N/A'}</p>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ padding: '24px', borderBottom: '3px solid black', backgroundColor: order.notes ? '#fefce8' : '#f9fafb', flex: '1 1 auto' }}>
+          <p style={{ fontSize: '20px', fontWeight: '900', marginBottom: '12px', color: order.notes ? '#854d0e' : '#9ca3af' }}>📝 DELIVERY INSTRUCTIONS</p>
+          {order.notes ? (
+            <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', border: '2px solid #fde047' }}>
+              <p style={{ fontSize: '20px', lineHeight: 1.5, margin: 0 }}>{order.notes}</p>
+            </div>
+          ) : (
+            <p style={{ fontSize: '18px', color: '#9ca3af', margin: 0 }}>No special instructions</p>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', borderBottom: '3px solid black' }}>
+          <div style={{ flex: 1, padding: '20px 24px', borderRight: '3px solid black', backgroundColor: 'white' }}>
+            <p style={{ fontSize: '14px', color: '#666', fontWeight: 'bold', marginBottom: '8px' }}>CUSTOMER</p>
+            <p style={{ fontSize: '22px', fontWeight: '900', margin: 0 }}>{client?.name || order.client?.name || 'N/A'}</p>
+            {(client?.email || order.client?.email) && <p style={{ fontSize: '16px', color: '#666', margin: '8px 0 0 0' }}>{client?.email || order.client?.email}</p>}
+          </div>
+          <div style={{ flex: 1, padding: '20px 24px', backgroundColor: 'white' }}>
+            <p style={{ fontSize: '14px', color: '#666', fontWeight: 'bold', marginBottom: '8px' }}>ORDER DATE</p>
+            <p style={{ fontSize: '22px', fontWeight: '900', margin: 0 }}>{order.created_at ? new Date(order.created_at).toLocaleDateString('en-AU', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'N/A'}</p>
+          </div>
+        </div>
+
+        <div style={{ backgroundColor: '#111827', color: 'white', padding: '20px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
+          <div>
+            <p style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>📞 0430 233 811</p>
+            <p style={{ fontSize: '14px', opacity: 0.75, margin: '4px 0 0 0' }}>macwithavan@mail.com</p>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: '14px', fontWeight: 'bold', margin: 0 }}>ABN: 18 616 164 875</p>
+            <p style={{ fontSize: '12px', opacity: 0.75, margin: '4px 0 0 0' }}>Keep label visible during transit</p>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <p style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>Mac Track</p>
+            <p style={{ fontSize: '14px', opacity: 0.75, margin: '4px 0 0 0' }}>Sydney, Australia</p>
           </div>
         </div>
       </div>
 
       <style jsx global>{`
         @media print {
-          @page { size: A4 portrait; margin: 0; }
-          html, body { margin: 0 !important; padding: 0 !important; background: white !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-          .print\\:hidden { display: none !important; }
-          .label-page { padding: 0 !important; min-height: 100vh !important; background: white !important; }
-          .label-container { max-width: 100% !important; min-height: 100vh !important; box-shadow: none !important; border-radius: 0 !important; display: flex; flex-direction: column; }
-          .bg-red-600 { background-color: #dc2626 !important; }
-          .bg-blue-50 { background-color: #eff6ff !important; }
-          .bg-blue-600 { background-color: #2563eb !important; }
-          .bg-green-50 { background-color: #f0fdf4 !important; }
-          .bg-green-600 { background-color: #16a34a !important; }
-          .bg-yellow-50 { background-color: #fefce8 !important; }
-          .bg-gray-50 { background-color: #f9fafb !important; }
-          .bg-gray-100 { background-color: #f3f4f6 !important; }
-          .bg-gray-900 { background-color: #111827 !important; }
-          .text-white { color: white !important; }
+          @page { size: A4; margin: 0; }
+          body { margin: 0; padding: 0; }
+          .no-print { display: none !important; }
+          .label-page { padding: 0 !important; }
+          #printable-label { 
+            width: 210mm !important; 
+            height: 297mm !important; 
+            margin: 0 !important;
+            border: none !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
         }
       `}</style>
     </div>
