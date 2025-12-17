@@ -30,7 +30,6 @@ export default function AdminOrdersPage() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  // Column visibility state
   const [visibleColumns, setVisibleColumns] = useState({
     orderId: true,
     client: true,
@@ -140,6 +139,15 @@ export default function AdminOrdersPage() {
     if (!selectedDriver) { alert("Please select a driver first"); return; }
     try {
       const { error } = await supabase.from("orders").update({ driver_id: selectedDriver, status: "pending", driver_status: null }).eq("id", orderId);
+      if (!error) {
+        try {
+          await fetch("/api/notify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ type: "driver_assigned", orderId, userId: selectedDriver, userType: "driver" })
+          });
+        } catch (e) { console.log("Notification error:", e); }
+      }
       if (error) throw error;
       alert("✅ Driver assigned successfully!");
       setSelectedOrder(null); setSelectedDriver(null);
@@ -218,7 +226,7 @@ export default function AdminOrdersPage() {
   }
 
   function handlePrintLabel(order) {
-    const trackingUrl = `https://mactrackcrm-xatn.vercel.app/track/${order.id}`;
+    const trackingUrl = `https://mactrackcrm.vercel.app/track/${order.id}`;
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(trackingUrl)}`;
     
     const labelContent = `<!DOCTYPE html>
@@ -391,7 +399,6 @@ export default function AdminOrdersPage() {
           <Link href="/admin/orders/create" className="px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-bold hover:from-red-600 hover:to-red-700 transition shadow-lg">➕ Create Order</Link>
         </div>
 
-        {/* Filter Tabs */}
         <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-3 mb-6">
           <button onClick={() => setFilter("all")} className={`px-4 sm:px-6 py-3 rounded-xl font-bold text-sm transition ${filter === "all" ? "bg-red-600 text-white shadow-lg" : "bg-white text-gray-700 border-2 border-gray-200 hover:border-red-600"}`}>📋 All ({orders.length})</button>
           <button onClick={() => setFilter("in_progress")} className={`px-4 sm:px-6 py-3 rounded-xl font-bold text-sm transition ${filter === "in_progress" ? "bg-blue-500 text-white shadow-lg" : "bg-white text-gray-700 border-2 border-gray-200 hover:border-blue-500"}`}>🔄 In Progress ({orders.filter(o => o.status === "pending" || o.status === "active").length})</button>
@@ -399,7 +406,6 @@ export default function AdminOrdersPage() {
           <button onClick={() => setFilter("cancelled")} className={`px-4 sm:px-6 py-3 rounded-xl font-bold text-sm transition ${filter === "cancelled" ? "bg-red-500 text-white shadow-lg" : "bg-white text-gray-700 border-2 border-gray-200 hover:border-red-500"}`}>❌ Cancelled ({orders.filter(o => o.status === "cancelled").length})</button>
         </div>
 
-        {/* Search & Filters */}
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-6 mb-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-bold text-gray-900">🔍 Search & Filters</h3>
@@ -443,7 +449,6 @@ export default function AdminOrdersPage() {
           </div>
         </div>
 
-        {/* Orders Table */}
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
           {filteredOrders.length === 0 ? (
             <div className="text-center py-12"><div className="text-6xl mb-4">📦</div><p className="text-gray-500 text-lg font-semibold">No orders found</p></div>
@@ -491,7 +496,6 @@ export default function AdminOrdersPage() {
         </div>
       </main>
 
-      {/* Assign Driver Modal */}
       {selectedOrder && (
         <>
           <div className="fixed inset-0 bg-black bg-opacity-50 z-50" onClick={() => setSelectedOrder(null)} />
@@ -512,7 +516,6 @@ export default function AdminOrdersPage() {
         </>
       )}
 
-      {/* Edit Order Modal */}
       {editOrder && (
         <>
           <div className="fixed inset-0 bg-black bg-opacity-50 z-50" onClick={() => setEditOrder(null)} />
@@ -576,7 +579,6 @@ export default function AdminOrdersPage() {
         </>
       )}
 
-      {/* View Order Details Modal */}
       {viewOrderDetails && (
         <>
           <div className="fixed inset-0 bg-black bg-opacity-50 z-50" onClick={() => setViewOrderDetails(null)} />
@@ -607,7 +609,6 @@ export default function AdminOrdersPage() {
         </>
       )}
 
-      {/* View Driver Modal */}
       {viewDriverDetails && (
         <>
           <div className="fixed inset-0 bg-black bg-opacity-50 z-50" onClick={() => setViewDriverDetails(null)} />
