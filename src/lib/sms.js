@@ -48,18 +48,18 @@ export async function sendSMS({ to, message }) {
 }
 
 export const smsTemplates = {
-  orderCreated: (order) => 
+  orderCreated: (order) =>
     `✅ Mac Track: Order #${order.id?.slice(0, 8).toUpperCase()} confirmed! Track: mactrackcrm.vercel.app/track/${order.id}`,
 
-  orderPickedUp: (order) => 
+  orderPickedUp: (order) =>
     `📦 Mac Track: Your order has been picked up and is on its way! Track live: mactrackcrm.vercel.app/track/${order.id}`,
 
-  orderDelivered: (order) => 
-    `🎉 Mac Track: Your order has been delivered! Thank you for choosing us. Leave a review at mactrackcrm.vercel.app/client-portal/orders`,
+  orderDelivered: (order) =>
+    `🎉 Mac Track: Your order has been delivered! Thank you for choosing us.`,
 
-  driverAssigned: (order) => 
+  driverAssigned: (order) =>
     `🚚 Mac Track: New job assigned! Pickup: ${order.pickup_address?.slice(0, 50)}... Open app to accept.`,
 
-  driverReminder: (order) => 
-    `⚠️ Mac Track: You have a pending job! Please accept or reject ASAP. Open your driver app now.`
+  driverReminder: (order) =>
+    `⚠️ Mac Track: You have a pending job! Please accept or reject ASAP.`
 };
