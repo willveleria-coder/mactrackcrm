@@ -464,7 +464,7 @@ function DriverDashboardContent() {
             </div>
           ) : (
             <div className="space-y-4">
-              {orders.map((order) => (
+              {orders.filter(o => o.status !== 'delivered').map((order) => (
                 <div key={order.id} className={`border-2 rounded-2xl p-4 sm:p-5 hover:shadow-md transition bg-white ${order.status === 'pending' ? 'border-red-400 ring-2 ring-red-200' : 'border-gray-200'}`}>
                   <div className="flex justify-between items-start mb-4">
                     <div>
