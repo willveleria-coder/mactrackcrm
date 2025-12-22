@@ -6,6 +6,17 @@ import Image from "next/image";
 import HamburgerMenu from "@/components/HamburgerMenu";
 
 export default function NewOrderPage() {
+  const router = useRouter();
+  
+  // Check booking hours on page load
+  useEffect(() => {
+    const now = new Date();
+    const hour = now.getHours();
+    if (hour < 7 || hour >= 17) {
+      router.push("/client-portal/orders-closed");
+    }
+  }, []);
+  
   const [client, setClient] = useState(null);
   const [formData, setFormData] = useState({
     pickup_address: "",
