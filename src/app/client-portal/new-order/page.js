@@ -82,7 +82,6 @@ export default function NewOrderPage() {
   const [currentStep, setCurrentStep] = useState(1);
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const router = useRouter();
   const supabase = createClient();
 
   const distanceTimerRef = useRef(null);
