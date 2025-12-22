@@ -175,7 +175,7 @@ function DriverDashboardContent() {
     try {
       const { error } = await supabase
         .from("orders")
-        .update({ status: "active", driver_status: "accepted" })
+        .update({ status: "in_transit", driver_status: "accepted" })
         .eq("id", orderId);
 
       if (error) throw error;
