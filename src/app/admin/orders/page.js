@@ -310,7 +310,7 @@ export default function AdminOrdersPage() {
       <div class="header">
         <div class="header-left">
           <div class="logo-circle">🚐</div>
-          <div><div class="brand-name">MAC TRACK</div><div class="brand-sub">Courier Service</div></div>
+          <div><div class="brand-name">MAC WITH A VAN</div><div class="brand-sub">Courier Service</div></div>
         </div>
         <div><div class="order-id-label">ORDER</div><div class="order-id-value">#${order.id?.slice(0, 8).toUpperCase()}</div></div>
       </div>

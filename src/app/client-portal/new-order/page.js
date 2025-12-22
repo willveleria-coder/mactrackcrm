@@ -438,6 +438,13 @@ export default function NewOrderPage() {
   }
 
   async function handleSubmit(e) {
+    // Check booking hours (7am - 5pm)
+    const now = new Date();
+    const hour = now.getHours();
+    if (hour < 7 || hour >= 17) {
+      setError("Online bookings are available between 7:00 AM and 5:00 PM. For after-hours bookings, please call 0430 233 811.");
+      return;
+    }
     e.preventDefault();
     
     if (!client) {

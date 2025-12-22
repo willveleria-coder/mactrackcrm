@@ -7,7 +7,7 @@ export async function sendEmail({ to, subject, html }) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'Mac Track <notifications@mactrack.com.au>',
+        from: 'Mac Track <macwithavan@mail.com>',
         to: [to],
         subject,
         html

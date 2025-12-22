@@ -181,8 +181,8 @@ function PaymentSuccessContent() {
           <div className="mt-6 pt-6 border-t border-gray-200">
             <p className="text-sm text-gray-600">
               Need help? Contact us at{' '}
-              <a href="mailto:support@mactrack.com.au" className="text-red-600 hover:underline font-bold">
-                support@mactrack.com.au
+              <a href="mailto:macwithavan@mail.com" className="text-red-600 hover:underline font-bold">
+                macwithavan@mail.com
               </a>
             </p>
           </div>

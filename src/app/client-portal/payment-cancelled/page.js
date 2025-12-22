@@ -106,7 +106,7 @@ function PaymentCancelledContent() {
             <p className="text-sm text-gray-600 mb-3">Need assistance with payment?</p>
             <div className="flex gap-3 justify-center">
               <a
-                href="mailto:support@mactrack.com.au"
+                href="mailto:macwithavan@mail.com"
                 className="text-red-600 hover:underline font-bold text-sm flex items-center gap-1"
               >
                 <span>📧</span>

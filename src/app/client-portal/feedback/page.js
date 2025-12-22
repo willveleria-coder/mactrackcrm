@@ -219,13 +219,13 @@ export default function ClientFeedbackPage() {
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <a
-              href="mailto:support@mactrack.com.au"
+              href="mailto:macwithavan@mail.com"
               className="bg-red-600 hover:bg-red-700 text-white px-6 py-4 rounded-xl font-bold text-center flex items-center justify-center gap-2 transition shadow-lg hover:shadow-xl"
             >
               <span className="text-xl">📧</span>
               <div className="text-left">
                 <p className="text-sm font-bold">Email Support</p>
-                <p className="text-xs opacity-90">support@mactrack.com.au</p>
+                <p className="text-xs opacity-90">macwithavan@mail.com</p>
               </div>
             </a>
             <a
