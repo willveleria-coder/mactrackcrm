@@ -216,7 +216,13 @@ export default function NewOrderPage() {
   }
 
   function calculatePrice() {
-    const distance = manualDistance ? parseFloat(manualDistance) : (pricing.distance || 0);
+    // Return zero if no distance calculated yet
+    const dist = manualDistance ? parseFloat(manualDistance) : (pricing.distance || 0);
+    if (dist === 0) {
+      setPricing(prev => ({ ...prev, basePrice: 0, distanceCost: 0, weightCost: 0, subtotal: 0, fuelLevy: 0, gst: 0, total: 0 }));
+      return;
+    }
+    const distance = dist;
     const serviceType = formData.service_type;
     
     // Calculate total actual weight and volumetric weight from all items
