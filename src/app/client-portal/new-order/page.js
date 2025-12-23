@@ -269,7 +269,7 @@ export default function NewOrderPage() {
       // BasePrice = 45 + (Distance_km × 1.90) + (ChargeableWeight × 2.70)
       distanceCost = distance * 1.90;
       weightCost = chargeableWeight * 2.70;
-      basePrice = 45 + distanceCost + weightCost;
+      basePrice = 39.5 + distanceCost + weightCost;
       
       // Apply service multiplier
       let multipliedPrice = basePrice * config.multiplier;
