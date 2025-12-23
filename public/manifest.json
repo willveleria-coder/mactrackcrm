@@ -4,7 +4,7 @@
   "description": "Mac Track Driver Portal - Delivery Management",
   "start_url": "/driver/dashboard",
   "display": "standalone",
-  "background_color": "#dc2626",
+  "background_color": "#f0f7ff",
   "theme_color": "#dc2626",
   "orientation": "portrait",
   "icons": [
