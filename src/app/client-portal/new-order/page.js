@@ -209,118 +209,103 @@ export default function NewOrderPage() {
   }
 
   function calculatePrice() {
-    // Use manual distance if API failed, otherwise use API distance
     const distance = manualDistance ? parseFloat(manualDistance) : (pricing.distance || 0);
     const serviceType = formData.service_type;
-
-    // Pricing rates from Mac's formula
-    const BASE_FEE = 39.50;
-    const RATE_PER_KM = 1.70;
-    const RATE_PER_KG = 2.50;
-    const FUEL_LEVY_PERCENT = 10;
-
+    
     // Calculate total actual weight and volumetric weight from all items
     let totalActualWeight = 0;
     let totalVolumetricWeight = 0;
-
+    
     items.forEach(item => {
       const qty = parseInt(item.quantity) || 1;
-      
       if (item.is_under_10kg) {
-        // If under 10kg checkbox is checked, assume 5kg per item
         totalActualWeight += qty * 5;
       } else {
         const weightPerUnit = parseFloat(item.weight_per_unit) || 0;
         totalActualWeight += qty * weightPerUnit;
       }
-
-      // Calculate volumetric weight if dimensions provided
       const length = parseFloat(item.length) || 0;
       const width = parseFloat(item.width) || 0;
       const height = parseFloat(item.height) || 0;
-
       if (length > 0 && width > 0 && height > 0) {
-        // Volumetric Weight = (L × W × H) ÷ 6000
         const volumetric = (length * width * height) / 6000;
         totalVolumetricWeight += qty * volumetric;
       }
     });
-
+    
     // Chargeable Weight = MAX(Actual Weight, Volumetric Weight)
     const chargeableWeight = Math.max(totalActualWeight, totalVolumetricWeight);
-
-    // Check if requires quote
-    let requiresQuote = false;
-    let urgentMultiplier = 1;
-
-    if (serviceType === 'scheduled' || serviceType === 'after_hours') {
-      requiresQuote = true;
+    
+    // Service multipliers and minimums from Mac's formula
+    const serviceConfig = {
+      priority: { multiplier: 1.70, minimum: 170 },
+      after_hours: { multiplier: 1, minimum: 150, special: true },
+      emergency: { multiplier: 1.45, minimum: 140 },
+      vip: { multiplier: 1.25, minimum: 120 },
+      standard: { multiplier: 1.00, minimum: 100 },
+      same_day: { multiplier: 1.00, minimum: 100 },
+      local_overnight: { multiplier: 0.80, minimum: 80 },
+      scheduled: { multiplier: 0.80, minimum: 80 },
+      next_day: { multiplier: 0.80, minimum: 80 },
+    };
+    
+    const config = serviceConfig[serviceType] || serviceConfig.standard;
+    
+    let finalPrice = 0;
+    let basePrice = 0;
+    let distanceCost = 0;
+    let weightCost = 0;
+    
+    // SPECIAL AFTER HOURS PRICING
+    if (serviceType === 'after_hours') {
+      if (distance <= 10) {
+        finalPrice = 150;
+      } else {
+        finalPrice = 150 + ((distance - 10) * 1.70);
+      }
+      basePrice = finalPrice;
+    } else {
+      // STANDARD BASE PRICE FORMULA
+      // BasePrice = 45 + (Distance_km × 1.90) + (ChargeableWeight × 2.70)
+      distanceCost = distance * 1.90;
+      weightCost = chargeableWeight * 2.70;
+      basePrice = 45 + distanceCost + weightCost;
+      
+      // Apply service multiplier
+      let multipliedPrice = basePrice * config.multiplier;
+      
+      // Apply minimum
+      finalPrice = Math.max(multipliedPrice, config.minimum);
     }
-
-    // Urgent multiplier
-    if (serviceType === 'emergency' || serviceType === 'priority' || serviceType === 'vip') {
-      urgentMultiplier = 1.25;
-    }
-
-    if (requiresQuote) {
-      setPricing(prev => ({
-        ...prev,
-        requiresQuote: true,
-        basePrice: 0,
-        distanceCost: 0,
-        weightCost: 0,
-        subtotal: 0,
-        fuelLevy: 0,
-        gst: 0,
-        total: 0,
-        totalWeight: totalActualWeight,
-        totalVolumetricWeight,
-        chargeableWeight,
-      }));
-      return;
-    }
-
-    // Distance Cost = Distance (km) × Rate per km
-    const distanceCost = distance * RATE_PER_KM;
-
-    // Weight Cost = Chargeable Weight (kg) × Rate per kg
-    const weightCost = chargeableWeight * RATE_PER_KG;
-
-    // Waiting Fee = Minutes × $1 per minute
-    const waitingFee = waitingTime * 1;
-
-    // Total before multiplier = Base Fee + Distance Cost + Weight Cost + Waiting Fee
-    let subtotalBeforeMultiplier = BASE_FEE + distanceCost + weightCost + waitingFee;
-
-    // Apply urgent multiplier
-    let subtotal = subtotalBeforeMultiplier * urgentMultiplier;
-
-    // Fuel levy
-    const fuelLevy = subtotal * (FUEL_LEVY_PERCENT / 100);
-
+    
+    // Fuel levy (10%)
+    const FUEL_LEVY_PERCENT = 10;
+    const fuelLevy = finalPrice * (FUEL_LEVY_PERCENT / 100);
+    
     // GST (10% of subtotal + fuel levy)
-    const beforeGst = subtotal + fuelLevy;
+    const beforeGst = finalPrice + fuelLevy;
     const gst = beforeGst * 0.10;
-
+    
     // Total
     const total = beforeGst + gst;
-
+    
     setPricing(prev => ({
       ...prev,
       requiresQuote: false,
-      basePrice: BASE_FEE,
+      basePrice: parseFloat(basePrice.toFixed(2)),
       distanceCost: parseFloat(distanceCost.toFixed(2)),
       weightCost: parseFloat(weightCost.toFixed(2)),
-      urgentMultiplier,
-      waitingFee,
-      subtotal: parseFloat(subtotal.toFixed(2)),
+      urgentMultiplier: config.multiplier,
+      minimum: config.minimum,
+      waitingFee: 0,
+      subtotal: parseFloat(finalPrice.toFixed(2)),
       fuelLevy: parseFloat(fuelLevy.toFixed(2)),
       fuelLevyPercent: FUEL_LEVY_PERCENT,
       gst: parseFloat(gst.toFixed(2)),
       total: parseFloat(total.toFixed(2)),
-      totalWeight: parseFloat(totalActualWeight.toFixed(2)),
-      totalVolumetricWeight: parseFloat(totalVolumetricWeight.toFixed(2)),
-      chargeableWeight: parseFloat(chargeableWeight.toFixed(2)),
+      totalWeight: totalActualWeight,
+      totalVolumetricWeight,
+      chargeableWeight,
       effectiveDistance: distance,
     }));
   }
