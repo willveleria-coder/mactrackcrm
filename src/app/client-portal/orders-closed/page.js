@@ -7,7 +7,7 @@ export default function OrdersClosedPage() {
     <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff] flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl shadow-2xl p-8 sm:p-12 max-w-lg w-full text-center border border-gray-100">
         <div className="mb-6">
-          <Image src="/bus-icon.png" alt="Mac Track" width={80} height={80} className="mx-auto" />
+          <Image src="/bus-icon.png" alt="Mac With A Van" width={80} height={80} className="mx-auto" />
         </div>
         
         <div className="text-6xl mb-6">🕐</div>

@@ -10,6 +10,9 @@ export default function NewOrderPage() {
   
   // Check booking hours on page load
   useEffect(() => {
+    // Check for bypass parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("bypass") === "mac123") return;
     const now = new Date();
     const hour = now.getHours();
     if (hour < 7 || hour >= 17) {
@@ -109,11 +112,17 @@ export default function NewOrderPage() {
   ];
 
   useEffect(() => {
+    // Check for bypass parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("bypass") === "mac123") return;
     loadClient();
   }, []);
 
   // Calculate distance when addresses change (debounced)
   useEffect(() => {
+    // Check for bypass parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("bypass") === "mac123") return;
     if (formData.pickup_address.length > 5 && formData.dropoff_address.length > 5) {
       if (distanceTimerRef.current) {
         clearTimeout(distanceTimerRef.current);
@@ -133,6 +142,9 @@ export default function NewOrderPage() {
 
   // Recalculate price when relevant fields change
   useEffect(() => {
+    // Check for bypass parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get("bypass") === "mac123") return;
     calculatePrice();
   }, [formData.service_type, items, pricing.distance, waitingTime, manualDistance]);
 
