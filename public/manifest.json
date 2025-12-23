@@ -4,7 +4,7 @@
   "description": "Mac Track Driver Portal - Delivery Management",
   "start_url": "/driver/dashboard",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#dc2626",
   "theme_color": "#dc2626",
   "orientation": "portrait",
   "icons": [
@@ -12,13 +12,19 @@
       "src": "/bus-icon.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "/bus-icon.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "/bus-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
