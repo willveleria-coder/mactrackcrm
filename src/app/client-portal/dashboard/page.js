@@ -53,6 +53,11 @@ function ClientDashboardContent() {
         .single();
 
       if (clientError || !clientData) {
+      // Check if client is approved
+      if (!clientData.is_approved) {
+        router.push("/client-portal/pending-approval");
+        return;
+      }
         router.push("/client-portal/login");
         return;
       }

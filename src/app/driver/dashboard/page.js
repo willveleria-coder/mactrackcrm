@@ -111,6 +111,11 @@ function DriverDashboardContent() {
 
       if (driverError || !driverData) {
         router.push("/driver/login");
+      // Check if driver is approved
+      if (!driverData.is_approved) {
+        router.push("/driver/pending-approval");
+        return;
+      }
         return;
       }
 
