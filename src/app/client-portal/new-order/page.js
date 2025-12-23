@@ -12,13 +12,17 @@ export default function NewOrderPage() {
   useEffect(() => {
     // Check for bypass parameter
     const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get("bypass") === "mac123") return;
+    const bypass = urlParams.get("bypass");
+    if (bypass === "mac123") {
+      return;
+    }
+    
     const now = new Date();
     const hour = now.getHours();
     if (hour < 7 || hour >= 17) {
       router.push("/client-portal/orders-closed");
     }
-  }, []);
+  }, [router]);
   
   const [client, setClient] = useState(null);
   const [formData, setFormData] = useState({
@@ -112,17 +116,11 @@ export default function NewOrderPage() {
   ];
 
   useEffect(() => {
-    // Check for bypass parameter
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get("bypass") === "mac123") return;
     loadClient();
   }, []);
 
   // Calculate distance when addresses change (debounced)
   useEffect(() => {
-    // Check for bypass parameter
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get("bypass") === "mac123") return;
     if (formData.pickup_address.length > 5 && formData.dropoff_address.length > 5) {
       if (distanceTimerRef.current) {
         clearTimeout(distanceTimerRef.current);
@@ -142,9 +140,6 @@ export default function NewOrderPage() {
 
   // Recalculate price when relevant fields change
   useEffect(() => {
-    // Check for bypass parameter
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get("bypass") === "mac123") return;
     calculatePrice();
   }, [formData.service_type, items, pricing.distance, waitingTime, manualDistance]);
 
@@ -281,7 +276,7 @@ export default function NewOrderPage() {
       // BasePrice = 45 + (Distance_km × 1.90) + (ChargeableWeight × 2.70)
       distanceCost = distance * 1.90;
       weightCost = chargeableWeight * 2.70;
-      basePrice = 39.5 + distanceCost + weightCost;
+      basePrice = 45 + distanceCost + weightCost;
       
       // Apply service multiplier
       let multipliedPrice = basePrice * config.multiplier;
