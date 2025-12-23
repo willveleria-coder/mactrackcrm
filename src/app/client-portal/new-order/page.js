@@ -60,7 +60,7 @@ export default function NewOrderPage() {
   
   // Pricing state
   const [pricing, setPricing] = useState({
-    basePrice: 39.50,
+    basePrice: 0,
     distanceCost: 0,
     weightCost: 0,
     urgentMultiplier: 1,
