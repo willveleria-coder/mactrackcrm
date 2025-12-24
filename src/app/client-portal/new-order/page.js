@@ -1130,11 +1130,15 @@ export default function NewOrderPage() {
                       <span className="font-bold">${pricing.basePrice.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Distance ({manualDistance ? parseFloat(manualDistance).toFixed(1) : pricing.distance.toFixed(1)}km × $1.70)</span>
+                      <span>Base Fee</span>
+                      <span className="font-bold">${(pricingSettings?.services?.[formData.service_type]?.baseFee || 10).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Distance ({manualDistance ? parseFloat(manualDistance).toFixed(1) : pricing.distance.toFixed(1)}km × ${(pricingSettings?.distanceRate || 1.90).toFixed(2)})</span>
                       <span className="font-bold">${pricing.distanceCost.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Weight ({pricing.chargeableWeight.toFixed(1)}kg × $2.50)</span>
+                      <span>Weight ({pricing.chargeableWeight.toFixed(1)}kg × ${(pricingSettings?.weightRate || 2.70).toFixed(2)})</span>
                       <span className="font-bold">${pricing.weightCost.toFixed(2)}</span>
                     </div>
                     {pricing.waitingFee > 0 && (
