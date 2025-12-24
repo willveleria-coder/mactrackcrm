@@ -291,8 +291,8 @@ export default function NewOrderPage() {
     } else {
       // STANDARD BASE PRICE FORMULA
       // BasePrice = 45 + (Distance_km × 1.90) + (ChargeableWeight × 2.70)
-      distanceCost = distance * (pricingSettings?.distanceRate || 1.90);
-      weightCost = chargeableWeight * (pricingSettings?.weightRate || 2.70);
+      distanceCost = distance * (pricingSettings?.distanceRate ?? 1.90);
+      weightCost = chargeableWeight * (pricingSettings?.weightRate ?? 2.70);
       basePrice = (config.baseFee || 10) + distanceCost + weightCost;
       
       // Apply service multiplier
