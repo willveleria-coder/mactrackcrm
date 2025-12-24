@@ -69,6 +69,7 @@ export default function OrdersHistoryPage() {
       }
 
       setClient(clientData);
+      console.log("Client ID:", clientData.id);
 
       const { data, error } = await supabase
         .from("orders")
@@ -76,7 +77,11 @@ export default function OrdersHistoryPage() {
         .eq("client_id", clientData.id)
         .order("created_at", { ascending: false });
 
-      if (!error && data) {
+      if (error) {
+        console.error("Orders fetch error:", error);
+      }
+      console.log("Orders found:", data?.length, data);
+      if (data) {
         setOrders(data);
         setFilteredOrders(data);
       }
