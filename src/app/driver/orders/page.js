@@ -204,14 +204,31 @@ export default function DriverOrdersPage() {
 function StatusBadge({ status }) {
   const styles = {
     pending: "bg-yellow-100 text-yellow-700 border-yellow-300",
+    pending_payment: "bg-orange-100 text-orange-700 border-orange-300",
+    confirmed: "bg-blue-100 text-blue-700 border-blue-300",
+    assigned: "bg-purple-100 text-purple-700 border-purple-300",
     active: "bg-blue-100 text-blue-700 border-blue-300",
+    picked_up: "bg-indigo-100 text-indigo-700 border-indigo-300",
+    in_transit: "bg-blue-100 text-blue-700 border-blue-300",
     delivered: "bg-green-100 text-green-700 border-green-300",
     cancelled: "bg-red-100 text-red-700 border-red-300",
+    failed: "bg-red-100 text-red-700 border-red-300",
   };
-
+  const labels = {
+    pending: "⏳ Pending",
+    pending_payment: "💳 Pending Payment",
+    confirmed: "✅ Confirmed",
+    assigned: "👤 Assigned",
+    active: "🚚 Active",
+    picked_up: "📦 Picked Up",
+    in_transit: "🚚 In Transit",
+    delivered: "✅ Delivered",
+    cancelled: "❌ Cancelled",
+    failed: "❌ Failed",
+  };
   return (
-    <span className={`inline-block px-3 py-1.5 rounded-full text-xs font-bold capitalize border-2 ${styles[status] || "bg-gray-100 text-gray-600 border-gray-300"}`}>
-      {status}
+    <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${styles[status] || "bg-gray-100 text-gray-600 border-gray-300"}`}>
+      {labels[status] || status?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || "Unknown"}
     </span>
   );
 }

@@ -604,22 +604,32 @@ function DriverDashboardContent() {
 
 function StatusBadge({ status }) {
   const styles = {
-    pending: "bg-red-500 text-white border-red-600",
-    active: "bg-green-500 text-white border-green-600",
-    delivered: "bg-blue-500 text-white border-blue-600",
-    cancelled: "bg-gray-500 text-white border-gray-600",
+    pending: "bg-yellow-100 text-yellow-700 border-yellow-300",
+    pending_payment: "bg-orange-100 text-orange-700 border-orange-300",
+    confirmed: "bg-blue-100 text-blue-700 border-blue-300",
+    assigned: "bg-purple-100 text-purple-700 border-purple-300",
+    active: "bg-blue-100 text-blue-700 border-blue-300",
+    picked_up: "bg-indigo-100 text-indigo-700 border-indigo-300",
+    in_transit: "bg-blue-100 text-blue-700 border-blue-300",
+    delivered: "bg-green-100 text-green-700 border-green-300",
+    cancelled: "bg-red-100 text-red-700 border-red-300",
+    failed: "bg-red-100 text-red-700 border-red-300",
   };
-
   const labels = {
-    pending: "🔴 ASSIGNED - AWAITING RESPONSE",
-    active: "🟢 ACCEPTED - IN PROGRESS",
-    delivered: "✅ DELIVERED",
-    cancelled: "⛔ CANCELLED",
+    pending: "⏳ Pending",
+    pending_payment: "💳 Pending Payment",
+    confirmed: "✅ Confirmed",
+    assigned: "👤 Assigned",
+    active: "🚚 Active",
+    picked_up: "📦 Picked Up",
+    in_transit: "🚚 In Transit",
+    delivered: "✅ Delivered",
+    cancelled: "❌ Cancelled",
+    failed: "❌ Failed",
   };
-
   return (
-    <span className={`inline-block px-4 py-2 rounded-full text-xs font-black uppercase border-2 ${styles[status] || "bg-gray-100 text-gray-600 border-gray-300"}`}>
-      {labels[status] || status}
+    <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${styles[status] || "bg-gray-100 text-gray-600 border-gray-300"}`}>
+      {labels[status] || status?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || "Unknown"}
     </span>
   );
 }
