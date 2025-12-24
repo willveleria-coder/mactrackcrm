@@ -1123,12 +1123,7 @@ export default function NewOrderPage() {
               ) : (
                 <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-2xl p-6 text-white shadow-xl">
                   <p className="text-sm opacity-90 mb-3">Price Breakdown (Mac's Formula)</p>
-                  
                   <div className="space-y-2 text-sm mb-4">
-                    <div className="flex justify-between">
-                      <span>Base Fee</span>
-                      <span className="font-bold">${pricing.basePrice.toFixed(2)}</span>
-                    </div>
                     <div className="flex justify-between">
                       <span>Base Fee</span>
                       <span className="font-bold">${(pricingSettings?.services?.[formData.service_type]?.baseFee || 10).toFixed(2)}</span>
