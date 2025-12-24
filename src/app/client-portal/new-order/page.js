@@ -261,7 +261,6 @@ export default function NewOrderPage() {
     const chargeableWeight = Math.max(totalActualWeight, totalVolumetricWeight);
     
     // Service multipliers and minimums - use database settings if available
-    const defaultConfig = {
     const serviceConfig = pricingSettings?.services || {
       priority: { multiplier: 1.70, minimum: 120, baseFee: 20 },
       after_hours: { multiplier: 1, minimum: 150, special: true, baseFee: 20 },
