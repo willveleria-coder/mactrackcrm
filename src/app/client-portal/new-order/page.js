@@ -999,8 +999,6 @@ export default function NewOrderPage() {
                   <label className="block text-sm font-bold text-gray-700 mb-2">Select Service *</label>
                   <select name="service_type" value={formData.service_type} onChange={handleInputChange} className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent">
                     <option value="standard">⏰ Standard (3-5 Hours)</option>
-                    <option value="same_day">⚡ Same Day (12 Hours)</option>
-                    <option value="next_day">📅 Next Day (Delivery Tomorrow)</option>
                     <option value="local_overnight">🌙 Local/Overnight (Next Day)</option>
                     <option value="emergency">🚨 Emergency (1-2 Hours) +25%</option>
                     <option value="vip">⭐ VIP (2-3 Hours) +25%</option>
