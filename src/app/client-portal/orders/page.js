@@ -73,7 +73,7 @@ export default function OrdersHistoryPage() {
 
       const { data, error } = await supabase
         .from("orders")
-        .select("*, driver:drivers(name)")
+        .select("*")
         .eq("client_id", clientData.id)
         .order("created_at", { ascending: false });
 
