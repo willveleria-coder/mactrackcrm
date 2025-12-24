@@ -251,15 +251,15 @@ export default function NewOrderPage() {
     
     // Service multipliers and minimums from Mac's formula
     const serviceConfig = {
-      priority: { multiplier: 1.70, minimum: 170 },
-      after_hours: { multiplier: 1, minimum: 150, special: true },
-      emergency: { multiplier: 1.45, minimum: 140 },
-      vip: { multiplier: 1.25, minimum: 120 },
-      standard: { multiplier: 1.00, minimum: 100 },
-      same_day: { multiplier: 1.00, minimum: 100 },
-      local_overnight: { multiplier: 0.80, minimum: 80 },
-      scheduled: { multiplier: 0.80, minimum: 80 },
-      next_day: { multiplier: 0.80, minimum: 80 },
+      priority: { multiplier: 1.70, minimum: 120, baseFee: 20 },
+      after_hours: { multiplier: 1, minimum: 150, special: true, baseFee: 20 },
+      emergency: { multiplier: 1.45, minimum: 100, baseFee: 10 },
+      vip: { multiplier: 1.25, minimum: 85, baseFee: 10 },
+      standard: { multiplier: 1.00, minimum: 65, baseFee: 10 },
+      same_day: { multiplier: 1.00, minimum: 65, baseFee: 10 },
+      local_overnight: { multiplier: 0.80, minimum: 50, baseFee: 10 },
+      scheduled: { multiplier: 0.80, minimum: 50, baseFee: 10 },
+      next_day: { multiplier: 0.80, minimum: 50, baseFee: 10 },
     };
     
     const config = serviceConfig[serviceType] || serviceConfig.standard;
@@ -282,7 +282,7 @@ export default function NewOrderPage() {
       // BasePrice = 45 + (Distance_km × 1.90) + (ChargeableWeight × 2.70)
       distanceCost = distance * 1.90;
       weightCost = chargeableWeight * 2.70;
-      basePrice = 45 + distanceCost + weightCost;
+      basePrice = (config.baseFee || 10) + distanceCost + weightCost;
       
       // Apply service multiplier
       let multipliedPrice = basePrice * config.multiplier;
