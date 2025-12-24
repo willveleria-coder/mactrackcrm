@@ -25,6 +25,7 @@ export default function NewOrderPage() {
   }, [router]);
   
   const [client, setClient] = useState(null);
+  const [pricingSettings, setPricingSettings] = useState(null);
   const [formData, setFormData] = useState({
     pickup_address: "",
     pickup_contact_name: "",
@@ -164,6 +165,16 @@ export default function NewOrderPage() {
       }
 
       setClient(clientData);
+
+      // Load pricing settings
+      const { data: settingsData } = await supabase
+        .from("settings")
+        .select("*")
+        .eq("key", "pricing")
+        .single();
+      if (settingsData?.value) {
+        setPricingSettings(settingsData.value);
+      }
     } catch (error) {
       console.error("Error loading client:", error);
       router.push("/client-portal/login");
@@ -249,8 +260,9 @@ export default function NewOrderPage() {
     // Chargeable Weight = MAX(Actual Weight, Volumetric Weight)
     const chargeableWeight = Math.max(totalActualWeight, totalVolumetricWeight);
     
-    // Service multipliers and minimums from Mac's formula
-    const serviceConfig = {
+    // Service multipliers and minimums - use database settings if available
+    const defaultConfig = {
+    const serviceConfig = pricingSettings?.services || {
       priority: { multiplier: 1.70, minimum: 120, baseFee: 20 },
       after_hours: { multiplier: 1, minimum: 150, special: true, baseFee: 20 },
       emergency: { multiplier: 1.45, minimum: 100, baseFee: 10 },
@@ -280,8 +292,8 @@ export default function NewOrderPage() {
     } else {
       // STANDARD BASE PRICE FORMULA
       // BasePrice = 45 + (Distance_km × 1.90) + (ChargeableWeight × 2.70)
-      distanceCost = distance * 1.90;
-      weightCost = chargeableWeight * 2.70;
+      distanceCost = distance * (pricingSettings?.distanceRate || 1.90);
+      weightCost = chargeableWeight * (pricingSettings?.weightRate || 2.70);
       basePrice = (config.baseFee || 10) + distanceCost + weightCost;
       
       // Apply service multiplier
@@ -292,12 +304,12 @@ export default function NewOrderPage() {
     }
     
     // Fuel levy (10%)
-    const FUEL_LEVY_PERCENT = 10;
+    const FUEL_LEVY_PERCENT = pricingSettings?.fuelLevy || 10;
     const fuelLevy = finalPrice * (FUEL_LEVY_PERCENT / 100);
     
     // GST (10% of subtotal + fuel levy)
     const beforeGst = finalPrice + fuelLevy;
-    const gst = beforeGst * 0.10;
+    const gst = beforeGst * ((pricingSettings?.gst || 10) / 100);
     
     // Total
     const total = beforeGst + gst;
