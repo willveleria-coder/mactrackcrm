@@ -1011,15 +1011,15 @@ export default function NewOrderPage() {
                   <select name="service_type" value={formData.service_type} onChange={handleInputChange} className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent">
                     <option value="standard">⏰ Standard (3-5 Hours)</option>
                     <option value="local_overnight">🌙 Local/Overnight (Next Day)</option>
-                    <option value="emergency">🚨 Emergency (1-2 Hours) +25%</option>
-                    <option value="vip">⭐ VIP (2-3 Hours) +25%</option>
-                    <option value="priority">🔥 Priority (1-1.5 Hours) +25%</option>
+                    <option value="emergency">🚨 Emergency (1-2 Hours) ×1.45</option>
+                    <option value="vip">⭐ VIP (2-3 Hours) ×1.25</option>
+                    <option value="priority">🔥 Priority (1-1.5 Hours) ×1.70</option>
                     <option value="scheduled">📆 Scheduled - Contact for Quote</option>
                     <option value="after_hours">🌃 After Hours/Weekend - Contact for Quote</option>
                   </select>
                   
                   {pricing.urgentMultiplier > 1 && (
-                    <p className="text-sm text-orange-600 font-semibold mt-2">⚡ Urgent service: +25% applied</p>
+                    <p className="text-sm text-orange-600 font-semibold mt-2">⚡ Service multiplier applied</p>
                   )}
                   
                   {pricing.requiresQuote && (
@@ -1149,7 +1149,7 @@ export default function NewOrderPage() {
                     )}
                     {pricing.urgentMultiplier > 1 && (
                       <div className="flex justify-between text-yellow-200">
-                        <span>⚡ Urgent Service (+25%)</span>
+                        <span>⚡ Service Multiplier (×{pricing.urgentMultiplier?.toFixed(2) || "1.00"})</span>
                         <span className="font-bold">Applied</span>
                       </div>
                     )}
