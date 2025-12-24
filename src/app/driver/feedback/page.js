@@ -245,7 +245,7 @@ export default function DriverFeedbackPage() {
         {/* Contact Support */}
         <div className="mt-8 bg-blue-50 border-2 border-blue-200 rounded-2xl shadow-lg p-6">
           <h3 className="text-xl font-bold text-gray-900 mb-2">📞 Need Help?</h3>
-          <p className="text-sm text-gray-600 mb-4">Our driver support team is here to assist you</p>
+          <p className="text-sm text-gray-600 mb-4">Our driver support team is available 6:00 AM - 8:00 PM</p>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <a
@@ -259,13 +259,13 @@ export default function DriverFeedbackPage() {
               </div>
             </a>
             <a
-              href="tel:+61399998877"
+              href="tel:0430233811"
               className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-xl font-bold text-center flex items-center justify-center gap-2 transition shadow-lg hover:shadow-xl"
             >
               <span className="text-xl">📞</span>
               <div className="text-left">
                 <p className="text-sm font-bold">Call Support</p>
-                <p className="text-xs opacity-90">+61 3 9999 8877</p>
+                <p className="text-xs opacity-90">0430 233 811</p>
               </div>
             </a>
           </div>
