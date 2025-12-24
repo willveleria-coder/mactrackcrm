@@ -176,7 +176,7 @@ function DriverHoursContent() {
           hours_claimed: stats.thisWeekHours,
           notes: payoutNotes || null,
           status: "pending",
-          bank_details: driver.bank_details || null,
+          
         }]);
 
       if (error) throw error;
