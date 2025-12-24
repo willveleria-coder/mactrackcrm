@@ -142,7 +142,7 @@ export default function NewOrderPage() {
   // Recalculate price when relevant fields change
   useEffect(() => {
     calculatePrice();
-  }, [formData.service_type, items, pricing.distance, waitingTime, manualDistance]);
+  }, [formData.service_type, items, pricing.distance, waitingTime, manualDistance, pricingSettings]);
 
   async function loadClient() {
     try {
@@ -299,7 +299,7 @@ export default function NewOrderPage() {
       let multipliedPrice = basePrice * config.multiplier;
       
       // Apply minimum
-      finalPrice = Math.max(multipliedPrice, config.minimum);
+      finalPrice = multipliedPrice; // No minimum applied
     }
     
     // Fuel levy (10%)
