@@ -359,7 +359,7 @@ export default function AdminOrdersPage() {
   </div>
 </body>
 </html>`;
-    const w = window.open('', '_blank'); w.document.write(labelContent); w.document.close(); w.print();
+    const w = window.open('', '_blank'); w.document.write(labelContent); w.document.close(); w.onload = function() { setTimeout(() => w.print(), 500); };
   }
 
   function toggleColumn(col) { setVisibleColumns(prev => ({ ...prev, [col]: !prev[col] })); }
