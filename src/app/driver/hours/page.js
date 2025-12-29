@@ -26,6 +26,8 @@ function DriverHoursContent() {
   const [lastPayoutDate, setLastPayoutDate] = useState(null);
   const [canRequestPayout, setCanRequestPayout] = useState(true);
   const [daysUntilNextPayout, setDaysUntilNextPayout] = useState(0);
+  const [showBankModal, setShowBankModal] = useState(false);
+  const [bankDetails, setBankDetails] = useState({ bsb: "", account_number: "", account_name: "" });
   const router = useRouter();
   const supabase = createClient();
 
@@ -63,6 +65,14 @@ function DriverHoursContent() {
       }
 
       setDriver(driverData);
+      // Load existing bank details
+      if (driverData.bank_bsb || driverData.bank_account_number || driverData.bank_account_name) {
+        setBankDetails({
+          bsb: driverData.bank_bsb || "",
+          account_number: driverData.bank_account_number || "",
+          account_name: driverData.bank_account_name || "",
+        });
+      }
 
       // Load hours log
       const { data: hoursData } = await supabase
@@ -189,6 +199,33 @@ function DriverHoursContent() {
     } catch (error) {
       console.error("Payout request error:", error);
       alert("Failed to submit payout request: " + error.message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+  async function handleSaveBankDetails(e) {
+    e.preventDefault();
+    if (!bankDetails.bsb || !bankDetails.account_number || !bankDetails.account_name) {
+      alert("Please fill in all bank details");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from("drivers")
+        .update({
+          bank_bsb: bankDetails.bsb,
+          bank_account_number: bankDetails.account_number,
+          bank_account_name: bankDetails.account_name,
+        })
+        .eq("id", driver.id);
+      if (error) throw error;
+      alert("✅ Bank details saved successfully!");
+      setShowBankModal(false);
+      loadData();
+    } catch (error) {
+      console.error("Bank details error:", error);
+      alert("Failed to save bank details: " + error.message);
     } finally {
       setSubmitting(false);
     }
@@ -393,6 +430,41 @@ function DriverHoursContent() {
               ))}
             </div>
           )}
+        {/* Bank Details Section */}
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-bold text-gray-900">🏦 Bank Details</h3>
+            <button
+              onClick={() => setShowBankModal(true)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition text-sm"
+            >
+              {bankDetails.bsb ? "Edit" : "Add"} Bank Details
+            </button>
+          </div>
+          {bankDetails.bsb ? (
+            <div className="bg-gray-50 rounded-xl p-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <p className="text-xs text-gray-500 font-semibold">BSB</p>
+                  <p className="text-lg font-bold text-gray-900">{bankDetails.bsb}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 font-semibold">Account Number</p>
+                  <p className="text-lg font-bold text-gray-900">{bankDetails.account_number}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 font-semibold">Account Name</p>
+                  <p className="text-lg font-bold text-gray-900">{bankDetails.account_name}</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-6 bg-gray-50 rounded-xl">
+              <p className="text-gray-500">No bank details added yet</p>
+              <p className="text-sm text-gray-400 mt-1">Add your bank details to receive payouts</p>
+            </div>
+          )}
+        </div>
         </div>
       </main>
 
@@ -477,6 +549,41 @@ function DriverHoursContent() {
                 >
                   {submitting ? "Submitting..." : "Submit Request"}
                 </button>
+              </div>
+            </form>
+          </div>
+        </>
+      )}
+      {/* Bank Details Modal */}
+      {showBankModal && (
+        <>
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={() => setShowBankModal(false)} />
+          <div className="fixed inset-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-md bg-white rounded-2xl shadow-2xl z-50 overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-6">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-2xl font-black mb-1">Bank Details</h3>
+                  <p className="text-sm opacity-90">Enter your bank account for payouts</p>
+                </div>
+                <button onClick={() => setShowBankModal(false)} className="text-white hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-2xl font-bold">x</button>
+              </div>
+            </div>
+            <form onSubmit={handleSaveBankDetails} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">BSB *</label>
+                <input type="text" value={bankDetails.bsb} onChange={(e) => setBankDetails(prev => ({ ...prev, bsb: e.target.value }))} placeholder="000-000" required className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg font-bold" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Account Number *</label>
+                <input type="text" value={bankDetails.account_number} onChange={(e) => setBankDetails(prev => ({ ...prev, account_number: e.target.value }))} placeholder="12345678" required className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg font-bold" />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Account Name *</label>
+                <input type="text" value={bankDetails.account_name} onChange={(e) => setBankDetails(prev => ({ ...prev, account_name: e.target.value }))} placeholder="John Smith" required className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg font-bold" />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowBankModal(false)} className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 transition">Cancel</button>
+                <button type="submit" disabled={submitting} className="flex-1 py-3 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600 transition disabled:opacity-50">{submitting ? "Saving..." : "Save Details"}</button>
               </div>
             </form>
           </div>
