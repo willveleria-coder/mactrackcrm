@@ -2,10 +2,17 @@
 import { QRCodeSVG } from "qrcode.react";
 
 export default function ShippingLabel({ order, client, showPrintButton = true }) {
-  const baseUrl = 'https://mactrackcrm-xatn.vercel.app';
+  const baseUrl = 'https://mactrackcrm.vercel.app';
   const trackingUrl = `${baseUrl}/track/${order?.id}`;
 
   if (!order) return null;
+
+  // Calculate ETA based on service type
+  const etaHours = { standard: 5, same_day: 12, next_day: 24, local_overnight: 24, emergency: 2, vip: 3, priority: 1.5, scheduled: 0, after_hours: 24 };
+  const hours = etaHours[order.service_type] || 5;
+  const etaDate = new Date(order.created_at || Date.now());
+  etaDate.setHours(etaDate.getHours() + hours);
+  const etaString = hours > 0 ? etaDate.toLocaleString("en-AU", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) : "As Scheduled";
 
   return (
     <div className="label-page">
@@ -17,11 +24,11 @@ export default function ShippingLabel({ order, client, showPrintButton = true })
         </div>
       )}
 
-      <div id="printable-label" style={{ width: '210mm', height: '297mm', margin: '0 auto', backgroundColor: 'white', border: '3px solid black', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxSizing: 'border-box' }}>
+      <div id="printable-label" style={{ width: '210mm', minHeight: '297mm', margin: '0 auto', backgroundColor: 'white', border: '3px solid black', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
         
         <div style={{ backgroundColor: '#dc2626', color: 'white', padding: '24px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-            <div style={{ width: '70px', height: '70px', backgroundColor: 'white', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '40px' }}>🚐</div>
+            <img src="/bus-icon.png" alt="Mac Track" style={{ width: '70px', height: '70px', borderRadius: '16px', objectFit: 'contain', backgroundColor: 'white' }} />
             <div>
               <h1 style={{ fontSize: '42px', fontWeight: '900', margin: 0 }}>MAC TRACK</h1>
               <p style={{ fontSize: '18px', margin: 0, opacity: 0.9 }}>Courier Service</p>
@@ -33,7 +40,7 @@ export default function ShippingLabel({ order, client, showPrintButton = true })
           </div>
         </div>
 
-        <div style={{ display: 'flex', borderBottom: '3px solid black', flex: '0 0 auto' }}>
+        <div style={{ display: 'flex', borderBottom: '3px solid black' }}>
           <div style={{ padding: '24px', borderRight: '3px solid black', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: '180px' }}>
             <QRCodeSVG value={trackingUrl} size={130} level="H" />
             <p style={{ fontSize: '14px', fontWeight: 'bold', marginTop: '12px', color: '#666' }}>SCAN TO TRACK</p>
@@ -43,6 +50,10 @@ export default function ShippingLabel({ order, client, showPrintButton = true })
             <div style={{ display: 'inline-block', backgroundColor: '#dc2626', color: 'white', padding: '12px 24px', borderRadius: '12px', width: 'fit-content' }}>
               <p style={{ fontSize: '28px', fontWeight: '900', margin: 0 }}>{order.service_type?.replace(/_/g, ' ').toUpperCase() || 'STANDARD'}</p>
             </div>
+            <div style={{ marginTop: '12px' }}>
+              <p style={{ fontSize: '14px', color: '#666', fontWeight: 'bold' }}>ETA</p>
+              <p style={{ fontSize: '20px', fontWeight: '900', margin: 0 }}>{etaString}</p>
+            </div>
             {order.fragile && (
               <div style={{ marginTop: '16px', backgroundColor: '#fee2e2', border: '3px solid #dc2626', borderRadius: '12px', padding: '12px 20px', display: 'inline-block', width: 'fit-content' }}>
                 <p style={{ fontSize: '24px', fontWeight: '900', color: '#dc2626', margin: 0 }}>⚠️ FRAGILE</p>
@@ -51,13 +62,13 @@ export default function ShippingLabel({ order, client, showPrintButton = true })
           </div>
         </div>
 
-        <div style={{ display: 'flex', borderBottom: '3px solid black', flex: '1 1 auto', minHeight: '200px' }}>
+        <div style={{ display: 'flex', borderBottom: '3px solid black' }}>
           <div style={{ flex: 1, padding: '24px', borderRight: '3px solid black', backgroundColor: '#eff6ff', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
               <div style={{ width: '48px', height: '48px', backgroundColor: '#2563eb', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>📍</div>
               <p style={{ fontSize: '18px', fontWeight: '900', color: '#2563eb', margin: 0 }}>PICKUP FROM</p>
             </div>
-            <p style={{ fontSize: '22px', fontWeight: 'bold', lineHeight: 1.4, flex: 1 }}>{order.pickup_address}</p>
+            <p style={{ fontSize: '22px', fontWeight: 'bold', lineHeight: 1.4 }}>{order.pickup_address}</p>
             {order.pickup_contact_name && (
               <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '16px', border: '2px solid #bfdbfe', marginTop: '12px' }}>
                 <p style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>👤 {order.pickup_contact_name}</p>
@@ -70,7 +81,7 @@ export default function ShippingLabel({ order, client, showPrintButton = true })
               <div style={{ width: '48px', height: '48px', backgroundColor: '#16a34a', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>🎯</div>
               <p style={{ fontSize: '18px', fontWeight: '900', color: '#16a34a', margin: 0 }}>DELIVER TO</p>
             </div>
-            <p style={{ fontSize: '22px', fontWeight: 'bold', lineHeight: 1.4, flex: 1 }}>{order.dropoff_address}</p>
+            <p style={{ fontSize: '22px', fontWeight: 'bold', lineHeight: 1.4 }}>{order.dropoff_address}</p>
             {order.dropoff_contact_name && (
               <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '16px', border: '2px solid #bbf7d0', marginTop: '12px' }}>
                 <p style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>👤 {order.dropoff_contact_name}</p>
@@ -102,16 +113,14 @@ export default function ShippingLabel({ order, client, showPrintButton = true })
           </div>
         </div>
 
-        <div style={{ padding: '24px', borderBottom: '3px solid black', backgroundColor: order.notes ? '#fefce8' : '#f9fafb', flex: '1 1 auto' }}>
-          <p style={{ fontSize: '20px', fontWeight: '900', marginBottom: '12px', color: order.notes ? '#854d0e' : '#9ca3af' }}>📝 DELIVERY INSTRUCTIONS</p>
-          {order.notes ? (
+        {order.notes && (
+          <div style={{ padding: '24px', borderBottom: '3px solid black', backgroundColor: '#fefce8' }}>
+            <p style={{ fontSize: '20px', fontWeight: '900', marginBottom: '12px', color: '#854d0e' }}>📝 DELIVERY INSTRUCTIONS</p>
             <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', border: '2px solid #fde047' }}>
               <p style={{ fontSize: '20px', lineHeight: 1.5, margin: 0 }}>{order.notes}</p>
             </div>
-          ) : (
-            <p style={{ fontSize: '18px', color: '#9ca3af', margin: 0 }}>No special instructions</p>
-          )}
-        </div>
+          </div>
+        )}
 
         <div style={{ display: 'flex', borderBottom: '3px solid black' }}>
           <div style={{ flex: 1, padding: '20px 24px', borderRight: '3px solid black', backgroundColor: 'white' }}>
@@ -136,7 +145,7 @@ export default function ShippingLabel({ order, client, showPrintButton = true })
           </div>
           <div style={{ textAlign: 'right' }}>
             <p style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>Mac Track</p>
-            <p style={{ fontSize: '14px', opacity: 0.75, margin: '4px 0 0 0' }}>Sydney, Australia</p>
+            <p style={{ fontSize: '14px', opacity: 0.75, margin: '4px 0 0 0' }}>Melbourne, Australia</p>
           </div>
         </div>
       </div>
@@ -149,7 +158,7 @@ export default function ShippingLabel({ order, client, showPrintButton = true })
           .label-page { padding: 0 !important; }
           #printable-label { 
             width: 210mm !important; 
-            height: 297mm !important; 
+            min-height: 297mm !important; 
             margin: 0 !important;
             border: none !important;
             -webkit-print-color-adjust: exact !important;
