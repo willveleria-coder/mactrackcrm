@@ -17,6 +17,7 @@ function AdminCreateOrderContent() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   
+  const [pricingSettings, setPricingSettings] = useState(null);
   const [formData, setFormData] = useState({
     client_id: "",
     pickup_address: "",
@@ -107,7 +108,7 @@ function AdminCreateOrderContent() {
     return () => { if (distanceTimerRef.current) clearTimeout(distanceTimerRef.current); };
   }, [formData.pickup_address, formData.dropoff_address]);
 
-  useEffect(() => { calculatePrice(); }, [formData.service_type, formData.parcel_weight, formData.use_custom_price, formData.custom_price, pricing.distance, pricing.fuelLevyPercent]);
+  useEffect(() => { calculatePrice(); }, [formData.service_type, formData.parcel_weight, formData.use_custom_price, formData.custom_price, pricing.distance, pricing.fuelLevyPercent, pricingSettings]);
 
   async function loadData() {
     try {
@@ -120,6 +121,8 @@ function AdminCreateOrderContent() {
       setClients(clientsData || []);
       const { data: driversData } = await supabase.from("drivers").select("*").eq("is_active", true).order("name", { ascending: true });
       setDrivers(driversData || []);
+      const { data: settingsData } = await supabase.from("settings").select("*").eq("key", "pricing").single();
+      if (settingsData?.value) { setPricingSettings(settingsData.value); }
     } catch (error) { console.error("Error loading data:", error); } finally { setLoading(false); }
   }
 
@@ -141,64 +144,46 @@ function AdminCreateOrderContent() {
   }
 
   function calculatePrice() {
-    const fuelLevyPercent = pricing.fuelLevyPercent;
+    const fuelLevyPercent = pricingSettings?.fuelLevy || pricing.fuelLevyPercent || 10;
     if (formData.use_custom_price && formData.custom_price) {
       const customBase = parseFloat(formData.custom_price) || 0;
       const fuelLevy = customBase * (fuelLevyPercent / 100);
-      const subtotal = customBase + fuelLevy;
-      const gst = subtotal * 0.10;
-      const total = subtotal + gst;
-      setPricing(prev => ({ ...prev, requiresQuote: false, basePrice: customBase, distanceCharge: 0, chargeableDistance: 0, subtotal: customBase, fuelLevy, gst, total, perKmRate: 0 }));
+      const beforeGst = customBase + fuelLevy;
+      const gst = beforeGst * ((pricingSettings?.gst || 10) / 100);
+      const total = beforeGst + gst;
+      setPricing(prev => ({ ...prev, requiresQuote: false, basePrice: customBase, distanceCharge: 0, chargeableDistance: 0, subtotal: customBase, fuelLevy, gst, total, perKmRate: 0, fuelLevyPercent }));
       return;
     }
     const weight = parseFloat(formData.parcel_weight) || 0;
     const distance = pricing.distance || 0;
     const serviceType = formData.service_type;
-    let basePrice = 0, perKmRate = 0, requiresQuote = false;
-    const perKmStartsAt = 10;
-
-    switch (serviceType) {
-      case 'standard':
-        if (weight <= 10) { basePrice = 39.50; perKmRate = distance > 10 ? 1.70 : 0; }
-        else { basePrice = 45.00; perKmRate = distance > 10 ? 1.70 : 0; }
-        break;
-      case 'same_day':
-        if (weight <= 10) { basePrice = 35.00; perKmRate = distance > 10 ? 1.25 : 0; }
-        else { basePrice = 40.00; perKmRate = distance > 10 ? 1.70 : 0; }
-        break;
-      case 'local_overnight': case 'next_day':
-        basePrice = 32.00; perKmRate = distance > 10 ? 1.70 : 0;
-        break;
-      case 'emergency':
-        if (weight <= 10) { basePrice = 60.00; perKmRate = 0; }
-        else { basePrice = 67.00; if (distance > 10 && distance <= 30) perKmRate = 1.70; }
-        break;
-      case 'priority': case 'vip':
-        if (weight <= 10) { basePrice = 120.00; perKmRate = 0; }
-        else { basePrice = 150.00; perKmRate = distance > 10 ? 1.70 : 0; }
-        break;
-      case 'scheduled': case 'after_hours':
-        requiresQuote = true; basePrice = 0; perKmRate = 0;
-        break;
-      default:
-        if (weight <= 10) { basePrice = 39.50; perKmRate = distance > 10 ? 1.70 : 0; }
-        else { basePrice = 45.00; perKmRate = distance > 10 ? 1.70 : 0; }
+    const serviceConfig = pricingSettings?.services || {
+      priority: { multiplier: 1.70, minimum: 120, baseFee: 20 },
+      after_hours: { multiplier: 1, minimum: 150, special: true, baseFee: 20 },
+      emergency: { multiplier: 1.45, minimum: 100, baseFee: 10 },
+      vip: { multiplier: 1.25, minimum: 85, baseFee: 10 },
+      standard: { multiplier: 1.00, minimum: 65, baseFee: 10 },
+      same_day: { multiplier: 1.00, minimum: 65, baseFee: 10 },
+      local_overnight: { multiplier: 0.80, minimum: 50, baseFee: 10 },
+      scheduled: { multiplier: 0.80, minimum: 50, baseFee: 10 },
+      next_day: { multiplier: 0.80, minimum: 50, baseFee: 10 },
+    };
+    const config = serviceConfig[serviceType] || serviceConfig.standard;
+    const distanceRate = pricingSettings?.distanceRate ?? 1.90;
+    const weightRate = pricingSettings?.weightRate ?? 2.70;
+    let basePrice = 0, distanceCost = 0, weightCost = 0;
+    if (serviceType === "after_hours") {
+      basePrice = distance <= 10 ? 150 : 150 + ((distance - 10) * 1.70);
+    } else {
+      distanceCost = distance * distanceRate;
+      weightCost = weight * weightRate;
+      basePrice = ((config.baseFee || 10) + distanceCost + weightCost) * config.multiplier;
     }
-
-    if (requiresQuote) {
-      setPricing(prev => ({ ...prev, requiresQuote: true, basePrice: 0, distanceCharge: 0, subtotal: 0, fuelLevy: 0, gst: 0, total: 0, perKmRate: 0 }));
-      return;
-    }
-
-    const chargeableDistance = Math.max(0, distance - perKmStartsAt);
-    const distanceCharge = perKmRate > 0 ? chargeableDistance * perKmRate : 0;
-    const subtotal = basePrice + distanceCharge;
-    const fuelLevy = subtotal * (fuelLevyPercent / 100);
-    const beforeGst = subtotal + fuelLevy;
-    const gst = beforeGst * 0.10;
+    const fuelLevy = basePrice * (fuelLevyPercent / 100);
+    const beforeGst = basePrice + fuelLevy;
+    const gst = beforeGst * ((pricingSettings?.gst || 10) / 100);
     const total = beforeGst + gst;
-
-    setPricing(prev => ({ ...prev, requiresQuote: false, basePrice: parseFloat(basePrice.toFixed(2)), perKmRate, distanceCharge: parseFloat(distanceCharge.toFixed(2)), chargeableDistance: parseFloat(chargeableDistance.toFixed(2)), subtotal: parseFloat(subtotal.toFixed(2)), fuelLevy: parseFloat(fuelLevy.toFixed(2)), gst: parseFloat(gst.toFixed(2)), total: parseFloat(total.toFixed(2)) }));
+    setPricing(prev => ({ ...prev, requiresQuote: false, basePrice: parseFloat(basePrice.toFixed(2)), distanceCharge: parseFloat(distanceCost.toFixed(2)), chargeableDistance: distance, subtotal: parseFloat(basePrice.toFixed(2)), fuelLevy: parseFloat(fuelLevy.toFixed(2)), fuelLevyPercent, gst: parseFloat(gst.toFixed(2)), total: parseFloat(total.toFixed(2)), perKmRate: distanceRate }));
   }
 
   function handleInputChange(e) {
