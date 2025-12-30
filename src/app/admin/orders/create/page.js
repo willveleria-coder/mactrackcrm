@@ -177,7 +177,7 @@ function AdminCreateOrderContent() {
     } else {
       distanceCost = distance * distanceRate;
       weightCost = weight > 10 ? (weight - 10) * weightRate : 0;
-      basePrice = ((config.baseFee || 10) + distanceCost + weightCost) * config.multiplier;
+      basePrice = (distance > 0 || weight > 0) ? ((config.baseFee || 10) + distanceCost + weightCost) * config.multiplier : 0;
     }
     const fuelLevy = basePrice * (fuelLevyPercent / 100);
     const beforeGst = basePrice + fuelLevy;
@@ -235,7 +235,7 @@ function AdminCreateOrderContent() {
         gst: pricing.gst,
         price: pricing.total,
         status: formData.driver_id ? "assigned" : "pending",
-        created_by_admin: true,
+        created_by_admin: admin.id,
       };
 
       const { data: order, error: orderError } = await supabase.from("orders").insert([orderData]).select().single();
