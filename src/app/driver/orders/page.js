@@ -137,7 +137,7 @@ export default function DriverOrdersPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {orders.map((order) => (
+              {orders.filter(o => o.status !== 'delivered').map((order) => (
                 <div 
                   key={order.id} 
                   className="border-2 border-gray-200 rounded-2xl p-4 sm:p-6 hover:shadow-md transition bg-white"

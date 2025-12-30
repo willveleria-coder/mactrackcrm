@@ -292,7 +292,7 @@ export default function NewOrderPage() {
       // STANDARD BASE PRICE FORMULA
       // BasePrice = 45 + (Distance_km × 1.90) + (ChargeableWeight × 2.70)
       distanceCost = distance * (pricingSettings?.distanceRate ?? 1.90);
-      weightCost = chargeableWeight * (pricingSettings?.weightRate ?? 2.70);
+      weightCost = chargeableWeight > 10 ? (chargeableWeight - 10) * (pricingSettings?.weightRate ?? 2.70) : 0;
       basePrice = (config.baseFee || 10) + distanceCost + weightCost;
       
       // Apply service multiplier
@@ -1012,14 +1012,11 @@ export default function NewOrderPage() {
                     <option value="standard">⏰ Standard (3-5 Hours)</option>
                     <option value="local_overnight">🌙 Local/Overnight (Next Day)</option>
                     <option value="emergency">🚨 Emergency (1-2 Hours) ×1.45</option>
-                    <option value="vip">⭐ VIP (2-3 Hours) ×1.25</option>
+                    <option value="vip">⭐ VIP (2-3 Hours)</option>
                     <option value="priority">🔥 Priority (1-1.5 Hours) ×1.70</option>
                     <option value="scheduled">📆 Scheduled - Contact for Quote</option>
                     <option value="after_hours">🌃 After Hours/Weekend - Contact for Quote</option>
                   </select>
-                  
-                  {pricing.urgentMultiplier > 1 && (
-                    <p className="text-sm text-orange-600 font-semibold mt-2">⚡ Service multiplier applied</p>
                   )}
                   
                   {pricing.requiresQuote && (
@@ -1140,12 +1137,6 @@ export default function NewOrderPage() {
                       <div className="flex justify-between">
                         <span>Waiting Time ({waitingTime} mins × $1)</span>
                         <span className="font-bold">${pricing.waitingFee.toFixed(2)}</span>
-                      </div>
-                    )}
-                    {pricing.urgentMultiplier > 1 && (
-                      <div className="flex justify-between text-yellow-200">
-                        <span>⚡ Service Multiplier (×{pricing.urgentMultiplier?.toFixed(2) || "1.00"})</span>
-                        <span className="font-bold">Applied</span>
                       </div>
                     )}
                     <div className="flex justify-between border-t border-white/30 pt-2">

@@ -176,7 +176,7 @@ function AdminCreateOrderContent() {
       basePrice = distance <= 10 ? 150 : 150 + ((distance - 10) * 1.70);
     } else {
       distanceCost = distance * distanceRate;
-      weightCost = weight * weightRate;
+      weightCost = weight > 10 ? (weight - 10) * weightRate : 0;
       basePrice = ((config.baseFee || 10) + distanceCost + weightCost) * config.multiplier;
     }
     const fuelLevy = basePrice * (fuelLevyPercent / 100);

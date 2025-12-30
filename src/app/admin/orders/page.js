@@ -226,6 +226,12 @@ export default function AdminOrdersPage() {
   }
 
   function handlePrintLabel(order) {
+    // Calculate ETA based on service type
+    const etaHours = { standard: 5, same_day: 12, next_day: 24, local_overnight: 24, emergency: 2, vip: 3, priority: 1.5, scheduled: 0, after_hours: 24 };
+    const hours = etaHours[order.service_type] || 5;
+    const etaDate = new Date(order.created_at || Date.now());
+    etaDate.setHours(etaDate.getHours() + hours);
+    const etaString = hours > 0 ? etaDate.toLocaleString("en-AU", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) : "As Scheduled";
     const trackingUrl = `https://mactrackcrm.vercel.app/track/${order.id}`;
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(trackingUrl)}`;
     
@@ -349,7 +355,8 @@ export default function AdminOrdersPage() {
       ${order.notes ? `<div class="notes-section"><div class="notes-title">📝 Delivery Instructions</div><div class="notes-text">${order.notes}</div></div>` : ''}
       <div class="customer-row">
         <div><div class="customer-label">CUSTOMER</div><div class="customer-value">${order.client?.name || 'N/A'}</div></div>
-        <div style="text-align:right"><div class="date-label">DATE</div><div class="date-value">${order.created_at ? new Date(order.created_at).toLocaleDateString() : 'N/A'}</div></div>
+        <div><div class="date-label">DATE</div><div class="date-value">${order.created_at ? new Date(order.created_at).toLocaleDateString() : 'N/A'}</div></div>
+        <div style="text-align:right"><div class="date-label">ETA</div><div class="date-value">${etaString}</div></div>
       </div>
       <div class="footer">
         <div class="footer-contact">📞 0430 233 811 &nbsp;|&nbsp; ✉️ macwithavan@mail.com</div>

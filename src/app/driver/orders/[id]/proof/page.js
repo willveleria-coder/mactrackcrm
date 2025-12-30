@@ -391,7 +391,7 @@ export default function ProofOfDeliveryPage() {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={submitting || !signature || proofImages.length === 0}
+            disabled={submitting || !signature}
             className="w-full py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-black text-lg hover:from-green-600 hover:to-green-700 transition shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? "Submitting..." : "✅ Submit Proof of Delivery"}
