@@ -1017,8 +1017,6 @@ export default function NewOrderPage() {
                     <option value="scheduled">📆 Scheduled - Contact for Quote</option>
                     <option value="after_hours">🌃 After Hours/Weekend - Contact for Quote</option>
                   </select>
-                  )}
-                  
                   {pricing.requiresQuote && (
                     <div className="mt-3 p-4 bg-yellow-50 border-2 border-yellow-300 rounded-xl">
                       <p className="text-sm font-bold text-yellow-900">📞 Contact Required</p>
