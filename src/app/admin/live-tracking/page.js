@@ -34,6 +34,8 @@ export default function AdminLiveTrackingPage() {
   }, []);
 
   async function checkAuth() {
+    console.log("checkAuth called");
+    console.log("checkAuth called");
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       router.push("/admin/login");
@@ -57,8 +59,10 @@ export default function AdminLiveTrackingPage() {
 
   async function loadTrackingData() {
     try {
-      const { data: driversData } = await supabase.from("drivers").select("*");
+      const { data: driversData, error: driversError } = await supabase.from("drivers").select("*");
+      console.log("Drivers query result:", driversData, driversError);
       setDrivers(driversData || []);
+      console.log("Drivers loaded:", driversData);
 
       const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 
