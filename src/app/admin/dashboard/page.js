@@ -237,25 +237,18 @@ function AdminDashboardContent() {
     { href: "/admin/orders/create", icon: "➕", label: "Create Order" },
     { href: "/admin/clients", icon: "👥", label: "Clients" },
     { href: "/admin/drivers", icon: "🚐", label: "Drivers" },
-    { href: "/admin/analytics", icon: "📊", label: "Analytics" },
+    { href: "/admin/approvals", icon: "✅", label: "Approvals" },
     { href: "/admin/tracking", icon: "🗺️", label: "Live Tracking" },
+    { href: "/admin/analytics", icon: "📊", label: "Analytics" },
     { href: "/admin/invoices", icon: "💰", label: "Invoices" },
+    { href: "/admin/payouts", icon: "💸", label: "Payouts" },
+    { href: "/admin/pricing", icon: "💲", label: "Pricing" },
+    { href: "/admin/feedback", icon: "💬", label: "Feedback" },
     { href: "/admin/settings", icon: "⚙️", label: "Settings" },
   ];
-
   const quickActions = [
-    { 
-      label: "Create Client Order", 
-      icon: "➕", 
-      href: "/admin/orders/create",
-      color: "from-red-500 to-red-600"
-    },
-    { 
-      label: "View All Orders", 
-      icon: "📦", 
-      href: "/admin/orders",
-      color: "from-blue-500 to-blue-600"
-    },
+    { label: "Create Order", icon: "➕", href: "/admin/orders/create", color: "from-red-500 to-red-600" },
+    { label: "View Orders", icon: "📦", href: "/admin/orders", color: "from-blue-500 to-blue-600" },
     { 
       label: "Manage Clients", 
       icon: "👥", 
