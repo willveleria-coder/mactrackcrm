@@ -57,13 +57,7 @@ export default function AdminLiveTrackingPage() {
 
   async function loadTrackingData() {
     try {
-      const { data: driversData } = await supabase
-        .from("drivers")
-        .select(`
-          *,
-          location_settings(*)
-        `);
-
+      const { data: driversData } = await supabase.from("drivers").select("*");
       setDrivers(driversData || []);
 
       const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
@@ -95,6 +89,16 @@ export default function AdminLiveTrackingPage() {
   }
 
   function getDriverLocation(driverId) {
+    // First check drivers table for current location
+    const driver = drivers.find(d => d.id === driverId);
+    if (driver?.current_lat && driver?.current_lng) {
+      return {
+        latitude: driver.current_lat,
+        longitude: driver.current_lng,
+        timestamp: driver.last_location_update
+      };
+    }
+    // Fallback to driver_locations table
     return driverLocations.find((loc) => loc.driver_id === driverId);
   }
 
@@ -103,6 +107,11 @@ export default function AdminLiveTrackingPage() {
   }
 
   function isDriverActive(driver) {
+    // Check drivers table directly first
+    if (driver.current_lat && driver.last_location_update) {
+      const age = Date.now() - new Date(driver.last_location_update).getTime();
+      if (age < 5 * 60 * 1000) return true;
+    }
     const loc = getDriverLocation(driver.id);
     if (!loc) return false;
     const age = Date.now() - new Date(loc.timestamp).getTime();
@@ -132,7 +141,7 @@ export default function AdminLiveTrackingPage() {
 
   const activeDriversCount = drivers.filter(isDriverActive).length;
   const trackingEnabledCount = drivers.filter(
-    (d) => d.location_settings?.[0]?.tracking_enabled
+    (d) => d.is_on_duty
   ).length;
 
   if (loading) {
@@ -261,7 +270,7 @@ export default function AdminLiveTrackingPage() {
               const loc = getDriverLocation(driver.id);
               const order = getDriverOrder(driver.id);
               const active = isDriverActive(driver);
-              const settings = driver.location_settings?.[0];
+              
 
               return (
                 <div
@@ -276,7 +285,7 @@ export default function AdminLiveTrackingPage() {
                       <div className="flex flex-wrap items-center gap-3 mb-4">
                         <h3 className="text-lg sm:text-xl font-bold text-gray-900">{driver.name}</h3>
                         <StatusBadge active={active} />
-                        {!settings?.tracking_enabled && (
+                        {!driver.is_on_duty && (
                           <span className="px-3 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full">
                             Tracking Disabled
                           </span>
@@ -455,7 +464,7 @@ function OrderBox({ order }) {
 }
 
 function DriverModal({ driver, onClose }) {
-  const settings = driver.location_settings?.[0];
+  
 
   return (
     <>
@@ -496,21 +505,21 @@ function DriverModal({ driver, onClose }) {
                 <div className="flex justify-between">
                   <span className="text-blue-700">Tracking Enabled:</span>
                   <span className="font-semibold text-blue-900">
-                    {settings.tracking_enabled ? "✅ Yes" : "❌ No"}
+                    {driver.is_on_duty ? "✅ Yes" : "❌ No"}
                   </span>
                 </div>
 
                 <div className="flex justify-between">
                   <span className="text-blue-700">Share with Clients:</span>
                   <span className="font-semibold text-blue-900">
-                    {settings.share_with_clients ? "✅ Yes" : "❌ No"}
+                    {driver.is_on_duty ? "✅ Yes" : "❌ No"}
                   </span>
                 </div>
 
                 <div className="flex justify-between">
                   <span className="text-blue-700">Update Interval:</span>
                   <span className="font-semibold text-blue-900">
-                    {settings.location_update_interval}s
+                    30s (default)
                   </span>
                 </div>
               </div>

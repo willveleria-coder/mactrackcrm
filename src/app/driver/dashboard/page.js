@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import DriverLocationTracker from "@/components/DriverLocationTracker";
 import HamburgerMenu from "@/components/HamburgerMenu";
-import LiveChat from "@/components/LiveChat";
+import DriverLiveChat from "@/components/DriverLiveChat";
 import PushNotificationManager from "@/components/PushNotificationManager";
 import { ThemeProvider, useTheme } from "../../../context/ThemeContext";
 
@@ -21,6 +21,7 @@ function DriverDashboardContent() {
   
   const [newJobAlert, setNewJobAlert] = useState(null);
   const [showNotification, setShowNotification] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
   const audioRef = useRef(null);
   const previousOrdersRef = useRef([]);
   
@@ -470,7 +471,7 @@ function DriverDashboardContent() {
           ) : (
             <div className="space-y-4">
               {orders.filter(o => o.status !== 'delivered').map((order) => (
-                <div key={order.id} className={`border-2 rounded-2xl p-4 sm:p-5 hover:shadow-md transition bg-white ${order.status === 'pending' ? 'border-red-400 ring-2 ring-red-200' : 'border-gray-200'}`}>
+                <div key={order.id} onClick={() => setSelectedOrder(order)} className={`border-2 rounded-2xl p-4 sm:p-5 hover:shadow-md transition bg-white cursor-pointer ${order.status === 'pending' ? 'border-red-400 ring-2 ring-red-200' : 'border-gray-200'}`}>
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <p className="text-xs text-gray-500 mb-1">Order #{order.id.slice(0, 8)}</p>
@@ -586,7 +587,7 @@ function DriverDashboardContent() {
       {driver && driver.is_on_duty && <DriverLocationTracker driverId={driver.id} />}
       
       {/* Live Chat Button */}
-      {driver && <LiveChat userType="driver" userId={driver.id} />}
+      {driver && <DriverLiveChat userId={driver.id} />}
 
       <style jsx global>{`
         @keyframes bounce-in {
@@ -598,6 +599,73 @@ function DriverDashboardContent() {
           animation: bounce-in 0.4s ease-out forwards;
         }
       `}</style>
+      {/* Order Details Modal */}
+      {selectedOrder && (
+        <>
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={() => setSelectedOrder(null)} />
+          <div className="fixed inset-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-lg bg-white rounded-2xl shadow-2xl z-50 overflow-hidden max-h-[90vh] overflow-y-auto">
+            <div className="bg-gradient-to-r from-red-500 to-red-600 text-white p-6">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-2xl font-black mb-1">Order Details</h3>
+                  <p className="text-sm opacity-90">#{selectedOrder.id?.slice(0, 8).toUpperCase()}</p>
+                </div>
+                <button onClick={() => setSelectedOrder(null)} className="text-white hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-2xl font-bold">×</button>
+              </div>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="bg-blue-50 rounded-xl p-4">
+                <p className="text-xs font-bold text-blue-700 mb-1">📍 PICKUP</p>
+                <p className="text-sm text-gray-900 font-medium">{selectedOrder.pickup_address}</p>
+                {selectedOrder.pickup_contact_name && <p className="text-xs text-gray-600 mt-1">Contact: {selectedOrder.pickup_contact_name} {selectedOrder.pickup_contact_phone}</p>}
+              </div>
+              <div className="bg-green-50 rounded-xl p-4">
+                <p className="text-xs font-bold text-green-700 mb-1">🎯 DROPOFF</p>
+                <p className="text-sm text-gray-900 font-medium">{selectedOrder.dropoff_address}</p>
+                {selectedOrder.dropoff_contact_name && <p className="text-xs text-gray-600 mt-1">Contact: {selectedOrder.dropoff_contact_name} {selectedOrder.dropoff_contact_phone}</p>}
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-gray-50 rounded-xl p-3">
+                  <p className="text-xs text-gray-500">Service</p>
+                  <p className="font-bold text-gray-900">{selectedOrder.service_type?.replace(/_/g, ' ')}</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-3">
+                  <p className="text-xs text-gray-500">Price</p>
+                  <p className="font-bold text-green-600">${selectedOrder.price?.toFixed(2)}</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-3">
+                  <p className="text-xs text-gray-500">Weight</p>
+                  <p className="font-bold text-gray-900">{selectedOrder.parcel_weight}kg</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-3">
+                  <p className="text-xs text-gray-500">Distance</p>
+                  <p className="font-bold text-gray-900">{selectedOrder.distance_km?.toFixed(1)}km</p>
+                </div>
+              </div>
+              {selectedOrder.notes && (
+                <div className="bg-yellow-50 rounded-xl p-4">
+                  <p className="text-xs font-bold text-yellow-700 mb-1">📝 NOTES</p>
+                  <p className="text-sm text-gray-900">{selectedOrder.notes}</p>
+                </div>
+              )}
+              {selectedOrder.scheduled_date && (
+                <div className="bg-purple-50 rounded-xl p-4">
+                  <p className="text-xs font-bold text-purple-700 mb-1">📅 SCHEDULED</p>
+                  <p className="text-sm text-gray-900">{selectedOrder.scheduled_date} {selectedOrder.scheduled_time}</p>
+                </div>
+              )}
+              <div className="flex gap-3 pt-2">
+                <button onClick={() => { handleNavigate(selectedOrder.pickup_address, selectedOrder.dropoff_address, selectedOrder.status); setSelectedOrder(null); }} className="flex-1 py-3 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600 transition">
+                  🗺️ Navigate
+                </button>
+                <button onClick={() => setSelectedOrder(null)} className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 transition">
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

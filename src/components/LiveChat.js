@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { supabase } from "@/lib/supabase";
+import { createClient } from "@/lib/supabase/client";
 
 export default function LiveChat({ userType, userId }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -9,6 +9,7 @@ export default function LiveChat({ userType, userId }) {
   const [conversation, setConversation] = useState(null);
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
+  const supabase = createClient();
 
   useEffect(() => {
     if (isOpen && userId) initConversation();
@@ -65,18 +66,18 @@ export default function LiveChat({ userType, userId }) {
 
   return (
     <>
-      <button onClick={() => setIsOpen(true)} className={`fixed bottom-6 right-6 w-16 h-16 ${bgColor} text-white rounded-full shadow-2xl flex items-center justify-center text-2xl ${hoverColor} transition-transform hover:scale-110 z-40`}>
+      <button onClick={() => setIsOpen(true)} className={`fixed bottom-6 right-6 w-14 h-14 sm:w-16 sm:h-16 ${bgColor} text-white rounded-full shadow-2xl flex items-center justify-center text-xl sm:text-2xl ${hoverColor} transition-transform hover:scale-110 z-40`}>
         💬
       </button>
 
       {isOpen && (
-        <div className="fixed bottom-6 right-6 w-96 h-[500px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden z-50 border-2 border-gray-200">
+        <div className="fixed inset-4 sm:inset-auto sm:bottom-6 sm:right-6 sm:w-96 sm:h-[500px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden z-50 border-2 border-gray-200">
           <div className={`${bgColor} text-white p-4 flex justify-between items-center`}>
             <div>
               <h3 className="font-bold text-lg">Mac Track Support</h3>
               <p className="text-sm opacity-75">We typically reply instantly</p>
             </div>
-            <button onClick={() => setIsOpen(false)} className="text-2xl w-8 h-8">×</button>
+            <button onClick={() => setIsOpen(false)} className="text-2xl w-8 h-8 flex items-center justify-center hover:bg-white/20 rounded-full">×</button>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
@@ -91,7 +92,7 @@ export default function LiveChat({ userType, userId }) {
               messages.map((msg) => (
                 <div key={msg.id} className={`flex ${msg.sender_type === userType ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[80%] p-3 rounded-2xl ${msg.sender_type === userType ? `${bgColor} text-white rounded-br-md` : "bg-white text-gray-900 rounded-bl-md shadow"}`}>
-                    <p>{msg.message}</p>
+                    <p className="break-words">{msg.message}</p>
                     <p className={`text-xs mt-1 ${msg.sender_type === userType ? "opacity-75" : "text-gray-400"}`}>
                       {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                     </p>
@@ -102,9 +103,9 @@ export default function LiveChat({ userType, userId }) {
             <div ref={messagesEndRef} />
           </div>
 
-          <form onSubmit={sendMessage} className="p-4 border-t bg-white">
+          <form onSubmit={sendMessage} className="p-3 sm:p-4 border-t bg-white">
             <div className="flex gap-2">
-              <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Type a message..." className="flex-1 p-3 border-2 border-gray-200 rounded-xl focus:outline-none" />
+              <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Type a message..." className="flex-1 p-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-gray-400" />
               <button type="submit" disabled={!newMessage.trim()} className={`px-4 ${bgColor} text-white rounded-xl font-bold ${hoverColor} disabled:opacity-50`}>
                 Send
               </button>
