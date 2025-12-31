@@ -1135,11 +1135,11 @@ export default function NewOrderPage() {
                     </div>
                     {formData.service_type !== "scheduled" && formData.service_type !== "after_hours" && (<>
                     <div className="flex justify-between">
-                      <span>Distance ({manualDistance ? parseFloat(manualDistance).toFixed(1) : pricing.distance.toFixed(1)}km × ${(pricingSettings?.distanceRate || 1.90).toFixed(2)})</span>
+                      <span>Distance</span>
                       <span className="font-bold">${pricing.distanceCost.toFixed(2)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Weight ({pricing.chargeableWeight.toFixed(1)}kg × ${(pricingSettings?.weightRate || 2.70).toFixed(2)})</span>
+                      <span>Weight</span>
                       <span className="font-bold">${pricing.weightCost.toFixed(2)}</span>
                     </div>
                     </>)}
