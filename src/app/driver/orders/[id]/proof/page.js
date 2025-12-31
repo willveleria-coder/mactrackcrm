@@ -283,7 +283,7 @@ export default function ProofOfDeliveryPage() {
           {/* Photo Upload */}
           <div className="mb-6">
             <label className="block text-sm font-bold text-gray-700 mb-3">
-              📸 Delivery Photos *
+              📸 Delivery Photos (Optional)
             </label>
             <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-[#0072ab] transition">
               <input
@@ -293,7 +293,7 @@ export default function ProofOfDeliveryPage() {
                 onChange={handleImageChange}
                 className="hidden"
                 id="proof-upload"
-                required={proofImages.length === 0}
+                
               />
               <label htmlFor="proof-upload" className="cursor-pointer">
                 <div className="text-5xl mb-3">📷</div>
@@ -329,7 +329,7 @@ export default function ProofOfDeliveryPage() {
           {/* Signature Pad */}
           <div className="mb-6">
             <label className="block text-sm font-bold text-gray-700 mb-3">
-              ✍️ Customer Signature *
+              ✍️ Customer Signature (Optional)
             </label>
             <div className="border-2 border-gray-300 rounded-xl overflow-hidden">
               <canvas
@@ -391,7 +391,7 @@ export default function ProofOfDeliveryPage() {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={submitting || !signature}
+            disabled={submitting}
             className="w-full py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-black text-lg hover:from-green-600 hover:to-green-700 transition shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? "Submitting..." : "✅ Submit Proof of Delivery"}
