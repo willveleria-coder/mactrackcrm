@@ -5,78 +5,63 @@ import { APIProvider, Map, Marker, InfoWindow } from "@vis.gl/react-google-maps"
 
 export default function AdminDriverMap() {
   const [drivers, setDrivers] = useState([]);
-  const [driverLocations, setDriverLocations] = useState({});
   const [selectedDriver, setSelectedDriver] = useState(null);
   const [mapCenter, setMapCenter] = useState({ lat: -37.8136, lng: 144.9631 }); // Melbourne
   const supabase = createClient();
 
   useEffect(() => {
-    loadDriversAndLocations();
+    loadDrivers();
 
-    // Subscribe to real-time location updates
+    // Subscribe to real-time driver updates
     const channel = supabase
-      .channel('admin-driver-locations')
+      .channel('admin-driver-tracking')
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'UPDATE',
           schema: 'public',
-          table: 'driver_locations'
+          table: 'drivers'
         },
         (payload) => {
           if (payload.new) {
-            setDriverLocations(prev => ({
-              ...prev,
-              [payload.new.driver_id]: {
-                lat: parseFloat(payload.new.latitude),
-                lng: parseFloat(payload.new.longitude),
-                heading: payload.new.heading,
-                speed: payload.new.speed,
-                updated_at: payload.new.updated_at
-              }
-            }));
+            setDrivers(prev => prev.map(driver => 
+              driver.id === payload.new.id ? payload.new : driver
+            ));
           }
         }
       )
       .subscribe();
 
+    // Refresh every 30 seconds as backup
+    const interval = setInterval(loadDrivers, 30000);
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(interval);
     };
   }, []);
 
-  async function loadDriversAndLocations() {
+  async function loadDrivers() {
     try {
-      // Load all active drivers
-      const { data: driversData } = await supabase
+      const { data: driversData, error } = await supabase
         .from("drivers")
         .select("*")
         .eq("is_active", true);
 
+      if (error) {
+        console.error("Error loading drivers:", error);
+        return;
+      }
+
       setDrivers(driversData || []);
 
-      // Load all driver locations
-      const { data: locationsData } = await supabase
-        .from("driver_locations")
-        .select("*");
-
-      const locationsMap = {};
-      (locationsData || []).forEach(loc => {
-        locationsMap[loc.driver_id] = {
-          lat: parseFloat(loc.latitude),
-          lng: parseFloat(loc.longitude),
-          heading: loc.heading,
-          speed: loc.speed,
-          updated_at: loc.updated_at
-        };
-      });
-
-      setDriverLocations(locationsMap);
-
       // Center map on first driver with location
-      if (Object.keys(locationsMap).length > 0) {
-        const firstLocation = Object.values(locationsMap)[0];
-        setMapCenter(firstLocation);
+      const driverWithLocation = (driversData || []).find(d => d.current_lat && d.current_lng);
+      if (driverWithLocation) {
+        setMapCenter({
+          lat: parseFloat(driverWithLocation.current_lat),
+          lng: parseFloat(driverWithLocation.current_lng)
+        });
       }
     } catch (error) {
       console.error("Error loading drivers:", error);
@@ -94,26 +79,30 @@ export default function AdminDriverMap() {
   }
 
   const onDutyDrivers = drivers.filter(d => d.is_on_duty);
-  const driversWithLocation = drivers.filter(d => driverLocations[d.id]);
+  const driversWithLocation = drivers.filter(d => d.current_lat && d.current_lng);
 
   return (
     <div className="w-full rounded-lg overflow-hidden border border-gray-300">
       <div className="h-[600px]">
         <APIProvider apiKey={apiKey}>
           <Map
-  defaultCenter={mapCenter}
-  defaultZoom={12}
-  mapId="admin-driver-map"
-  gestureHandling="greedy"
-  disableDefaultUI={false}
-  zoomControl={true}
-  mapTypeControl={false}
-  streetViewControl={false}
-  fullscreenControl={true}
+            defaultCenter={mapCenter}
+            defaultZoom={12}
+            mapId="admin-driver-map"
+            gestureHandling="greedy"
+            disableDefaultUI={false}
+            zoomControl={true}
+            mapTypeControl={false}
+            streetViewControl={false}
+            fullscreenControl={true}
           >
             {drivers.map(driver => {
-              const location = driverLocations[driver.id];
-              if (!location) return null;
+              if (!driver.current_lat || !driver.current_lng) return null;
+
+              const location = {
+                lat: parseFloat(driver.current_lat),
+                lng: parseFloat(driver.current_lng)
+              };
 
               return (
                 <div key={driver.id}>
@@ -122,12 +111,12 @@ export default function AdminDriverMap() {
                     onClick={() => setSelectedDriver(driver)}
                     icon={{
                       path: window.google?.maps?.SymbolPath?.FORWARD_CLOSED_ARROW || 0,
-                      fillColor: driver.is_on_duty ? '#0072ab' : '#9ca3af',
+                      fillColor: driver.is_on_duty ? '#22c55e' : '#9ca3af',
                       fillOpacity: 1,
                       strokeColor: '#ffffff',
                       strokeWeight: 2,
                       scale: 7,
-                      rotation: location.heading || 0
+                      rotation: 0
                     }}
                   />
                   {selectedDriver?.id === driver.id && (
@@ -141,14 +130,16 @@ export default function AdminDriverMap() {
                           {driver.vehicle_type} - {driver.vehicle_plate}
                         </p>
                         <p className="text-xs text-gray-600 mb-1">
-                          Speed: {(location.speed * 3.6).toFixed(0)} km/h
+                          📞 {driver.phone}
                         </p>
                         <p className={`text-xs font-semibold ${driver.is_on_duty ? 'text-green-600' : 'text-gray-500'}`}>
-                          {driver.is_on_duty ? '● On Duty' : '○ Off Duty'}
+                          {driver.is_on_duty ? '🟢 On Duty' : '⚪ Off Duty'}
                         </p>
-                        <p className="text-xs text-gray-400 mt-1">
-                          Updated: {new Date(location.updated_at).toLocaleTimeString()}
-                        </p>
+                        {driver.last_location_update && (
+                          <p className="text-xs text-gray-400 mt-1">
+                            Updated: {new Date(driver.last_location_update).toLocaleTimeString()}
+                          </p>
+                        )}
                       </div>
                     </InfoWindow>
                   )}
@@ -164,7 +155,7 @@ export default function AdminDriverMap() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-[#0072ab] rounded-full"></div>
+              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
               <span className="text-sm font-semibold text-gray-700">
                 On Duty: {onDutyDrivers.length}
               </span>
@@ -176,14 +167,14 @@ export default function AdminDriverMap() {
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+              <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
               <span className="text-sm font-semibold text-gray-700">
-                Tracking: {driversWithLocation.length}
+                Live Tracking: {driversWithLocation.length}
               </span>
             </div>
           </div>
           <button
-            onClick={loadDriversAndLocations}
+            onClick={loadDrivers}
             className="text-sm text-blue-600 hover:text-blue-700 font-semibold"
           >
             🔄 Refresh
