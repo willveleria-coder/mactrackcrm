@@ -1011,9 +1011,9 @@ export default function NewOrderPage() {
                   <select name="service_type" value={formData.service_type} onChange={handleInputChange} className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent">
                     <option value="standard">⏰ Standard (3-5 Hours)</option>
                     <option value="local_overnight">🌙 Local/Overnight (Next Day)</option>
-                    <option value="emergency">🚨 Emergency (1-2 Hours) ×1.45</option>
+                    <option value="emergency">🚨 Emergency (1-2 Hours)</option>
                     <option value="vip">⭐ VIP (2-3 Hours)</option>
-                    <option value="priority">🔥 Priority (1-1.5 Hours) ×1.70</option>
+                    <option value="priority">🔥 Priority (1-1.5 Hours)</option>
                     <option value="scheduled">📆 Scheduled - Contact for Quote</option>
                     <option value="after_hours">🌃 After Hours/Weekend - Contact for Quote</option>
                   </select>
@@ -1123,6 +1123,7 @@ export default function NewOrderPage() {
                       <span>Base Fee</span>
                       <span className="font-bold">${(pricingSettings?.services?.[formData.service_type]?.baseFee || 10).toFixed(2)}</span>
                     </div>
+                    {formData.service_type !== "scheduled" && formData.service_type !== "after_hours" && (<>
                     <div className="flex justify-between">
                       <span>Distance ({manualDistance ? parseFloat(manualDistance).toFixed(1) : pricing.distance.toFixed(1)}km × ${(pricingSettings?.distanceRate || 1.90).toFixed(2)})</span>
                       <span className="font-bold">${pricing.distanceCost.toFixed(2)}</span>
@@ -1131,6 +1132,7 @@ export default function NewOrderPage() {
                       <span>Weight ({pricing.chargeableWeight.toFixed(1)}kg × ${(pricingSettings?.weightRate || 2.70).toFixed(2)})</span>
                       <span className="font-bold">${pricing.weightCost.toFixed(2)}</span>
                     </div>
+                    </>)}
                     {pricing.waitingFee > 0 && (
                       <div className="flex justify-between">
                         <span>Waiting Time ({waitingTime} mins × $1)</span>
