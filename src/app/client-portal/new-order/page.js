@@ -661,8 +661,8 @@ export default function NewOrderPage() {
           </div>
           <div className="grid grid-cols-4 mt-2 text-xs sm:text-sm font-semibold text-gray-600">
             <span className="text-left">Pickup</span>
-            <span className="text-center">Items</span>
             <span className="text-center">Service</span>
+            <span className="text-center">Items</span>
             <span className="text-right">Review</span>
           </div>
         </div>
@@ -695,7 +695,7 @@ export default function NewOrderPage() {
         </div>
 
         <form onSubmit={handleSubmit}>
-          {/* Step 1: Pickup Location */}
+          {/* Step 1: Pickup & Delivery Location */}
           {currentStep === 1 && (
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-6 sm:p-8 mb-6">
               <h3 className="text-xl font-bold text-gray-900 mb-6">📍 Pickup & Delivery Location</h3>
@@ -740,64 +740,138 @@ export default function NewOrderPage() {
                     </div>
                   </div>
                 </div>
-
-                {pricing.distance > 0 && !distanceError && (
-                  <div className="bg-gray-50 rounded-xl p-4 border-2 border-gray-200">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-bold text-gray-700">📏 Distance</p>
-                        <p className="text-lg font-black text-gray-900">{pricing.distance.toFixed(1)} km</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm font-bold text-gray-700">⏱️ Drive Time</p>
-                        <p className="text-lg font-black text-gray-900">~{pricing.duration} mins</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Manual Distance Entry - shown when API fails or distance is 0 */}
-                {(distanceError || (formData.pickup_address.length > 5 && formData.dropoff_address.length > 5 && pricing.distance === 0 && !calculatingDistance)) && (
-                  <div className="bg-yellow-50 rounded-xl p-4 border-2 border-yellow-300">
-                    <p className="text-sm font-bold text-yellow-900 mb-2">⚠️ Auto-distance unavailable</p>
-                    <p className="text-xs text-yellow-800 mb-3">Please enter the approximate distance manually, or use Google Maps to check.</p>
-                    <div className="flex gap-3 items-end">
-                      <div className="flex-1">
-                        <label className="block text-sm font-bold text-gray-700 mb-2">Distance (km) *</label>
-                        <input
-                          type="number"
-                          value={manualDistance}
-                          onChange={(e) => setManualDistance(e.target.value)}
-                          min="0.1"
-                          step="0.1"
-                          placeholder="e.g. 15"
-                          className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent"
-                        />
-                      </div>
-                      <a
-                        href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(formData.pickup_address)}&destination=${encodeURIComponent(formData.dropoff_address)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="px-4 py-3 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600 transition text-sm"
-                      >
-                        🗺️ Check Maps
-                      </a>
-                    </div>
-                    {manualDistance && (
-                      <p className="text-sm text-green-700 mt-2 font-semibold">✓ Using {manualDistance}km for pricing</p>
-                    )}
-                  </div>
-                )}
               </div>
 
               <button type="button" onClick={() => setCurrentStep(2)} className="w-full mt-6 py-4 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition">
-                Next: Item/s Information →
+                Next: Select Service →
               </button>
             </div>
           )}
 
-          {/* Step 2: Item/s Information */}
+          {/* Step 2: Service Type & Distance */}
           {currentStep === 2 && (
+            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-6 sm:p-8 mb-6">
+              <h3 className="text-xl font-bold text-gray-900 mb-6">🚚 Service Type</h3>
+              
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Select Service *</label>
+                  <select name="service_type" value={formData.service_type} onChange={handleInputChange} className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent">
+                    <option value="standard">⏰ Standard (3-5 Hours)</option>
+                    <option value="local_overnight">🌙 Local/Overnight (Next Day)</option>
+                    <option value="emergency">🚨 Emergency (1-2 Hours)</option>
+                    <option value="vip">⭐ VIP (2-3 Hours)</option>
+                    <option value="priority">🔥 Priority (1-1.5 Hours)</option>
+                    <option value="scheduled">📆 Scheduled - Contact for Quote</option>
+                    <option value="after_hours">🌃 After Hours/Weekend - Contact for Quote</option>
+                  </select>
+                  {pricing.requiresQuote && (
+                    <div className="mt-3 p-4 bg-yellow-50 border-2 border-yellow-300 rounded-xl">
+                      <p className="text-sm font-bold text-yellow-900">📞 Contact Required</p>
+                      <p className="text-xs text-yellow-800 mt-1">This service requires a custom quote.</p>
+                      <p className="text-sm font-bold text-yellow-900 mt-2">📱 0430 233 811 | ✉️ macwithavan@mail.com</p>
+                    </div>
+                  )}
+                </div>
+
+                {formData.service_type === 'scheduled' && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Preferred Date</label>
+                      <input type="date" name="scheduled_date" value={formData.scheduled_date} onChange={handleInputChange} className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-bold text-gray-700 mb-2">Preferred Time</label>
+                      <input type="time" name="scheduled_time" value={formData.scheduled_time} onChange={handleInputChange} className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl" />
+                    </div>
+                  </div>
+                )}
+
+                {/* Distance Section */}
+                <div className="bg-gray-50 rounded-xl p-4 border-2 border-gray-200">
+                  <h4 className="font-bold text-gray-900 mb-4">📏 Distance Calculation</h4>
+                  
+                  {calculatingDistance && (
+                    <p className="text-sm text-blue-600 mb-3">⏳ Calculating distance...</p>
+                  )}
+
+                  {pricing.distance > 0 && !distanceError && (
+                    <div className="flex items-center justify-between mb-4 p-3 bg-green-50 rounded-lg">
+                      <div>
+                        <p className="text-xs text-gray-600">Auto-calculated</p>
+                        <p className="text-lg font-black text-gray-900">{pricing.distance.toFixed(1)} km</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-gray-600">Drive Time</p>
+                        <p className="text-lg font-black text-gray-900">~{pricing.duration} mins</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Manual Distance Entry */}
+                  {(distanceError || pricing.distance === 0) && !calculatingDistance && (
+                    <div className="bg-yellow-50 rounded-lg p-3 mb-4">
+                      <p className="text-sm font-bold text-yellow-900 mb-2">⚠️ Auto-distance unavailable</p>
+                      <p className="text-xs text-yellow-800">Please enter the approximate distance manually.</p>
+                    </div>
+                  )}
+
+                  <div className="flex gap-3 items-end">
+                    <div className="flex-1">
+                      <label className="block text-sm font-bold text-gray-700 mb-2">
+                        {pricing.distance > 0 ? 'Override Distance (km)' : 'Enter Distance (km) *'}
+                      </label>
+                      <input
+                        type="number"
+                        value={manualDistance}
+                        onChange={(e) => setManualDistance(e.target.value)}
+                        min="0.1"
+                        step="0.1"
+                        placeholder={pricing.distance > 0 ? `Auto: ${pricing.distance.toFixed(1)}km` : "e.g. 15"}
+                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent"
+                      />
+                    </div>
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(formData.pickup_address)}&destination=${encodeURIComponent(formData.dropoff_address)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-3 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600 transition text-sm whitespace-nowrap"
+                    >
+                      🗺️ Check Maps
+                    </a>
+                  </div>
+                  {manualDistance && (
+                    <p className="text-sm text-green-700 mt-2 font-semibold">✓ Using {manualDistance}km for pricing</p>
+                  )}
+                </div>
+
+                {/* Waiting Time */}
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Expected Waiting Time (minutes)</label>
+                  <p className="text-xs text-gray-500 mb-2">If the driver needs to wait at pickup/delivery ($1 per minute)</p>
+                  <input
+                    type="number"
+                    value={waitingTime}
+                    onChange={(e) => setWaitingTime(parseInt(e.target.value) || 0)}
+                    min="0"
+                    placeholder="0"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent"
+                  />
+                  {waitingTime > 0 && (
+                    <p className="text-sm text-gray-600 mt-1">Waiting fee: ${waitingTime.toFixed(2)}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button type="button" onClick={() => setCurrentStep(1)} className="flex-1 py-4 bg-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-400 transition">← Back</button>
+                <button type="button" onClick={() => setCurrentStep(3)} className="flex-1 py-4 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition">Next: Item Details →</button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Item/s Information */}
+          {currentStep === 3 && (
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-6 sm:p-8 mb-6">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-bold text-gray-900">📦 Item/s Information</h3>
@@ -990,70 +1064,6 @@ export default function NewOrderPage() {
                   <p className="text-xs text-blue-800 mt-2">
                     * Chargeable weight = whichever is higher: actual or volumetric
                   </p>
-                </div>
-              </div>
-
-              <div className="flex gap-3 mt-6">
-                <button type="button" onClick={() => setCurrentStep(1)} className="flex-1 py-4 bg-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-400 transition">← Back</button>
-                <button type="button" onClick={() => setCurrentStep(3)} className="flex-1 py-4 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition">Next: Service Type →</button>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Service Type & Notes */}
-          {currentStep === 3 && (
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-6 sm:p-8 mb-6">
-              <h3 className="text-xl font-bold text-gray-900 mb-6">🚚 Service Type</h3>
-              
-              <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Select Service *</label>
-                  <select name="service_type" value={formData.service_type} onChange={handleInputChange} className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent">
-                    <option value="standard">⏰ Standard (3-5 Hours)</option>
-                    <option value="local_overnight">🌙 Local/Overnight (Next Day)</option>
-                    <option value="emergency">🚨 Emergency (1-2 Hours)</option>
-                    <option value="vip">⭐ VIP (2-3 Hours)</option>
-                    <option value="priority">🔥 Priority (1-1.5 Hours)</option>
-                    <option value="scheduled">📆 Scheduled - Contact for Quote</option>
-                    <option value="after_hours">🌃 After Hours/Weekend - Contact for Quote</option>
-                  </select>
-                  {pricing.requiresQuote && (
-                    <div className="mt-3 p-4 bg-yellow-50 border-2 border-yellow-300 rounded-xl">
-                      <p className="text-sm font-bold text-yellow-900">📞 Contact Required</p>
-                      <p className="text-xs text-yellow-800 mt-1">This service requires a custom quote.</p>
-                      <p className="text-sm font-bold text-yellow-900 mt-2">📱 0430 233 811 | ✉️ macwithavan@mail.com</p>
-                    </div>
-                  )}
-                </div>
-
-                {formData.service_type === 'scheduled' && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">Preferred Date</label>
-                      <input type="date" name="scheduled_date" value={formData.scheduled_date} onChange={handleInputChange} className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2">Preferred Time</label>
-                      <input type="time" name="scheduled_time" value={formData.scheduled_time} onChange={handleInputChange} className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl" />
-                    </div>
-                  </div>
-                )}
-
-                {/* Waiting Time */}
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Expected Waiting Time (minutes)</label>
-                  <p className="text-xs text-gray-500 mb-2">If the driver needs to wait at pickup/delivery ($1 per minute)</p>
-                  <input
-                    type="number"
-                    value={waitingTime}
-                    onChange={(e) => setWaitingTime(parseInt(e.target.value) || 0)}
-                    min="0"
-                    placeholder="0"
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent"
-                  />
-                  {waitingTime > 0 && (
-                    <p className="text-sm text-gray-600 mt-1">Waiting fee: ${waitingTime.toFixed(2)}</p>
-                  )}
                 </div>
 
                 {/* Photos */}
