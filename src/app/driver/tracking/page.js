@@ -165,6 +165,16 @@ export default function DriverTrackingPage() {
           is_active: true
         }]);
 
+      // Update driver current location for admin map
+      await supabase
+        .from("drivers")
+        .update({
+          current_lat: locationData.latitude,
+          current_lng: locationData.longitude,
+          last_location_update: locationData.timestamp
+        })
+        .eq("id", driverData.id);
+
       setStats(prev => ({
         ...prev,
         locationsToday: prev.locationsToday + 1,
