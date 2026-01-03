@@ -35,9 +35,12 @@ export default function AdminSettingsPage() {
   const [businessInfo, setBusinessInfo] = useState({
     companyName: "Mac Track",
     contactEmail: "macwithavan@mail.com",
-    contactPhone: "+61 400 000 000",
-    operatingHours: "Mon-Fri, 9AM-6PM AEST",
-    address: ""
+    contactPhone: "0430 233 811",
+    supportEmail: "macwithavan@mail.com",
+    supportPhone: "0430 233 811",
+    operatingHours: "Mon-Fri, 7AM-5PM AEST",
+    address: "",
+    requireSignature: true
   });
 
   const [notifications, setNotifications] = useState({
