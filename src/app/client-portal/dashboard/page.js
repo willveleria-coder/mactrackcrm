@@ -140,7 +140,9 @@ function ClientDashboardContent() {
           <div className="bg-gradient-to-br from-red-600 to-red-700 rounded-2xl p-6 text-white shadow-xl text-center"><p className="text-xl font-bold">🎁 Loyalty Program</p><p className="mt-2">Contact us to join Mac With A Van loyalty program.</p><p className="mt-2 text-sm">📞 0430 233 811</p></div>
         </div>
 
-        {/* Stats Grid */}
+        {/* Quick Actions */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <Link href="/client-portal/new-order" className="p-5 bg-gradient-to-br from-red-600 to-red-700 text-white rounded-2xl shadow-lg hover:shadow-xl transition transform hover:scale-105 text-center">
             <div className="text-4xl mb-2">📦</div>
             <p className="font-bold text-sm sm:text-base">New Order</p>
           </Link>
