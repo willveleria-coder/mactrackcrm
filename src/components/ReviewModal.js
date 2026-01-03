@@ -16,7 +16,7 @@ export default function ReviewModal({ order, onClose, onSubmit }) {
       const { error } = await supabase.from("reviews").insert({
         order_id: order.id,
         client_id: order.client_id,
-        driver_id: order.driver_id,
+        driver_id: order.driver_id || null,
         rating,
         comment
       });

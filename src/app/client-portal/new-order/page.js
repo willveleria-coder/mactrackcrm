@@ -845,22 +845,6 @@ export default function NewOrderPage() {
                   )}
                 </div>
 
-                {/* Waiting Time */}
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Expected Waiting Time (minutes)</label>
-                  <p className="text-xs text-gray-500 mb-2">If the driver needs to wait at pickup/delivery ($1 per minute)</p>
-                  <input
-                    type="number"
-                    value={waitingTime}
-                    onChange={(e) => setWaitingTime(parseInt(e.target.value) || 0)}
-                    min="0"
-                    placeholder="0"
-                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent"
-                  />
-                  {waitingTime > 0 && (
-                    <p className="text-sm text-gray-600 mt-1">Waiting fee: ${waitingTime.toFixed(2)}</p>
-                  )}
-                </div>
               </div>
 
               <div className="flex gap-3 mt-6">
@@ -1143,12 +1127,6 @@ export default function NewOrderPage() {
                       <span className="font-bold">${pricing.weightCost.toFixed(2)}</span>
                     </div>
                     </>)}
-                    {pricing.waitingFee > 0 && (
-                      <div className="flex justify-between">
-                        <span>Waiting Time ({waitingTime} mins × $1)</span>
-                        <span className="font-bold">${pricing.waitingFee.toFixed(2)}</span>
-                      </div>
-                    )}
                     <div className="flex justify-between border-t border-white/30 pt-2">
                       <span>Subtotal</span>
                       <span className="font-bold">${pricing.subtotal.toFixed(2)}</span>

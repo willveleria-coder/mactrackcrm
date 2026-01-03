@@ -9,7 +9,7 @@ import Image from "next/image";
 export default function DriverEarningsPage() {
   const [driver, setDriver] = useState(null);
   const [completedOrders, setCompletedOrders] = useState([]);
-  const [payoutRequests, setPayoutRequests] = useState([]);
+  const [payoutRequests, setPaymentRequests] = useState([]);
   const [totalEarnings, setTotalEarnings] = useState(0);
   const [availableBalance, setAvailableBalance] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -62,7 +62,7 @@ export default function DriverEarningsPage() {
         .order("created_at", { ascending: false });
 
       if (payoutsData) {
-        setPayoutRequests(payoutsData);
+        setPaymentRequests(payoutsData);
         const paidOut = payoutsData
           .filter(p => p.status === "paid")
           .reduce((sum, p) => sum + Number(p.amount), 0);
@@ -77,7 +77,7 @@ export default function DriverEarningsPage() {
     }
   }
 
-  async function handleRequestPayout() {
+  async function handleRequestPayment() {
     if (availableBalance <= 0) {
       alert("No available balance to request payout");
       return;
@@ -101,7 +101,7 @@ export default function DriverEarningsPage() {
 
       if (error) throw error;
 
-      alert("✅ Payout request submitted successfully!");
+      alert("✅ Payment request submitted successfully!");
       loadEarnings();
     } catch (error) {
       alert("Failed to request payout: " + error.message);
@@ -163,7 +163,7 @@ export default function DriverEarningsPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         
         <div className="mb-6 sm:mb-8">
-          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Earnings & Payouts 💰</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Earnings & Payments 💰</h2>
           <p className="text-sm sm:text-base text-gray-600">Track your earnings and request bi-weekly payouts</p>
         </div>
 
@@ -186,17 +186,17 @@ export default function DriverEarningsPage() {
           </div>
         </div>
 
-        {/* Request Payout */}
+        {/* Request Payment */}
         <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-gray-100 p-4 sm:p-8 mb-6">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
             <div>
-              <h3 className="text-lg font-bold text-gray-900 mb-1">Request Bi-Weekly Payout</h3>
+              <h3 className="text-lg font-bold text-gray-900 mb-1">Request Bi-Weekly Payment</h3>
               <p className="text-sm text-gray-600">
-                Submit a payout request for your available balance. Processed within 2 weeks.
+                Submit a payment request for your available balance. Processed within 2 weeks.
               </p>
             </div>
             <button
-              onClick={handleRequestPayout}
+              onClick={handleRequestPayment}
               disabled={availableBalance <= 0}
               className="px-6 sm:px-8 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
             >
@@ -205,13 +205,13 @@ export default function DriverEarningsPage() {
           </div>
         </div>
 
-        {/* Payout History */}
+        {/* Payment History */}
         <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-gray-100 p-4 sm:p-8 mb-6">
-          <h3 className="text-xl font-bold text-gray-900 mb-6">Payout History</h3>
+          <h3 className="text-xl font-bold text-gray-900 mb-6">Payment History</h3>
           
           {payoutRequests.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-gray-500">No payout requests yet</p>
+              <p className="text-gray-500">No payment requests yet</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -234,7 +234,7 @@ export default function DriverEarningsPage() {
                         ${Number(payout.amount).toFixed(2)}
                       </td>
                       <td className="py-3 px-4">
-                        <PayoutStatusBadge status={payout.status} />
+                        <PaymentStatusBadge status={payout.status} />
                       </td>
                       <td className="py-3 px-4 text-sm text-gray-600">
                         {payout.paid_at ? new Date(payout.paid_at).toLocaleDateString() : "—"}
@@ -280,7 +280,7 @@ export default function DriverEarningsPage() {
   );
 }
 
-function PayoutStatusBadge({ status }) {
+function PaymentStatusBadge({ status }) {
   const styles = {
     pending: "bg-yellow-100 text-yellow-700",
     approved: "bg-blue-100 text-blue-700",

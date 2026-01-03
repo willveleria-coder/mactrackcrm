@@ -132,50 +132,15 @@ function ClientDashboardContent() {
         
         <div className="mb-6 sm:mb-8">
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Welcome back, {client?.name}! 👋</h2>
-          <p className="text-sm sm:text-base text-gray-600">Here's your delivery overview</p>
+          <p className="text-sm sm:text-base text-gray-600">Dashboard</p>
         </div>
 
         {/* Loyalty Card */}
         <div className="mb-6">
-          <LoyaltyCard clientId={client?.id} />
+          <div className="bg-gradient-to-br from-red-600 to-red-700 rounded-2xl p-6 text-white shadow-xl text-center"><p className="text-xl font-bold">🎁 Loyalty Program</p><p className="mt-2">Contact us to join Mac With A Van loyalty program.</p><p className="mt-2 text-sm">📞 0430 233 811</p></div>
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4 mb-6 sm:mb-8">
-          <div className={`bg-gradient-to-br ${theme.gradient} rounded-2xl p-4 sm:p-5 text-white shadow-lg hover:shadow-xl transition transform hover:scale-105`}>
-            <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">Total Orders</p>
-            <p className="text-3xl sm:text-4xl font-black mb-1">{stats.totalOrders}</p>
-            <p className="text-xs opacity-75">All time</p>
-          </div>
-
-          <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-4 sm:p-5 text-white shadow-lg hover:shadow-xl transition transform hover:scale-105">
-            <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">In Progress</p>
-            <p className="text-3xl sm:text-4xl font-black mb-1">{stats.inProgress}</p>
-            <p className="text-xs opacity-75">Active</p>
-          </div>
-
-          <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-4 sm:p-5 text-white shadow-lg hover:shadow-xl transition transform hover:scale-105">
-            <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">Completed</p>
-            <p className="text-3xl sm:text-4xl font-black mb-1">{stats.completed}</p>
-            <p className="text-xs opacity-75">Delivered</p>
-          </div>
-
-          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-4 sm:p-5 text-white shadow-lg hover:shadow-xl transition transform hover:scale-105">
-            <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">Total Spent</p>
-            <p className="text-2xl sm:text-3xl font-black mb-1">${stats.totalSpent.toFixed(0)}</p>
-            <p className="text-xs opacity-75">Lifetime</p>
-          </div>
-
-          <div className="bg-gradient-to-br from-pink-500 to-rose-500 rounded-2xl p-4 sm:p-5 text-white shadow-lg hover:shadow-xl transition transform hover:scale-105">
-            <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">This Month</p>
-            <p className="text-3xl sm:text-4xl font-black mb-1">{stats.thisMonth}</p>
-            <p className="text-xs opacity-75">Orders</p>
-          </div>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
-          <Link href="/client-portal/new-order" className={`p-5 bg-gradient-to-br ${theme.gradient} text-white rounded-2xl shadow-lg hover:shadow-xl transition transform hover:scale-105 text-center`}>
             <div className="text-4xl mb-2">📦</div>
             <p className="font-bold text-sm sm:text-base">New Order</p>
           </Link>

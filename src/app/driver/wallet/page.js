@@ -8,8 +8,8 @@ import Image from "next/image";
 export default function DriverWalletPage() {
   const [driver, setDriver] = useState(null);
   const [wallet, setWallet] = useState(null);
-  const [payoutRequests, setPayoutRequests] = useState([]);
-  const [payoutHistory, setPayoutHistory] = useState([]);
+  const [payoutRequests, setPaymentRequests] = useState([]);
+  const [payoutHistory, setPaymentHistory] = useState([]);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [requestAmount, setRequestAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('bank_transfer');
@@ -60,7 +60,7 @@ export default function DriverWalletPage() {
         .eq("driver_id", driverData.id)
         .order("requested_at", { ascending: false });
 
-      setPayoutRequests(requestsData || []);
+      setPaymentRequests(requestsData || []);
 
       const { data: historyData } = await supabase
         .from("payout_history")
@@ -68,7 +68,7 @@ export default function DriverWalletPage() {
         .eq("driver_id", driverData.id)
         .order("paid_at", { ascending: false });
 
-      setPayoutHistory(historyData || []);
+      setPaymentHistory(historyData || []);
 
     } catch (error) {
       console.error("Error loading wallet:", error);
@@ -77,7 +77,7 @@ export default function DriverWalletPage() {
     }
   }
 
-  async function handleRequestPayout(e) {
+  async function handleRequestPayment(e) {
     e.preventDefault();
     setSubmitting(true);
     setMessage('');
@@ -110,7 +110,7 @@ export default function DriverWalletPage() {
 
       if (error) throw error;
 
-      setMessage("✅ Payout request submitted successfully!");
+      setMessage("✅ Payment request submitted successfully!");
 
       setRequestAmount('');
       setBankDetails('');
@@ -125,7 +125,7 @@ export default function DriverWalletPage() {
 
     } catch (error) {
       console.error("Error requesting payout:", error);
-      setMessage("❌ Failed to submit payout request");
+      setMessage("❌ Failed to submit payment request");
     } finally {
       setSubmitting(false);
     }
@@ -224,14 +224,14 @@ export default function DriverWalletPage() {
           </div>
         </div>
 
-        {/* Request Payout Button */}
+        {/* Request Payment Button */}
         <div className="mb-8">
           <button
             onClick={() => setShowRequestModal(true)}
             disabled={availableBalance <= 0}
             className="w-full md:w-auto px-8 py-4 bg-gradient-to-r from-[#0072ab] to-[#005d8c] text-white rounded-xl font-bold text-lg hover:from-[#005d8c] hover:to-[#004d73] transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
           >
-            💰 Request Payout
+            💰 Request Payment
           </button>
           {availableBalance <= 0 && (
             <p className="text-sm text-gray-500 mt-2">No available balance to withdraw</p>
@@ -260,14 +260,14 @@ export default function DriverWalletPage() {
           </div>
         )}
 
-        {/* Payout History */}
+        {/* Payment History */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Recent Requests */}
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-6">
             <h3 className="text-xl font-bold text-gray-900 mb-4">📋 Request History</h3>
             <div className="space-y-3">
               {payoutRequests.length === 0 ? (
-                <p className="text-gray-500 text-center py-8">No payout requests yet</p>
+                <p className="text-gray-500 text-center py-8">No payment requests yet</p>
               ) : (
                 payoutRequests.slice(0, 5).map((request) => (
                   <div key={request.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
@@ -315,7 +315,7 @@ export default function DriverWalletPage() {
         </div>
       </main>
 
-      {/* Request Payout Modal */}
+      {/* Request Payment Modal */}
       {showRequestModal && (
         <>
           <div
@@ -324,7 +324,7 @@ export default function DriverWalletPage() {
           />
           <div className="fixed top-8 left-1/2 transform -translate-x-1/2 bg-white rounded-2xl shadow-2xl p-6 sm:p-8 z-50 w-11/12 max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-start mb-6">
-              <h3 className="text-2xl font-bold text-gray-900">Request Payout</h3>
+              <h3 className="text-2xl font-bold text-gray-900">Request Payment</h3>
               <button
                 onClick={() => setShowRequestModal(false)}
                 className="text-gray-500 hover:text-gray-700 text-3xl font-bold leading-none"
@@ -339,7 +339,7 @@ export default function DriverWalletPage() {
               </div>
             )}
 
-            <form onSubmit={handleRequestPayout}>
+            <form onSubmit={handleRequestPayment}>
               <div className="space-y-4">
                 <div className="bg-blue-50 rounded-xl p-4 mb-4">
                   <p className="text-sm text-gray-600 mb-1">Available Balance</p>

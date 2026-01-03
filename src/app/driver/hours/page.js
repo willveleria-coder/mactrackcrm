@@ -10,22 +10,22 @@ function DriverHoursContent() {
   const { theme } = useTheme();
   const [driver, setDriver] = useState(null);
   const [hoursLog, setHoursLog] = useState([]);
-  const [payoutRequests, setPayoutRequests] = useState([]);
+  const [payoutRequests, setPaymentRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [showPayoutModal, setShowPayoutModal] = useState(false);
-  const [payoutAmount, setPayoutAmount] = useState("");
-  const [payoutNotes, setPayoutNotes] = useState("");
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [payoutAmount, setPaymentAmount] = useState("");
+  const [payoutNotes, setPaymentNotes] = useState("");
   const [stats, setStats] = useState({
     totalHours: 0,
     thisWeekHours: 0,
     thisMonthHours: 0,
-    pendingPayout: 0,
-    approvedPayout: 0,
+    pendingPayment: 0,
+    approvedPayment: 0,
   });
-  const [lastPayoutDate, setLastPayoutDate] = useState(null);
-  const [canRequestPayout, setCanRequestPayout] = useState(true);
-  const [daysUntilNextPayout, setDaysUntilNextPayout] = useState(0);
+  const [lastPaymentDate, setLastPaymentDate] = useState(null);
+  const [canRequestPayment, setCanRequestPayment] = useState(true);
+  const [daysUntilNextPayment, setDaysUntilNextPayment] = useState(0);
   const [showBankModal, setShowBankModal] = useState(false);
   const [bankDetails, setBankDetails] = useState({ bsb: "", account_number: "", account_name: "" });
   const router = useRouter();
@@ -104,7 +104,7 @@ function DriverHoursContent() {
         setStats(prev => ({ ...prev, totalHours, thisWeekHours, thisMonthHours }));
       }
 
-      // Load payout requests
+      // Load payment requests
       const { data: payoutData } = await supabase
         .from("payout_requests")
         .select("*")
@@ -113,38 +113,38 @@ function DriverHoursContent() {
         .limit(20);
 
       if (payoutData) {
-        setPayoutRequests(payoutData);
+        setPaymentRequests(payoutData);
         
-        const pendingPayout = payoutData
+        const pendingPayment = payoutData
           .filter(p => p.status === "pending")
           .reduce((sum, p) => sum + (p.amount || 0), 0);
-        const approvedPayout = payoutData
+        const approvedPayment = payoutData
           .filter(p => p.status === "approved" || p.status === "paid")
           .reduce((sum, p) => sum + (p.amount || 0), 0);
 
-        setStats(prev => ({ ...prev, pendingPayout, approvedPayout }));
+        setStats(prev => ({ ...prev, pendingPayment, approvedPayment }));
 
         // Check 2-week payout restriction
         if (payoutData.length > 0) {
           const lastRequest = new Date(payoutData[0].created_at);
-          setLastPayoutDate(lastRequest);
+          setLastPaymentDate(lastRequest);
           
           const twoWeeksMs = 14 * 24 * 60 * 60 * 1000; // 14 days in milliseconds
           const now = new Date();
           const timeSinceLastRequest = now - lastRequest;
           
           if (timeSinceLastRequest < twoWeeksMs) {
-            setCanRequestPayout(false);
+            setCanRequestPayment(false);
             const daysRemaining = Math.ceil((twoWeeksMs - timeSinceLastRequest) / (24 * 60 * 60 * 1000));
-            setDaysUntilNextPayout(daysRemaining);
+            setDaysUntilNextPayment(daysRemaining);
           } else {
-            setCanRequestPayout(true);
-            setDaysUntilNextPayout(0);
+            setCanRequestPayment(true);
+            setDaysUntilNextPayment(0);
           }
         } else {
           // No previous requests, can request immediately
-          setCanRequestPayout(true);
-          setDaysUntilNextPayout(0);
+          setCanRequestPayment(true);
+          setDaysUntilNextPayment(0);
         }
       }
 
@@ -160,7 +160,7 @@ function DriverHoursContent() {
     router.push("/driver/login");
   }
 
-  async function handlePayoutRequest(e) {
+  async function handlePaymentRequest(e) {
     e.preventDefault();
     
     if (!payoutAmount || parseFloat(payoutAmount) <= 0) {
@@ -169,8 +169,8 @@ function DriverHoursContent() {
     }
 
     // Double-check 2-week restriction
-    if (!canRequestPayout) {
-      alert(`You can only request a payout every 2 weeks. Please wait ${daysUntilNextPayout} more day(s).`);
+    if (!canRequestPayment) {
+      alert(`You can only request a payment every 2 weeks. Please wait ${daysUntilNextPayment} more day(s).`);
       return;
     }
 
@@ -191,14 +191,14 @@ function DriverHoursContent() {
 
       if (error) throw error;
 
-      alert("✅ Payout request submitted successfully! Admin will review shortly.");
-      setShowPayoutModal(false);
-      setPayoutAmount("");
-      setPayoutNotes("");
+      alert("✅ Payment request submitted successfully! Admin will review shortly.");
+      setShowPaymentModal(false);
+      setPaymentAmount("");
+      setPaymentNotes("");
       loadData();
     } catch (error) {
-      console.error("Payout request error:", error);
-      alert("Failed to submit payout request: " + error.message);
+      console.error("Payment request error:", error);
+      alert("Failed to submit payment request: " + error.message);
     } finally {
       setSubmitting(false);
     }
@@ -274,7 +274,7 @@ function DriverHoursContent() {
         
         <div className="mb-6">
           <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">
-            Hours & Payouts ⏱️
+            Hours & Payments ⏱️
           </h2>
           <p className="text-sm sm:text-base text-gray-600">Track your hours and request payouts</p>
         </div>
@@ -300,47 +300,47 @@ function DriverHoursContent() {
           </div>
         </div>
 
-        {/* Request Payout Button */}
-        <div className={`bg-gradient-to-r ${canRequestPayout ? 'from-green-500 to-green-600' : 'from-gray-400 to-gray-500'} rounded-2xl p-6 mb-6 shadow-xl`}>
+        {/* Request Payment Button */}
+        <div className={`bg-gradient-to-r ${canRequestPayment ? 'from-green-500 to-green-600' : 'from-gray-400 to-gray-500'} rounded-2xl p-6 mb-6 shadow-xl`}>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="text-white">
               <h3 className="text-xl font-bold mb-1">💰 Ready to get paid?</h3>
-              {canRequestPayout ? (
-                <p className="text-sm opacity-90">Submit a payout request for your hours worked</p>
+              {canRequestPayment ? (
+                <p className="text-sm opacity-90">Submit a payment request for your hours worked</p>
               ) : (
                 <div>
-                  <p className="text-sm opacity-90">You can request a payout every 2 weeks</p>
-                  <p className="text-sm font-bold mt-1">⏳ Next request available in {daysUntilNextPayout} day{daysUntilNextPayout !== 1 ? 's' : ''}</p>
-                  {lastPayoutDate && (
+                  <p className="text-sm opacity-90">You can request a payment every 2 weeks</p>
+                  <p className="text-sm font-bold mt-1">⏳ Next request available in {daysUntilNextPayment} day{daysUntilNextPayment !== 1 ? 's' : ''}</p>
+                  {lastPaymentDate && (
                     <p className="text-xs opacity-75 mt-1">
-                      Last request: {lastPayoutDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      Last request: {lastPaymentDate.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </p>
                   )}
                 </div>
               )}
             </div>
             <button
-              onClick={() => setShowPayoutModal(true)}
-              disabled={!canRequestPayout}
+              onClick={() => setShowPaymentModal(true)}
+              disabled={!canRequestPayment}
               className={`w-full sm:w-auto px-8 py-4 rounded-xl font-black text-lg transition shadow-lg ${
-                canRequestPayout 
+                canRequestPayment 
                   ? 'bg-white text-green-600 hover:bg-gray-100' 
                   : 'bg-white/50 text-gray-500 cursor-not-allowed'
               }`}
             >
-              {canRequestPayout ? 'Request Payout' : '🔒 Locked'}
+              {canRequestPayment ? 'Request Payment' : '🔒 Locked'}
             </button>
           </div>
         </div>
 
-        {/* Payout Status */}
+        {/* Payment Status */}
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-5">
             <div className="flex items-center gap-3 mb-2">
               <span className="text-2xl">⏳</span>
-              <p className="text-sm font-bold text-gray-600">Pending Payouts</p>
+              <p className="text-sm font-bold text-gray-600">Pending Payments</p>
             </div>
-            <p className="text-2xl sm:text-3xl font-black text-yellow-600">${stats.pendingPayout.toFixed(2)}</p>
+            <p className="text-2xl sm:text-3xl font-black text-yellow-600">${stats.pendingPayment.toFixed(2)}</p>
           </div>
           
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-5">
@@ -348,7 +348,7 @@ function DriverHoursContent() {
               <span className="text-2xl">✅</span>
               <p className="text-sm font-bold text-gray-600">Total Paid</p>
             </div>
-            <p className="text-2xl sm:text-3xl font-black text-green-600">${stats.approvedPayout.toFixed(2)}</p>
+            <p className="text-2xl sm:text-3xl font-black text-green-600">${stats.approvedPayment.toFixed(2)}</p>
           </div>
         </div>
 
@@ -393,14 +393,14 @@ function DriverHoursContent() {
           )}
         </div>
 
-        {/* Payout History */}
+        {/* Payment History */}
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-5 sm:p-6">
-          <h3 className="text-xl font-bold text-gray-900 mb-5">💳 Payout History</h3>
+          <h3 className="text-xl font-bold text-gray-900 mb-5">💳 Payment History</h3>
           
           {payoutRequests.length === 0 ? (
             <div className="text-center py-8">
               <div className="text-5xl mb-3">💰</div>
-              <p className="text-gray-500 font-semibold">No payout requests yet</p>
+              <p className="text-gray-500 font-semibold">No payment requests yet</p>
               <p className="text-gray-400 text-sm mt-1">Request a payout when you&apos;re ready</p>
             </div>
           ) : (
@@ -424,7 +424,7 @@ function DriverHoursContent() {
                   </div>
                   <div className="text-right">
                     <p className="text-xl font-black text-green-600">${payout.amount?.toFixed(2)}</p>
-                    <PayoutStatusBadge status={payout.status} />
+                    <PaymentStatusBadge status={payout.status} />
                   </div>
                 </div>
               ))}
@@ -468,23 +468,23 @@ function DriverHoursContent() {
         </div>
       </main>
 
-      {/* Payout Request Modal */}
-      {showPayoutModal && (
+      {/* Payment Request Modal */}
+      {showPaymentModal && (
         <>
           <div 
             className="fixed inset-0 bg-black bg-opacity-50 z-40"
-            onClick={() => setShowPayoutModal(false)}
+            onClick={() => setShowPaymentModal(false)}
           />
           
           <div className="fixed inset-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-md bg-white rounded-2xl shadow-2xl z-50 overflow-hidden">
             <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-6">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-2xl font-black mb-1">Request Payout</h3>
+                  <h3 className="text-2xl font-black mb-1">Request Payment</h3>
                   <p className="text-sm opacity-90">Submit your hours for payment</p>
                 </div>
                 <button
-                  onClick={() => setShowPayoutModal(false)}
+                  onClick={() => setShowPaymentModal(false)}
                   className="text-white hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-2xl font-bold"
                 >
                   ×
@@ -492,7 +492,7 @@ function DriverHoursContent() {
               </div>
             </div>
 
-            <form onSubmit={handlePayoutRequest} className="p-6 space-y-4">
+            <form onSubmit={handlePaymentRequest} className="p-6 space-y-4">
               <div className="bg-purple-50 rounded-xl p-4 mb-4">
                 <p className="text-sm text-purple-700 font-semibold">Hours this week</p>
                 <p className="text-3xl font-black text-purple-600">{stats.thisWeekHours.toFixed(1)} hours</p>
@@ -505,7 +505,7 @@ function DriverHoursContent() {
                 <input
                   type="number"
                   value={payoutAmount}
-                  onChange={(e) => setPayoutAmount(e.target.value)}
+                  onChange={(e) => setPaymentAmount(e.target.value)}
                   placeholder="Enter amount"
                   min="1"
                   step="0.01"
@@ -521,7 +521,7 @@ function DriverHoursContent() {
                 </label>
                 <textarea
                   value={payoutNotes}
-                  onChange={(e) => setPayoutNotes(e.target.value)}
+                  onChange={(e) => setPaymentNotes(e.target.value)}
                   placeholder="Any additional notes for the admin..."
                   rows={3}
                   className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent resize-none"
@@ -530,14 +530,14 @@ function DriverHoursContent() {
 
               <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-4">
                 <p className="text-sm text-yellow-800">
-                  <strong>💡 Payment Info:</strong> Payouts can be requested every 2 weeks. Processed by admin and sent to your registered bank account within 1-3 business days.
+                  <strong>💡 Payment Info:</strong> Payments can be requested every 2 weeks. Processed by admin and sent to your registered bank account within 1-3 business days.
                 </p>
               </div>
 
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setShowPayoutModal(false)}
+                  onClick={() => setShowPaymentModal(false)}
                   className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 transition"
                 >
                   Cancel
@@ -563,7 +563,7 @@ function DriverHoursContent() {
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="text-2xl font-black mb-1">Bank Details</h3>
-                  <p className="text-sm opacity-90">Enter your bank account for payouts</p>
+                  <p className="text-sm opacity-90">Enter your bank account for payments</p>
                 </div>
                 <button onClick={() => setShowBankModal(false)} className="text-white hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-2xl font-bold">x</button>
               </div>
@@ -593,7 +593,7 @@ function DriverHoursContent() {
   );
 }
 
-function PayoutStatusBadge({ status }) {
+function PaymentStatusBadge({ status }) {
   const styles = {
     pending: "bg-yellow-100 text-yellow-700",
     approved: "bg-blue-100 text-blue-700",
