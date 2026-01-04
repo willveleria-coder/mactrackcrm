@@ -66,6 +66,7 @@ export default function AdminSettingsPage() {
 
   useEffect(() => {
     loadAdmin();
+    loadBusinessSettings();
   }, []);
 
   async function loadAdmin() {
@@ -101,6 +102,62 @@ export default function AdminSettingsPage() {
     } finally {
       setLoading(false);
     }
+
+  async function loadBusinessSettings() {
+    try {
+      const { data } = await supabase.from("settings").select("*").eq("key", "business_info").single();
+      if (data?.value) {
+        setBusinessInfo(prev => ({ ...prev, ...data.value }));
+      }
+    } catch (error) {
+      console.log("No business settings found, using defaults");
+    }
+  }
+
+  async function saveBusinessSettings() {
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("settings").upsert({
+        key: "business_info",
+        value: businessInfo,
+        updated_at: new Date().toISOString()
+      }, { onConflict: "key" });
+      if (error) throw error;
+      setMessage("✅ Business settings saved!");
+    } catch (error) {
+      setMessage("❌ " + error.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+  }
+
+  async function loadBusinessSettings() {
+    try {
+      const { data } = await supabase.from("settings").select("*").eq("key", "business_info").single();
+      if (data?.value) {
+        setBusinessInfo(prev => ({ ...prev, ...data.value }));
+      }
+    } catch (error) {
+      console.log("No business settings found, using defaults");
+    }
+  }
+
+  async function saveBusinessSettings() {
+    setSaving(true);
+    try {
+      const { error } = await supabase.from("settings").upsert({
+        key: "business_info",
+        value: businessInfo,
+        updated_at: new Date().toISOString()
+      }, { onConflict: "key" });
+      if (error) throw error;
+      setMessage("✅ Business settings saved!");
+    } catch (error) {
+      setMessage("❌ " + error.message);
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleProfileUpdate(e) {
@@ -122,6 +179,7 @@ export default function AdminSettingsPage() {
 
       setMessage("✅ Profile updated successfully!");
       loadAdmin();
+    loadBusinessSettings();
     } catch (error) {
       setMessage("❌ " + error.message);
     } finally {
@@ -528,6 +586,56 @@ export default function AdminSettingsPage() {
                       className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent"
                     />
                   </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Support Email (for customer inquiries)
+                    </label>
+                    <input
+                      type="email"
+                      value={businessInfo.supportEmail}
+                      onChange={(e) => setBusinessInfo({...businessInfo, supportEmail: e.target.value})}
+                      placeholder="support@macwithavan.com"
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Support Phone (Call Us button)
+                    </label>
+                    <input
+                      type="tel"
+                      value={businessInfo.supportPhone}
+                      onChange={(e) => setBusinessInfo({...businessInfo, supportPhone: e.target.value})}
+                      placeholder="0430 233 811"
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">
+                      Promotional Email (for marketing)
+                    </label>
+                    <input
+                      type="email"
+                      value={businessInfo.promotionalEmail || ""}
+                      onChange={(e) => setBusinessInfo({...businessInfo, promotionalEmail: e.target.value})}
+                      placeholder="marketing@macwithavan.com"
+                      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent"
+                    />
+                  </div>
+                  <div className="p-4 bg-gray-50 rounded-xl border-2 border-gray-200">
+                    <label className="flex items-center justify-between cursor-pointer">
+                      <div>
+                        <p className="font-bold text-gray-900">Mandatory Customer Signature</p>
+                        <p className="text-sm text-gray-600">Require signature for all deliveries</p>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={businessInfo.requireSignature}
+                        onChange={(e) => setBusinessInfo({...businessInfo, requireSignature: e.target.checked})}
+                        className="w-6 h-6 rounded"
+                      />
+                    </label>
+                  </div>
 
                   <div>
                     <label className="block text-sm font-bold text-gray-700 mb-2">
@@ -556,7 +664,7 @@ export default function AdminSettingsPage() {
                   </div>
 
                   <button
-                    onClick={() => setMessage("✅ Business information saved!")}
+                    onClick={saveBusinessSettings}
                     className="w-full py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition"
                   >
                     Save Business Info
