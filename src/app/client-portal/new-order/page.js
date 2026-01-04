@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
 import Image from "next/image";
 import HamburgerMenu from "@/components/HamburgerMenu";
+import AddressAutocomplete from "@/components/AddressAutocomplete";
 
 export default function NewOrderPage() {
   const router = useRouter();
@@ -228,7 +229,7 @@ export default function NewOrderPage() {
 
   function calculatePrice() {
     // Return zero if no distance calculated yet
-    const dist = manualDistance ? parseFloat(manualDistance) : (pricing.distance || 0);
+    const dist = pricing.distance || 0;
     if (dist === 0) {
       setPricing(prev => ({ ...prev, basePrice: 0, distanceCost: 0, weightCost: 0, subtotal: 0, fuelLevy: 0, gst: 0, total: 0 }));
       return;
@@ -500,7 +501,7 @@ export default function NewOrderPage() {
     }
 
     // Validate distance
-    const finalDistance = manualDistance ? parseFloat(manualDistance) : pricing.distance;
+    const finalDistance = pricing.distance;
     if (!finalDistance || finalDistance <= 0) {
       setError("Please enter the delivery distance.");
       return;
@@ -545,7 +546,7 @@ export default function NewOrderPage() {
 
       const totalQuantity = items.reduce((sum, item) => sum + (parseInt(item.quantity) || 1), 0);
       const primaryItem = items[0];
-      const finalDistance = manualDistance ? parseFloat(manualDistance) : pricing.distance;
+      const finalDistance = pricing.distance;
 
       const orderData = {
         client_id: client.id,
@@ -684,9 +685,9 @@ export default function NewOrderPage() {
                 <p className="text-3xl font-black">${pricing.total.toFixed(2)}</p>
               )}
               <div className="flex flex-wrap gap-2 mt-1 text-xs opacity-75">
-                {(pricing.distance > 0 || manualDistance) && <span>{manualDistance ? parseFloat(manualDistance).toFixed(1) : pricing.distance.toFixed(1)}km</span>}
+                {pricing.distance > 0 && <span>{pricing.distance.toFixed(1)}km</span>}
                 {pricing.chargeableWeight > 0 && <span>• {pricing.chargeableWeight.toFixed(1)}kg chargeable</span>}
-                {pricing.duration > 0 && !manualDistance && <span>• ~{pricing.duration} mins</span>}
+                {pricing.duration > 0 && <span>• ~{pricing.duration} mins</span>}
               </div>
               {calculatingDistance && <p className="text-xs opacity-75 mt-1">Calculating distance...</p>}
             </div>
@@ -706,7 +707,7 @@ export default function NewOrderPage() {
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-bold text-gray-700 mb-2">Pickup Address *</label>
-                      <input type="text" name="pickup_address" value={formData.pickup_address} onChange={handleInputChange} required placeholder="123 Main St, Melbourne VIC 3000" className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent" />
+                      <AddressAutocomplete name="pickup_address" value={formData.pickup_address} onChange={handleInputChange} required placeholder="Start typing address..." className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent" />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
@@ -726,7 +727,7 @@ export default function NewOrderPage() {
                   <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-bold text-gray-700 mb-2">Delivery Address *</label>
-                      <input type="text" name="dropoff_address" value={formData.dropoff_address} onChange={handleInputChange} required placeholder="456 High St, Melbourne VIC 3000" className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent" />
+                      <AddressAutocomplete name="dropoff_address" value={formData.dropoff_address} onChange={handleInputChange} required placeholder="Start typing address..." className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent" />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
@@ -807,41 +808,11 @@ export default function NewOrderPage() {
                       </div>
                     </div>
                   )}
-
-                  {/* Manual Distance Entry */}
-                  {(distanceError || pricing.distance === 0) && !calculatingDistance && (
-                    <div className="bg-yellow-50 rounded-lg p-3 mb-4">
-                      <p className="text-sm font-bold text-yellow-900 mb-2">⚠️ Auto-distance unavailable</p>
-                      <p className="text-xs text-yellow-800">Please enter the approximate distance manually.</p>
+                  {(distanceError || pricing.distance === 0) && !calculatingDistance && formData.pickup_address && formData.dropoff_address && (
+                    <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                      <p className="text-sm font-bold text-red-700">⚠️ Could not calculate distance</p>
+                      <p className="text-xs text-red-600 mt-1">Please check your addresses are valid Australian addresses and try again.</p>
                     </div>
-                  )}
-
-                  <div className="flex gap-3 items-end">
-                    <div className="flex-1">
-                      <label className="block text-sm font-bold text-gray-700 mb-2">
-                        {pricing.distance > 0 ? 'Override Distance (km)' : 'Enter Distance (km) *'}
-                      </label>
-                      <input
-                        type="number"
-                        value={manualDistance}
-                        onChange={(e) => setManualDistance(e.target.value)}
-                        min="0.1"
-                        step="0.1"
-                        placeholder={pricing.distance > 0 ? `Auto: ${pricing.distance.toFixed(1)}km` : "e.g. 15"}
-                        className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent"
-                      />
-                    </div>
-                    <a
-                      href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(formData.pickup_address)}&destination=${encodeURIComponent(formData.dropoff_address)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-4 py-3 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600 transition text-sm whitespace-nowrap"
-                    >
-                      🗺️ Check Maps
-                    </a>
-                  </div>
-                  {manualDistance && (
-                    <p className="text-sm text-green-700 mt-2 font-semibold">✓ Using {manualDistance}km for pricing</p>
                   )}
                 </div>
 
@@ -849,7 +820,7 @@ export default function NewOrderPage() {
 
               <div className="flex gap-3 mt-6">
                 <button type="button" onClick={() => setCurrentStep(1)} className="flex-1 py-4 bg-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-400 transition">← Back</button>
-                <button type="button" onClick={() => setCurrentStep(3)} className="flex-1 py-4 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition">Next: Item Details →</button>
+                <button type="button" onClick={() => { if (pricing.distance <= 0) { alert("Please wait for distance calculation or check your addresses"); return; } setCurrentStep(3); }} className="flex-1 py-4 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition disabled:opacity-50" disabled={calculatingDistance || pricing.distance <= 0}>Next: Item Details →</button>
               </div>
             </div>
           )}

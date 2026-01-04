@@ -462,42 +462,8 @@ function AdminDashboardContent() {
             </div>
           </div>
         )}
-
-        {/* Secondary Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-6 mb-6 sm:mb-8">
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-gray-100 shadow-lg">
-            <p className="text-xs sm:text-sm text-gray-600 mb-1">This Month</p>
-            <p className="text-2xl sm:text-3xl font-black text-gray-900">${stats.thisMonthRevenue.toFixed(0)}</p>
-            <p className="text-xs text-gray-500 mt-1">Revenue</p>
-          </div>
-
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-gray-100 shadow-lg">
-            <p className="text-xs sm:text-sm text-gray-600 mb-1">Avg Order</p>
-            <p className="text-2xl sm:text-3xl font-black text-gray-900">${stats.avgOrderValue.toFixed(0)}</p>
-            <p className="text-xs text-gray-500 mt-1">Value</p>
-          </div>
-
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-gray-100 shadow-lg">
-            <p className="text-xs sm:text-sm text-gray-600 mb-1">Completion</p>
-            <p className="text-2xl sm:text-3xl font-black text-gray-900">{stats.completionRate.toFixed(0)}%</p>
-            <p className="text-xs text-gray-500 mt-1">Rate</p>
-          </div>
-
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-gray-100 shadow-lg">
-            <p className="text-xs sm:text-sm text-gray-600 mb-1">Active Clients</p>
-            <p className="text-2xl sm:text-3xl font-black text-gray-900">{stats.activeClients}</p>
-            <p className="text-xs text-gray-500 mt-1">Customers</p>
-          </div>
-
-          <div className="bg-gradient-to-br from-yellow-400 to-yellow-500 rounded-2xl p-4 sm:p-6 text-white shadow-lg">
-            <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">Avg Rating</p>
-            <p className="text-2xl sm:text-3xl font-black">{stats.avgRating > 0 ? stats.avgRating.toFixed(1) : 'N/A'} ⭐</p>
-            <p className="text-xs opacity-75">{stats.totalReviews} reviews</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 mb-8">
           
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 mb-8">
           {/* Pending Orders */}
           {pendingOrders.length > 0 && (
             <div className="lg:col-span-2">

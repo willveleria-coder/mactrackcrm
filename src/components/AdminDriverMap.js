@@ -111,7 +111,7 @@ export default function AdminDriverMap() {
                     onClick={() => setSelectedDriver(driver)}
                     icon={{
                       path: window.google?.maps?.SymbolPath?.FORWARD_CLOSED_ARROW || 0,
-                      fillColor: driver.is_on_duty ? '#22c55e' : '#9ca3af',
+                      fillColor: driver.is_on_duty ? '#dc2626' : '#7f1d1d',
                       fillOpacity: 1,
                       strokeColor: '#ffffff',
                       strokeWeight: 2,
