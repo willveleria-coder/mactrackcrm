@@ -615,9 +615,6 @@ export default function NewOrderPage() {
       const { url } = await response.json();
       window.location.href = url;
 
-      const { url } = await response.json();
-      window.location.href = url;
-
     } catch (err) {
       console.error("Error creating order:", err);
       setError(err.message || "Failed to create order. Please try again.");
