@@ -576,7 +576,7 @@ export default function NewOrderPage() {
         fuel_levy_percent: pricing.fuelLevyPercent,
         gst: pricing.gst,
         price: pricing.total,
-        status: "pending_payment",
+        status: client.bypass_payment ? "pending" : "pending_payment",
         signature_data: signature || null,
         parcel_images: uploadedImageUrls.length > 0 ? uploadedImageUrls : null,
         items_detail: itemsSummary,
@@ -591,10 +591,17 @@ export default function NewOrderPage() {
         console.error("Order creation error:", orderError);
         throw new Error(orderError.message || "Failed to create order");
       }
+      // Check if client bypasses payment (invoice only)
+      if (client.bypass_payment) {
+        alert("✅ Order placed successfully! You will be invoiced separately.");
+        router.push("/client-portal/orders");
+        return;
+      }
 
-      const response = await fetch('/api/create-checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      // Normal payment flow - redirect to Stripe
+      const response = await fetch("/api/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orderId: order[0].id,
           amount: pricing.total,
@@ -602,10 +609,11 @@ export default function NewOrderPage() {
           customerName: client.name,
         }),
       });
-
       if (!response.ok) {
-        throw new Error('Failed to create checkout session');
+        throw new Error("Failed to create checkout session");
       }
+      const { url } = await response.json();
+      window.location.href = url;
 
       const { url } = await response.json();
       window.location.href = url;

@@ -185,6 +185,20 @@ export default function AdminClientsPage() {
     }
   }
 
+
+  async function toggleBypassPayment(clientId, currentValue) {
+    try {
+      const { error } = await supabase
+        .from("clients")
+        .update({ bypass_payment: !currentValue })
+        .eq("id", clientId);
+      if (error) throw error;
+      setClients(prev => prev.map(c => c.id === clientId ? { ...c, bypass_payment: !currentValue } : c));
+      setFilteredClients(prev => prev.map(c => c.id === clientId ? { ...c, bypass_payment: !currentValue } : c));
+    } catch (error) {
+      alert("Failed to update: " + error.message);
+    }
+  }
   async function handleLogout() {
     await supabase.auth.signOut();
     router.push("/admin/login");
@@ -299,6 +313,15 @@ export default function AdminClientsPage() {
                         )}
                       </div>
                     </div>
+                    <div className="flex items-center justify-between mb-2 p-2 bg-gray-50 rounded-lg">
+                      <span className="text-xs font-semibold text-gray-600">Invoice Only (Skip Payment)</span>
+                      <button
+                        onClick={() => toggleBypassPayment(client.id, client.bypass_payment)}
+                        className={`px-3 py-1 rounded-full text-xs font-bold transition ${client.bypass_payment ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-500"}`}
+                      >
+                        {client.bypass_payment ? "✓ Yes" : "No"}
+                      </button>
+                    </div>
                     
                     <div className="flex gap-2">
                       <button
@@ -347,6 +370,7 @@ export default function AdminClientsPage() {
                       <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">Company</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">Status</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">Joined</th>
+                      <th className="text-center py-4 px-6 text-xs font-bold text-gray-600 uppercase">Invoice Only</th>
                       <th className="text-center py-4 px-6 text-xs font-bold text-gray-600 uppercase">Actions</th>
                     </tr>
                   </thead>
@@ -373,6 +397,14 @@ export default function AdminClientsPage() {
                         </td>
                         <td className="py-4 px-6 text-sm text-gray-600">
                           {new Date(client.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="py-4 px-6 text-center">
+                          <button
+                            onClick={() => toggleBypassPayment(client.id, client.bypass_payment)}
+                            className={`px-3 py-1 rounded-full text-xs font-bold transition ${client.bypass_payment ? "bg-green-100 text-green-700" : "bg-gray-200 text-gray-500"}`}
+                          >
+                            {client.bypass_payment ? "✓ Yes" : "No"}
+                          </button>
                         </td>
                         <td className="py-4 px-6">
                           <div className="flex gap-2 justify-center">
