@@ -12,6 +12,7 @@ import { ThemeProvider, useTheme } from "@/context/ThemeContext";
 function ClientDashboardContent() {
   const { theme } = useTheme();
   const [client, setClient] = useState(null);
+  const [showPhonePopup, setShowPhonePopup] = useState(false);
   const [orders, setOrders] = useState([]);
   const [stats, setStats] = useState({
     totalOrders: 0,
@@ -135,10 +136,6 @@ function ClientDashboardContent() {
           <p className="text-sm sm:text-base text-gray-600">Dashboard</p>
         </div>
 
-        {/* Loyalty Card */}
-        <div className="mb-6">
-          <div className="bg-gradient-to-br from-red-600 to-red-700 rounded-2xl p-6 text-white shadow-xl text-center"><p className="text-xl font-bold">🎁 Loyalty Program</p><p className="mt-2">Contact us to join Mac With A Van loyalty program.</p><p className="mt-2 text-sm">📞 0430 233 811</p></div>
-        </div>
 
         {/* Quick Actions */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
@@ -157,10 +154,10 @@ function ClientDashboardContent() {
             <p className="font-bold text-sm sm:text-base">Rewards</p>
           </Link>
 
-          <a href="tel:0430233811" className="p-5 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-2xl shadow-lg hover:shadow-xl transition transform hover:scale-105 text-center">
+          <button onClick={() => { if (/Mobi|Android/i.test(navigator.userAgent)) { window.location.href = "tel:0430233811"; } else { setShowPhonePopup(true); }}} className="p-5 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-2xl shadow-lg hover:shadow-xl transition transform hover:scale-105 text-center">
             <div className="text-4xl mb-2">📞</div>
             <p className="font-bold text-sm sm:text-base">Call Us</p>
-          </a>
+          </button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8 mb-8">
@@ -293,6 +290,24 @@ function ClientDashboardContent() {
             </div>
           )}
         </div>
+
+        {/* Phone Number Popup */}
+        {showPhonePopup && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowPhonePopup(false)}>
+            <div className="bg-white rounded-2xl p-6 mx-4 max-w-sm w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
+              <div className="text-center">
+                <div className="text-5xl mb-4">📞</div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Call Us</h3>
+                <p className="text-3xl font-black text-red-600 mb-4">0430 233 811</p>
+                <p className="text-sm text-gray-500 mb-6">Mon-Fri, 7AM-5PM AEST</p>
+                <div className="flex gap-3">
+                  <a href="tel:0430233811" className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition">Call Now</a>
+                  <button onClick={() => setShowPhonePopup(false)} className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 transition">Close</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Order Details Modal */}

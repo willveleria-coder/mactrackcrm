@@ -194,7 +194,7 @@ export default function DriverWalletPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-gray-900 mb-2">💳 My Wallet</h2>
-          <p className="text-gray-600">Manage your earnings and payouts</p>
+          <p className="text-gray-600">Manage your earnings and payments</p>
         </div>
 
         {message && (
@@ -218,7 +218,7 @@ export default function DriverWalletPage() {
           </div>
 
           <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg">
-            <p className="text-sm font-medium opacity-90 mb-1">Total Paid Out</p>
+            <p className="text-sm font-medium opacity-90 mb-1">Total Payments</p>
             <p className="text-4xl font-black">${wallet?.total_paid_out.toFixed(2) || '0.00'}</p>
             <p className="text-xs opacity-75 mt-2">Withdrawn</p>
           </div>

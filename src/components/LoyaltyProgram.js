@@ -174,18 +174,11 @@ export const LoyaltyDashboard = ({ customerEmail }) => {
   if (loading) {
     return <div className="text-center py-8">Loading loyalty data...</div>;
   }
-
   if (!loyaltyData) {
-    return (
-      <div className="max-w-2xl mx-auto p-6 bg-white rounded-lg shadow-lg">
-        <h2 className="text-2xl font-bold mb-4">Join Our Loyalty Program</h2>
-        <p className="text-gray-600 mb-4">
-          Earn {LOYALTY_CONFIG.pointsPerDollar} points per dollar + {LOYALTY_CONFIG.pointsForOrder} bonus points per order!
-        </p>
-        <p className="text-sm text-gray-500">Complete an order to start earning points.</p>
-      </div>
-    );
+    return null;
   }
+
+
 
   const nextTier = LOYALTY_CONFIG.rewardTiers.find(t => t.points > loyaltyData.points);
 

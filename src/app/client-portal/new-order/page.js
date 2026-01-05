@@ -1023,7 +1023,8 @@ export default function NewOrderPage() {
 
                 {/* Photos */}
                 <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-3">📷 Item Photos (Max 5)</label>
+                  <label className="block text-sm font-bold text-gray-700 mb-1">📷 Item Photos (Optional)</label>
+                  <p className="text-xs text-gray-500 mb-3">Required only for oversized or heavy items over 100kg</p>
                   <input type="file" accept="image/*" multiple onChange={handleImageChange} className="hidden" id="image-upload" />
                   <label htmlFor="image-upload" className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-gray-50 transition">
                     <p className="text-4xl mb-2">📸</p>
