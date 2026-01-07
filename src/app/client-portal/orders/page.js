@@ -24,9 +24,10 @@ export default function OrdersHistoryPage() {
 
   const menuItems = [
     { href: "/client-portal/dashboard", icon: "🏠", label: "Dashboard" },
-    { href: "/client-portal/orders", icon: "📦", label: "My Orders" },
+    { href: "/client-portal/orders", icon: "📦", label: "Orders" },
     { href: "/client-portal/new-order", icon: "➕", label: "New Order" },
-    { href: "/client-portal/loyalty", icon: "⭐", label: "Loyalty Rewards" },
+    { href: "/client-portal/feedback", icon: "⭐", label: "Feedback" },
+    { href: "/client-portal/settings", icon: "⚙️", label: "Settings" },
   ];
 
   useEffect(() => {
@@ -453,7 +454,7 @@ export default function OrdersHistoryPage() {
                     📍 Track Order
                   </Link>
                 )}
-                <Link href={`/client-portal/orders/${selectedOrder.id}/label`} className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold text-center hover:bg-gray-300 transition" onClick={closeOrderModal}>
+                <Link href={`/client-portal/orders/${selectedOrder.id}/label`} className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold text-center hover:bg-gray-300 transition text-sm sm:text-base" onClick={closeOrderModal}>
                   🏷️ View Label
                 </Link>
               </div>

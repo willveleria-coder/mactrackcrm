@@ -37,6 +37,17 @@ export default function DriverLoginPage() {
         throw new Error("Access denied. Driver account not found.");
       }
 
+      // Check if driver is approved
+      if (driverData.status === "pending" || driverData.approved === false) {
+        await supabase.auth.signOut();
+        throw new Error("Your account is pending approval. Please wait for admin approval.");
+      }
+
+      if (driverData.status === "rejected") {
+        await supabase.auth.signOut();
+        throw new Error("Your account has been rejected. Please contact support.");
+      }
+
       router.push("/driver/dashboard");
     } catch (err) {
       setError(err.message || "Failed to login");

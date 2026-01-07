@@ -37,6 +37,17 @@ export default function ClientLoginPage() {
         throw new Error("Access denied. Client account not found.");
       }
 
+      // Check if client is approved
+      if (clientData.status === "pending" || clientData.approved === false) {
+        await supabase.auth.signOut();
+        throw new Error("Your account is pending approval. Please wait for admin approval.");
+      }
+
+      if (clientData.status === "rejected") {
+        await supabase.auth.signOut();
+        throw new Error("Your account has been rejected. Please contact support.");
+      }
+
       router.push("/client-portal/dashboard");
     } catch (err) {
       setError(err.message || "Failed to login");

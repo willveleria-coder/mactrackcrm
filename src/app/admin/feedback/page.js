@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
 import Link from "next/link";
 import Image from "next/image";
+import HamburgerMenu from "@/components/HamburgerMenu";
 
 export default function AdminFeedbackPage() {
   const [admin, setAdmin] = useState(null);
@@ -17,6 +18,25 @@ export default function AdminFeedbackPage() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const supabase = createClient();
+  const menuItems = [
+    { href: "/admin/dashboard", icon: "🏠", label: "Dashboard" },
+    { href: "/admin/orders", icon: "📦", label: "Orders" },
+    { href: "/admin/orders/create", icon: "➕", label: "Create Order" },
+    { href: "/admin/clients", icon: "👥", label: "Clients" },
+    { href: "/admin/drivers", icon: "🚐", label: "Drivers" },
+    { href: "/admin/approvals", icon: "✅", label: "Approvals" },
+    { href: "/admin/tracking", icon: "🗺️", label: "Live Tracking" },
+    { href: "/admin/analytics", icon: "📊", label: "Analytics" },
+    { href: "/admin/invoices", icon: "💰", label: "Invoices" },
+    { href: "/admin/payouts", icon: "💸", label: "Payouts" },
+    { href: "/admin/pricing", icon: "💲", label: "Pricing" },
+    { href: "/admin/feedback", icon: "💬", label: "Feedback" },
+    { href: "/admin/settings", icon: "⚙️", label: "Settings" },
+  ];
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    router.push("/admin/login");
+  }
 
   useEffect(() => {
     checkAuth();
@@ -190,43 +210,17 @@ export default function AdminFeedbackPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Navigation */}
       <nav className="bg-white border-b border-gray-200 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Image 
-                src="/bus-icon.png" 
-                alt="Mac Track" 
-                width={40} 
-                height={40}
-                className="object-contain"
-              />
+              <Image src="/bus-icon.png" alt="Mac Track" width={40} height={40} className="object-contain" />
               <div>
                 <h1 className="text-xl sm:text-2xl font-black text-red-600">Mac Track</h1>
                 <p className="text-xs text-gray-500">Admin Portal</p>
               </div>
             </div>
-            <div className="flex items-center gap-4 sm:gap-6">
-              <Link href="/admin/dashboard" className="text-sm font-semibold text-gray-700 hover:text-red-600">
-                Dashboard
-              </Link>
-              <Link href="/admin/analytics" className="text-sm font-semibold text-gray-700 hover:text-red-600">
-                Analytics
-              </Link>
-              <Link href="/admin/feedback" className="text-sm font-semibold text-red-600 border-b-2 border-red-600">
-                Feedback
-              </Link>
-              <Link href="/admin/orders" className="text-sm font-semibold text-gray-700 hover:text-red-600">
-                Orders
-              </Link>
-              <button 
-                onClick={handleLogout}
-                className="text-sm font-semibold text-gray-700 hover:text-red-600"
-              >
-                Logout
-              </button>
-            </div>
+            <HamburgerMenu items={menuItems} onLogout={handleLogout} userName={admin?.name} userRole="Admin" />
           </div>
         </div>
       </nav>

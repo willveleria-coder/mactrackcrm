@@ -251,7 +251,7 @@ function ClientDashboardContent() {
                 </a>
               </div>
 
-              <p className="text-xs opacity-75 mt-4 text-center">Mon-Fri, 9AM-6PM AEST</p>
+              <p className="text-xs opacity-75 mt-4 text-center">Mon-Fri, 7AM-5PM AEST</p>
             </div>
           </div>
         </div>

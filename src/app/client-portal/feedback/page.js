@@ -229,13 +229,13 @@ export default function ClientFeedbackPage() {
               </div>
             </a>
             <a
-              href="tel:+61399998888"
+              href="tel:0430233811"
               className="bg-red-600 hover:bg-red-700 text-white px-6 py-4 rounded-xl font-bold text-center flex items-center justify-center gap-2 transition shadow-lg hover:shadow-xl"
             >
               <span className="text-xl">📞</span>
               <div className="text-left">
                 <p className="text-sm font-bold">Call Support</p>
-                <p className="text-xs opacity-90">+61 3 9999 8888</p>
+                <p className="text-xs opacity-90">0430 233 811</p>
               </div>
             </a>
           </div>

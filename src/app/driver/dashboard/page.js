@@ -538,7 +538,7 @@ function DriverDashboardContent() {
       </main>
 
       {/* Floating Help Button */}
-      <button onClick={() => setShowContactPopup(!showContactPopup)} className={`fixed bottom-24 right-6 w-14 h-14 bg-gradient-to-r ${theme.gradient} text-white rounded-full shadow-2xl hover:scale-110 transition-transform z-40 flex items-center justify-center text-2xl font-bold`}>
+      <button onClick={() => setShowContactPopup(!showContactPopup)} className={`fixed bottom-24 left-6 w-14 h-14 bg-gradient-to-r ${theme.gradient} text-white rounded-full shadow-2xl hover:scale-110 transition-transform z-40 flex items-center justify-center text-2xl font-bold`}>
         ❓
       </button>
 
@@ -546,7 +546,7 @@ function DriverDashboardContent() {
       {showContactPopup && (
         <>
           <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={() => setShowContactPopup(false)} />
-          <div className="fixed bottom-40 right-6 bg-white rounded-2xl shadow-2xl border-2 border-gray-200 p-4 z-50 w-64">
+          <div className="fixed bottom-40 left-6 bg-white rounded-2xl shadow-2xl border-2 border-gray-200 p-4 z-50 w-64">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-bold text-gray-900">Contact Admin</h3>
               <button onClick={() => setShowContactPopup(false)} className="text-gray-500 hover:text-gray-700 text-xl font-bold">×</button>

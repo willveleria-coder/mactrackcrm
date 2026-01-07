@@ -114,11 +114,13 @@ export default function DriverEarningsPage() {
   }
 
   const menuItems = [
-    { icon: "🏠", label: "Dashboard", href: "/driver/dashboard" },
-    { icon: "📦", label: "My Deliveries", href: "/driver/orders" },
-    { icon: "💰", label: "Earnings", href: "/driver/earnings" },
-    { icon: "💬", label: "Feedback", href: "/driver/feedback" },
-    { icon: "👛", label: "Wallet", href: "/driver/wallet" },
+    { href: "/driver/dashboard", icon: "🏠", label: "Dashboard" },
+    { href: "/driver/orders", icon: "📦", label: "Deliveries" },
+    { href: "/driver/hours", icon: "⏱️", label: "Hours" },
+    { href: "/driver/wallet", icon: "💳", label: "Wallet" },
+    { href: "/driver/feedback", icon: "⭐", label: "Feedback" },
+    { href: "/driver/chat", icon: "💬", label: "Support Chat" },
+    { href: "/driver/settings", icon: "⚙️", label: "Settings" },
   ];
 
   if (loading) {

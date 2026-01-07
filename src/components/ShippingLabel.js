@@ -24,7 +24,7 @@ export default function ShippingLabel({ order, client, showPrintButton = true })
         </div>
       )}
 
-      <div id="printable-label" style={{ width: '210mm', minHeight: '297mm', margin: '0 auto', backgroundColor: 'white', border: '3px solid black', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+      <div id="printable-label" style={{ width: '100%', maxWidth: '210mm', minHeight: 'auto', margin: '0 auto', backgroundColor: 'white', border: '3px solid black', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
         
         <div style={{ backgroundColor: '#dc2626', color: 'white', padding: '24px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -40,7 +40,7 @@ export default function ShippingLabel({ order, client, showPrintButton = true })
           </div>
         </div>
 
-        <div style={{ display: 'flex', borderBottom: '3px solid black' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', borderBottom: '3px solid black' }}>
           <div style={{ padding: '24px', borderRight: '3px solid black', backgroundColor: '#f9fafb', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minWidth: '180px' }}>
             <QRCodeSVG value={trackingUrl} size={130} level="H" />
             <p style={{ fontSize: '14px', fontWeight: 'bold', marginTop: '12px', color: '#666' }}>SCAN TO TRACK</p>
@@ -62,8 +62,8 @@ export default function ShippingLabel({ order, client, showPrintButton = true })
           </div>
         </div>
 
-        <div style={{ display: 'flex', borderBottom: '3px solid black' }}>
-          <div style={{ flex: 1, padding: '24px', borderRight: '3px solid black', backgroundColor: '#eff6ff', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', borderBottom: '3px solid black' }}>
+          <div style={{ flex: '1 1 280px', padding: '24px', borderRight: '3px solid black', backgroundColor: '#eff6ff', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
               <div style={{ width: '48px', height: '48px', backgroundColor: '#2563eb', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>📍</div>
               <p style={{ fontSize: '18px', fontWeight: '900', color: '#2563eb', margin: 0 }}>PICKUP FROM</p>
@@ -76,7 +76,7 @@ export default function ShippingLabel({ order, client, showPrintButton = true })
               </div>
             )}
           </div>
-          <div style={{ flex: 1, padding: '24px', backgroundColor: '#f0fdf4', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ flex: '1 1 280px', padding: '24px', backgroundColor: '#f0fdf4', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
               <div style={{ width: '48px', height: '48px', backgroundColor: '#16a34a', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>🎯</div>
               <p style={{ fontSize: '18px', fontWeight: '900', color: '#16a34a', margin: 0 }}>DELIVER TO</p>
@@ -93,20 +93,20 @@ export default function ShippingLabel({ order, client, showPrintButton = true })
 
         <div style={{ padding: '24px', borderBottom: '3px solid black', backgroundColor: '#f3f4f6' }}>
           <p style={{ fontSize: '20px', fontWeight: '900', marginBottom: '16px' }}>📦 PARCEL DETAILS</p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
-            <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', textAlign: 'center', border: '2px solid #e5e7eb' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+            <div style={{ flex: '1 1 45%', minWidth: '120px', backgroundColor: 'white', borderRadius: '12px', padding: '20px', textAlign: 'center', border: '2px solid #e5e7eb' }}>
               <p style={{ fontSize: '14px', color: '#666', fontWeight: 'bold', marginBottom: '8px' }}>SIZE</p>
               <p style={{ fontSize: '24px', fontWeight: '900', margin: 0 }}>{order.parcel_size?.replace(/_/g, ' ') || 'N/A'}</p>
             </div>
-            <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', textAlign: 'center', border: '2px solid #e5e7eb' }}>
+            <div style={{ flex: '1 1 45%', minWidth: '120px', backgroundColor: 'white', borderRadius: '12px', padding: '20px', textAlign: 'center', border: '2px solid #e5e7eb' }}>
               <p style={{ fontSize: '14px', color: '#666', fontWeight: 'bold', marginBottom: '8px' }}>WEIGHT</p>
               <p style={{ fontSize: '24px', fontWeight: '900', margin: 0 }}>{order.parcel_weight || 0} kg</p>
             </div>
-            <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', textAlign: 'center', border: '2px solid #e5e7eb' }}>
+            <div style={{ flex: '1 1 45%', minWidth: '120px', backgroundColor: 'white', borderRadius: '12px', padding: '20px', textAlign: 'center', border: '2px solid #e5e7eb' }}>
               <p style={{ fontSize: '14px', color: '#666', fontWeight: 'bold', marginBottom: '8px' }}>QTY</p>
               <p style={{ fontSize: '24px', fontWeight: '900', margin: 0 }}>{order.quantity || 1}</p>
             </div>
-            <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '20px', textAlign: 'center', border: '2px solid #e5e7eb' }}>
+            <div style={{ flex: '1 1 45%', minWidth: '120px', backgroundColor: 'white', borderRadius: '12px', padding: '20px', textAlign: 'center', border: '2px solid #e5e7eb' }}>
               <p style={{ fontSize: '14px', color: '#666', fontWeight: 'bold', marginBottom: '8px' }}>DIMENSIONS</p>
               <p style={{ fontSize: '24px', fontWeight: '900', margin: 0 }}>{order.length && order.width && order.height ? `${order.length}x${order.width}x${order.height}` : 'N/A'}</p>
             </div>
@@ -122,7 +122,7 @@ export default function ShippingLabel({ order, client, showPrintButton = true })
           </div>
         )}
 
-        <div style={{ display: 'flex', borderBottom: '3px solid black' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', borderBottom: '3px solid black' }}>
           <div style={{ flex: 1, padding: '20px 24px', borderRight: '3px solid black', backgroundColor: 'white' }}>
             <p style={{ fontSize: '14px', color: '#666', fontWeight: 'bold', marginBottom: '8px' }}>CUSTOMER</p>
             <p style={{ fontSize: '22px', fontWeight: '900', margin: 0 }}>{client?.name || order.client?.name || 'N/A'}</p>

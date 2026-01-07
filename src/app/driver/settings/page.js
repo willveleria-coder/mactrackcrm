@@ -65,6 +65,7 @@ export default function DriverSettingsPage() {
     { href: "/driver/hours", icon: "⏱️", label: "Hours" },
     { href: "/driver/wallet", icon: "💳", label: "Wallet" },
     { href: "/driver/feedback", icon: "⭐", label: "Feedback" },
+    { href: "/driver/chat", icon: "💬", label: "Support Chat" },
     { href: "/driver/settings", icon: "⚙️", label: "Settings" },
   ];
 

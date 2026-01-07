@@ -45,6 +45,7 @@ export default function ClientSettingsPage() {
     { href: "/client-portal/dashboard", icon: "🏠", label: "Dashboard" },
     { href: "/client-portal/orders", icon: "📦", label: "Orders" },
     { href: "/client-portal/new-order", icon: "➕", label: "New Order" },
+    { href: "/client-portal/feedback", icon: "⭐", label: "Feedback" },
     { href: "/client-portal/settings", icon: "⚙️", label: "Settings" },
   ];
 
