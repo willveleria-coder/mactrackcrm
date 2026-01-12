@@ -119,9 +119,11 @@ export default function AdminCreateOrderPage() {
     formData.insurance_required
   ]);
 
-  window.initGoogleMaps = () => setGoogleLoaded(true);
+  
 
   function loadGoogleMapsScript() {
+    if (typeof window === "undefined") return;
+    window.initGoogleMaps = () => setGoogleLoaded(true);
     if (window.google) { setGoogleLoaded(true); return; }
 
     const script = document.createElement('script');
