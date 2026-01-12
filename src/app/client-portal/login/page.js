@@ -38,7 +38,7 @@ export default function ClientLoginPage() {
       }
 
       // Check if client is approved
-      if (clientData.status === "pending" || clientData.approved === false) {
+      if (clientData.status === "pending" || clientData.is_approved === false) {
         await supabase.auth.signOut();
         throw new Error("Your account is pending approval. Please wait for admin approval.");
       }

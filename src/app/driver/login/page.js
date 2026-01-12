@@ -38,7 +38,7 @@ export default function DriverLoginPage() {
       }
 
       // Check if driver is approved
-      if (driverData.status === "pending" || driverData.approved === false) {
+      if (driverData.status === "pending" || driverData.is_approved === false) {
         await supabase.auth.signOut();
         throw new Error("Your account is pending approval. Please wait for admin approval.");
       }

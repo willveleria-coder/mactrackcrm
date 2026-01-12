@@ -63,7 +63,8 @@ export default function AdminApprovalsPage() {
       const { error } = await supabase
         .from("drivers")
         .update({ 
-          is_approved: true, 
+          is_approved: true,
+          status: 'approved', 
           approved_at: new Date().toISOString(),
           approved_by: admin.id 
         })
@@ -98,7 +99,8 @@ export default function AdminApprovalsPage() {
       const { error } = await supabase
         .from("clients")
         .update({ 
-          is_approved: true, 
+          is_approved: true,
+          status: 'approved', 
           approved_at: new Date().toISOString(),
           approved_by: admin.id 
         })
