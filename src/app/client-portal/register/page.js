@@ -45,6 +45,8 @@ export default function ClientRegisterPage() {
           email: formData.email,
           phone: formData.phone,
           company: formData.company,
+          status: "pending",
+          is_approved: false,
         }]);
 
       if (clientError) throw clientError;

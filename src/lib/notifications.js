@@ -19,7 +19,7 @@ export async function sendOrderEmail(to, order, type) {
             <a href="https://mactrackcrm-xatn.vercel.app/track/${order.id}" style="display: inline-block; background: #dc2626; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold;">Track Your Order</a>
           </div>
           <div style="background: #111827; color: white; padding: 15px; text-align: center; font-size: 12px;">
-            <p>Mac Track Courier Service | 0430 233 811</p>
+            <p>Mac Track Courier Service | 1300 170 718</p>
           </div>
         </div>
       `

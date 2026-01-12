@@ -19,7 +19,7 @@ export default function InvoiceDetailPage() {
     name: "Mac With A Van",
     abn: "18 616 164 875",
     email: "macwithavan@mail.com",
-    phone: "0430 233 811",
+    phone: "1300 170 718",
     address: "Melbourne, VIC",
     bankName: "NAB",
     bankAccountName: "Mahmoud Hamidan",

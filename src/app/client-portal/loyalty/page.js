@@ -94,7 +94,7 @@ export default function LoyaltyPage() {
           <div className="bg-gradient-to-br from-red-600 to-red-700 rounded-2xl p-6 text-white shadow-xl text-center">
             <p className="text-2xl font-bold">🎁 Loyalty Program</p>
             <p className="mt-3 text-lg">Contact us to join Mac With A Van loyalty program.</p>
-            <p className="mt-3 text-xl font-semibold">📞 0430 233 811</p>
+            <p className="mt-3 text-xl font-semibold">📞 1300 170 718</p>
           </div>
         </div>
 

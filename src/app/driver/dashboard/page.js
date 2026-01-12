@@ -263,8 +263,8 @@ function DriverDashboardContent() {
     }
   }
 
-  function handleCall() { window.location.href = `tel:0430233811`; }
-  function handleSMS() { window.location.href = `sms:0430233811`; }
+  function handleCall() { window.location.href = `tel:1300170718`; }
+  function handleSMS() { window.location.href = `sms:1300170718`; }
   function handleEmail() { window.location.href = `mailto:macwithavan@mail.com`; }
   function handleWhatsApp() { window.open(`https://wa.me/61430233811`, '_blank'); }
 
@@ -556,14 +556,14 @@ function DriverDashboardContent() {
                 <span className="text-2xl">📞</span>
                 <div>
                   <p className="font-bold text-gray-900 text-sm">Call Admin</p>
-                  <p className="text-xs text-gray-600">0430 233 811</p>
+                  <p className="text-xs text-gray-600">1300 170 718</p>
                 </div>
               </button>
               <button onClick={handleSMS} className="w-full flex items-center gap-3 px-4 py-3 bg-blue-50 hover:bg-blue-100 rounded-xl transition text-left">
                 <span className="text-2xl">💬</span>
                 <div>
                   <p className="font-bold text-gray-900 text-sm">Send SMS</p>
-                  <p className="text-xs text-gray-600">0430 233 811</p>
+                  <p className="text-xs text-gray-600">1300 170 718</p>
                 </div>
               </button>
               <button onClick={handleEmail} className="w-full flex items-center gap-3 px-4 py-3 bg-purple-50 hover:bg-purple-100 rounded-xl transition text-left">
@@ -577,7 +577,7 @@ function DriverDashboardContent() {
                 <span className="text-2xl">📱</span>
                 <div>
                   <p className="font-bold text-gray-900 text-sm">WhatsApp</p>
-                  <p className="text-xs text-gray-600">0430 233 811</p>
+                  <p className="text-xs text-gray-600">1300 170 718</p>
                 </div>
               </button>
             </div>

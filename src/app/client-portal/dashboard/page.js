@@ -154,7 +154,7 @@ function ClientDashboardContent() {
             <p className="font-bold text-sm sm:text-base">Rewards</p>
           </Link>
 
-          <button onClick={() => { if (/Mobi|Android/i.test(navigator.userAgent)) { window.location.href = "tel:0430233811"; } else { setShowPhonePopup(true); }}} className="p-5 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-2xl shadow-lg hover:shadow-xl transition transform hover:scale-105 text-center">
+          <button onClick={() => { if (/Mobi|Android/i.test(navigator.userAgent)) { window.location.href = "tel:1300170718"; } else { setShowPhonePopup(true); }}} className="p-5 bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-2xl shadow-lg hover:shadow-xl transition transform hover:scale-105 text-center">
             <div className="text-4xl mb-2">📞</div>
             <p className="font-bold text-sm sm:text-base">Call Us</p>
           </button>
@@ -246,7 +246,7 @@ function ClientDashboardContent() {
                 <a href="mailto:macwithavan@mail.com" className="block w-full text-center py-2 bg-white/20 hover:bg-white/30 rounded-lg font-semibold text-sm transition backdrop-blur-sm">
                   📧 Email Support
                 </a>
-                <a href="tel:0430233811" className="block w-full text-center py-2 bg-white/20 hover:bg-white/30 rounded-lg font-semibold text-sm transition backdrop-blur-sm">
+                <a href="tel:1300170718" className="block w-full text-center py-2 bg-white/20 hover:bg-white/30 rounded-lg font-semibold text-sm transition backdrop-blur-sm">
                   📞 Call Us
                 </a>
               </div>
@@ -298,10 +298,10 @@ function ClientDashboardContent() {
               <div className="text-center">
                 <div className="text-5xl mb-4">📞</div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Call Us</h3>
-                <p className="text-3xl font-black text-red-600 mb-4">0430 233 811</p>
+                <p className="text-3xl font-black text-red-600 mb-4">1300 170 718</p>
                 <p className="text-sm text-gray-500 mb-6">Mon-Fri, 7AM-5PM AEST</p>
                 <div className="flex gap-3">
-                  <a href="tel:0430233811" className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition">Call Now</a>
+                  <a href="tel:1300170718" className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition">Call Now</a>
                   <button onClick={() => setShowPhonePopup(false)} className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 transition">Close</button>
                 </div>
               </div>

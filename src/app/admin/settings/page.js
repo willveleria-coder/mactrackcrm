@@ -35,9 +35,9 @@ export default function AdminSettingsPage() {
   const [businessInfo, setBusinessInfo] = useState({
     companyName: "Mac Track",
     contactEmail: "macwithavan@mail.com",
-    contactPhone: "0430 233 811",
+    contactPhone: "1300 170 718",
     supportEmail: "macwithavan@mail.com",
-    supportPhone: "0430 233 811",
+    supportPhone: "1300 170 718",
     operatingHours: "Mon-Fri, 7AM-5PM AEST",
     address: "",
     requireSignature: true
@@ -606,7 +606,7 @@ export default function AdminSettingsPage() {
                       type="tel"
                       value={businessInfo.supportPhone}
                       onChange={(e) => setBusinessInfo({...businessInfo, supportPhone: e.target.value})}
-                      placeholder="0430 233 811"
+                      placeholder="1300 170 718"
                       className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent"
                     />
                   </div>

@@ -464,7 +464,7 @@ export default function NewOrderPage() {
     const now = new Date();
     const hour = now.getHours();
     if (hour < 7 || hour >= 17) {
-      setError("Online bookings are available between 7:00 AM and 5:00 PM. For after-hours bookings, please call 0430 233 811.");
+      setError("Online bookings are available between 7:00 AM and 5:00 PM. For after-hours bookings, please call 1300 170 718.");
       return;
     }
     e.preventDefault();
@@ -475,7 +475,7 @@ export default function NewOrderPage() {
     }
 
     if (pricing.requiresQuote) {
-      setError("This service requires a custom quote. Please contact Mac With A Van at 0430 233 811 or macwithavan@mail.com");
+      setError("This service requires a custom quote. Please contact Mac With A Van at 1300 170 718 or macwithavan@mail.com");
       return;
     }
 
@@ -777,7 +777,7 @@ export default function NewOrderPage() {
                     <div className="mt-3 p-4 bg-yellow-50 border-2 border-yellow-300 rounded-xl">
                       <p className="text-sm font-bold text-yellow-900">📞 Contact Required</p>
                       <p className="text-xs text-yellow-800 mt-1">This service requires a custom quote.</p>
-                      <p className="text-sm font-bold text-yellow-900 mt-2">📱 0430 233 811 | ✉️ macwithavan@mail.com</p>
+                      <p className="text-sm font-bold text-yellow-900 mt-2">📱 1300 170 718 | ✉️ macwithavan@mail.com</p>
                     </div>
                   )}
                 </div>
@@ -1082,7 +1082,7 @@ export default function NewOrderPage() {
                     <div>
                       <p className="text-lg font-bold mb-2">📞 Contact for Quote</p>
                       <p className="text-sm opacity-90">This service requires a custom quote.</p>
-                      <p className="text-lg font-bold mt-3">0430 233 811</p>
+                      <p className="text-lg font-bold mt-3">1300 170 718</p>
                       <p className="text-sm">macwithavan@mail.com</p>
                     </div>
                     <div className="text-6xl">📱</div>

@@ -136,7 +136,7 @@ export default function ShippingLabel({ order, client, showPrintButton = true })
 
         <div style={{ backgroundColor: '#111827', color: 'white', padding: '20px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
           <div>
-            <p style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>📞 0430 233 811</p>
+            <p style={{ fontSize: '20px', fontWeight: 'bold', margin: 0 }}>📞 1300 170 718</p>
             <p style={{ fontSize: '14px', opacity: 0.75, margin: '4px 0 0 0' }}>macwithavan@mail.com</p>
           </div>
           <div style={{ textAlign: 'center' }}>

@@ -241,7 +241,7 @@ function AdminDashboardContent() {
     { href: "/admin/tracking", icon: "🗺️", label: "Live Tracking" },
     { href: "/admin/analytics", icon: "📊", label: "Analytics" },
     { href: "/admin/invoices", icon: "💰", label: "Invoices" },
-    { href: "/admin/payouts", icon: "💸", label: "Payouts" },
+    { href: "/admin/payouts", icon: "💸", label: "Payments" },
     { href: "/admin/pricing", icon: "💲", label: "Pricing" },
     { href: "/admin/feedback", icon: "💬", label: "Feedback" },
     { href: "/admin/settings", icon: "⚙️", label: "Settings" },

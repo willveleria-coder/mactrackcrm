@@ -76,7 +76,7 @@ export default function DocsPage() {
             <section>
               <h2 className="text-2xl font-black text-gray-700 mb-4">📞 Support</h2>
               <div className="bg-gray-50 rounded-xl p-6">
-                <p><strong>Phone:</strong> 0430 233 811</p>
+                <p><strong>Phone:</strong> 1300 170 718</p>
                 <p><strong>Email:</strong> macwithavan@mail.com</p>
                 <p><strong>ABN:</strong> 18 616 164 875</p>
               </div>

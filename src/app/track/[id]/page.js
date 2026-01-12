@@ -248,8 +248,8 @@ export default function PublicTrackingPage() {
           <h3 className="text-lg font-bold text-gray-900 mb-2">Need Help?</h3>
           <p className="text-sm text-gray-600 mb-4">Contact Mac With A Van for any questions</p>
           <div className="space-y-2">
-            <a href="tel:0430233811" className="block px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition">
-              📞 Call 0430 233 811
+            <a href="tel:1300170718" className="block px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition">
+              📞 Call 1300 170 718
             </a>
             <a href="mailto:macwithavan@mail.com" className="block px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 transition">
               ✉️ macwithavan@mail.com

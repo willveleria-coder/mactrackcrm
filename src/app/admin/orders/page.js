@@ -359,7 +359,7 @@ export default function AdminOrdersPage() {
         <div style="text-align:right"><div class="date-label">ETA</div><div class="date-value">${etaString}</div></div>
       </div>
       <div class="footer">
-        <div class="footer-contact">📞 0430 233 811 &nbsp;|&nbsp; ✉️ macwithavan@mail.com</div>
+        <div class="footer-contact">📞 1300 170 718 &nbsp;|&nbsp; ✉️ macwithavan@mail.com</div>
         <div class="footer-note">Keep this label visible during transit</div>
       </div>
     </div>

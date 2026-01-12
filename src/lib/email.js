@@ -54,7 +54,7 @@ export const emailTemplates = {
         </div>
         <div style="background: #111827; color: white; padding: 20px; text-align: center; border-radius: 0 0 10px 10px;">
           <p style="margin: 0; font-size: 14px;">Mac Track Courier Service</p>
-          <p style="margin: 5px 0 0; font-size: 12px; opacity: 0.7;">📞 0430 233 811 | macwithavan@mail.com</p>
+          <p style="margin: 5px 0 0; font-size: 12px; opacity: 0.7;">📞 1300 170 718 | macwithavan@mail.com</p>
         </div>
       </div>
     `
@@ -81,7 +81,7 @@ export const emailTemplates = {
           </a>
         </div>
         <div style="background: #111827; color: white; padding: 20px; text-align: center; border-radius: 0 0 10px 10px;">
-          <p style="margin: 0; font-size: 14px;">Mac Track Courier Service | 📞 0430 233 811</p>
+          <p style="margin: 0; font-size: 14px;">Mac Track Courier Service | 📞 1300 170 718</p>
         </div>
       </div>
     `
@@ -110,7 +110,7 @@ export const emailTemplates = {
           </a>
         </div>
         <div style="background: #111827; color: white; padding: 20px; text-align: center; border-radius: 0 0 10px 10px;">
-          <p style="margin: 0; font-size: 14px;">Thank you for choosing Mac Track! 📞 0430 233 811</p>
+          <p style="margin: 0; font-size: 14px;">Thank you for choosing Mac Track! 📞 1300 170 718</p>
         </div>
       </div>
     `

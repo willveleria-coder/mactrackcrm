@@ -88,8 +88,8 @@ export default function AdminInvoicesPage() {
       if (!order) return;
 
       // Generate invoice number
-      const invoiceCount = invoices.length + 1;
-      const invoiceNumber = `INV-${new Date().getFullYear()}-${String(invoiceCount).padStart(4, '0')}`;
+      const timestamp = Date.now();
+      const invoiceNumber = `INV-${new Date().getFullYear()}-${timestamp.toString().slice(-6)}`;
 
       // Calculate amounts (10% tax)
       const amount = Number(order.price);

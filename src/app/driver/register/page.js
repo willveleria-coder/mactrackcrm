@@ -46,6 +46,8 @@ export default function DriverRegisterPage() {
           vehicle_type: formData.vehicle_type,
           license_plate: formData.license_plate,
           is_on_duty: false,
+          status: "pending",
+          is_approved: false,
         }]);
 
       if (driverError) throw driverError;

@@ -504,7 +504,7 @@ export function generateLabelHTML(order, options = {}) {
       
       <!-- Footer -->
       <div class="footer">
-        <div class="footer-contact">📞 0430 233 811 &nbsp;|&nbsp; ✉️ macwithavan@mail.com</div>
+        <div class="footer-contact">📞 1300 170 718 &nbsp;|&nbsp; ✉️ macwithavan@mail.com</div>
         <div class="footer-note">Keep this label visible during transit</div>
       </div>
     </div>

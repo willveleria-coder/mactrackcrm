@@ -5,6 +5,29 @@ import { createClient } from "../../../lib/supabase/client";
 import Image from "next/image";
 import HamburgerMenu from "@/components/HamburgerMenu";
 
+// Google Places Autocomplete Hook
+function useGooglePlacesAutocomplete(inputRef, onPlaceSelected) {
+  useEffect(() => {
+    if (!inputRef.current || !window.google) return;
+
+    const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
+      types: ['address'],
+      componentRestrictions: { country: ['au'] }, // Restrict to Australia
+    });
+
+    autocomplete.addListener('place_changed', () => {
+      const place = autocomplete.getPlace();
+      if (place.formatted_address) {
+        onPlaceSelected(place.formatted_address);
+      }
+    });
+
+    return () => {
+      window.google.maps.event.clearInstanceListeners(autocomplete);
+    };
+  }, [inputRef, onPlaceSelected]);
+}
+
 export default function AdminCreateOrderPage() {
   const [admin, setAdmin] = useState(null);
   const [clients, setClients] = useState([]);
@@ -44,6 +67,19 @@ export default function AdminCreateOrderPage() {
   const router = useRouter();
   const supabase = createClient();
 
+  // Refs for autocomplete
+  const pickupAddressRef = useRef(null);
+  const dropoffAddressRef = useRef(null);
+
+  // Initialize Google Places Autocomplete
+  useGooglePlacesAutocomplete(pickupAddressRef, (address) => {
+    setFormData(prev => ({ ...prev, pickup_address: address }));
+  });
+
+  useGooglePlacesAutocomplete(dropoffAddressRef, (address) => {
+    setFormData(prev => ({ ...prev, dropoff_address: address }));
+  });
+
   const sizeReference = {
     "extra-small": "📦 Envelope/Small Box (up to 25×20×10cm) - Documents, phone, small items",
     "small": "📦 Shoebox (up to 35×25×15cm) - Shoes, books, toys",
@@ -66,6 +102,7 @@ export default function AdminCreateOrderPage() {
 
   useEffect(() => {
     loadAdminAndClients();
+    loadGoogleMapsScript();
   }, []);
 
   useEffect(() => {
@@ -80,6 +117,16 @@ export default function AdminCreateOrderPage() {
     formData.height,
     formData.insurance_required
   ]);
+
+  function loadGoogleMapsScript() {
+    if (window.google) return;
+
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyDfUuYmjPmDBrP3ABmdAgHva8gaWmSvRmg&libraries=places`;
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+  }
 
   async function loadAdminAndClients() {
     try {
@@ -448,8 +495,7 @@ export default function AdminCreateOrderPage() {
                   if (clientId) {
                     const client = clients.find(c => c.id.toString() === clientId);
                     setSelectedClient(client);
-                    setClient(client); // Also set client for compatibility
-                    // Pre-fill contact info
+                    setClient(client);
                     if (client) {
                       setFormData(prev => ({
                         ...prev,
@@ -503,12 +549,13 @@ export default function AdminCreateOrderPage() {
                         Pickup Address *
                       </label>
                       <input
+                        ref={pickupAddressRef}
                         type="text"
                         name="pickup_address"
                         value={formData.pickup_address}
                         onChange={handleInputChange}
                         required
-                        placeholder="123 Main St, Melbourne VIC 3000"
+                        placeholder="Start typing address..."
                         className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent"
                       />
                     </div>
@@ -554,12 +601,13 @@ export default function AdminCreateOrderPage() {
                         Delivery Address *
                       </label>
                       <input
+                        ref={dropoffAddressRef}
                         type="text"
                         name="dropoff_address"
                         value={formData.dropoff_address}
                         onChange={handleInputChange}
                         required
-                        placeholder="456 High St, Sydney NSW 2000"
+                        placeholder="Start typing address..."
                         className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent"
                       />
                     </div>

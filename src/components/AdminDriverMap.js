@@ -132,8 +132,8 @@ export default function AdminDriverMap() {
                         <p className="text-xs text-gray-600 mb-1">
                           📞 {driver.phone}
                         </p>
-                        <p className={`text-xs font-semibold ${driver.is_on_duty ? 'text-green-600' : 'text-gray-500'}`}>
-                          {driver.is_on_duty ? '🟢 On Duty' : '⚪ Off Duty'}
+                        <p className={`text-xs font-semibold ${driver.is_on_duty ? 'text-red-600' : 'text-gray-500'}`}>
+                          {driver.is_on_duty ? '🔴 On Duty' : '⚪ Off Duty'}
                         </p>
                         {driver.last_location_update && (
                           <p className="text-xs text-gray-400 mt-1">
@@ -155,7 +155,7 @@ export default function AdminDriverMap() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+              <div className="w-3 h-3 bg-red-600 rounded-full"></div>
               <span className="text-sm font-semibold text-gray-700">
                 On Duty: {onDutyDrivers.length}
               </span>

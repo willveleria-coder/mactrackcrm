@@ -26,8 +26,8 @@ export default function OrdersClosedPage() {
         <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-6 mb-6">
           <p className="text-red-800 font-bold mb-2">Need an urgent delivery?</p>
           <p className="text-red-700 mb-4">Call us for after-hours bookings:</p>
-          <a href="tel:0430233811" className="inline-block bg-gradient-to-r from-red-500 to-red-600 text-white px-8 py-4 rounded-xl font-black text-xl hover:from-red-600 hover:to-red-700 transition shadow-lg">
-            0430 233 811
+          <a href="tel:1300170718" className="inline-block bg-gradient-to-r from-red-500 to-red-600 text-white px-8 py-4 rounded-xl font-black text-xl hover:from-red-600 hover:to-red-700 transition shadow-lg">
+            1300 170 718
           </a>
         </div>
         <p className="text-sm text-gray-500 mb-6">
