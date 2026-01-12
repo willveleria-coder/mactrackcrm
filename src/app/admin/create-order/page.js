@@ -6,9 +6,9 @@ import Image from "next/image";
 import HamburgerMenu from "@/components/HamburgerMenu";
 
 // Google Places Autocomplete Hook
-function useGooglePlacesAutocomplete(inputRef, onPlaceSelected) {
+function useGooglePlacesAutocomplete(inputRef, onPlaceSelected, googleLoaded) {
   useEffect(() => {
-    if (!inputRef.current || !window.google) return;
+    if (!inputRef.current || !googleLoaded || !window.google) return;
 
     const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
       types: ['address'],
@@ -25,7 +25,7 @@ function useGooglePlacesAutocomplete(inputRef, onPlaceSelected) {
     return () => {
       window.google.maps.event.clearInstanceListeners(autocomplete);
     };
-  }, [inputRef, onPlaceSelected]);
+  }, [inputRef, onPlaceSelected, googleLoaded]);
 }
 
 export default function AdminCreateOrderPage() {
@@ -64,6 +64,7 @@ export default function AdminCreateOrderPage() {
   const signatureRef = useRef(null);
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [googleLoaded, setGoogleLoaded] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
@@ -74,11 +75,11 @@ export default function AdminCreateOrderPage() {
   // Initialize Google Places Autocomplete
   useGooglePlacesAutocomplete(pickupAddressRef, (address) => {
     setFormData(prev => ({ ...prev, pickup_address: address }));
-  });
+  }, googleLoaded);
 
   useGooglePlacesAutocomplete(dropoffAddressRef, (address) => {
     setFormData(prev => ({ ...prev, dropoff_address: address }));
-  });
+  }, googleLoaded);
 
   const sizeReference = {
     "extra-small": "📦 Envelope/Small Box (up to 25×20×10cm) - Documents, phone, small items",
@@ -119,12 +120,13 @@ export default function AdminCreateOrderPage() {
   ]);
 
   function loadGoogleMapsScript() {
-    if (window.google) return;
+    if (window.google) { setGoogleLoaded(true); return; }
 
     const script = document.createElement('script');
     script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyDfUuYmjPmDBrP3ABmdAgHva8gaWmSvRmg&libraries=places`;
     script.async = true;
     script.defer = true;
+    script.onload = () => setGoogleLoaded(true);
     document.head.appendChild(script);
   }
 
