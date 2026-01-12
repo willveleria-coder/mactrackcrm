@@ -16,7 +16,7 @@ export default function AddressAutocomplete({
   useEffect(() => {
     // Check if Google Maps script is already loaded
     if (window.google && window.google.maps && window.google.maps.places) {
-      initAutocomplete();
+      console.log("Google Maps already loaded"); initAutocomplete();
       return;
     }
 
@@ -31,7 +31,7 @@ export default function AddressAutocomplete({
     script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "AIzaSyDfUuYmjPmDBrP3ABmdAgHva8gaWmSvRmg"}&libraries=places`;
     script.async = true;
     script.defer = true;
-    script.onload = initAutocomplete;
+    script.onload = () => { console.log("Google Maps script loaded!"); console.log("Google Maps already loaded"); initAutocomplete(); };
     document.head.appendChild(script);
 
     return () => {
