@@ -4,29 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
 import Image from "next/image";
 import HamburgerMenu from "@/components/HamburgerMenu";
-
-// Google Places Autocomplete Hook
-function useGooglePlacesAutocomplete(inputRef, onPlaceSelected, googleLoaded) {
-  useEffect(() => {
-    if (!inputRef.current || !googleLoaded || !window.google) return;
-
-    const autocomplete = new window.google.maps.places.Autocomplete(inputRef.current, {
-      types: ['address'],
-      componentRestrictions: { country: ['au'] }, // Restrict to Australia
-    });
-
-    autocomplete.addListener('place_changed', () => {
-      const place = autocomplete.getPlace();
-      if (place.formatted_address) {
-        onPlaceSelected(place.formatted_address);
-      }
-    });
-
-    return () => {
-      window.google.maps.event.clearInstanceListeners(autocomplete);
-    };
-  }, [inputRef, onPlaceSelected, googleLoaded]);
-}
+import AddressAutocomplete from "@/components/AddressAutocomplete";
 
 export default function AdminCreateOrderPage() {
   const [admin, setAdmin] = useState(null);
@@ -64,23 +42,10 @@ export default function AdminCreateOrderPage() {
   const signatureRef = useRef(null);
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [googleLoaded, setGoogleLoaded] = useState(false);
   const router = useRouter();
   const supabase = createClient();
 
   // Refs for autocomplete
-  const pickupAddressRef = useRef(null);
-  const dropoffAddressRef = useRef(null);
-
-  // Initialize Google Places Autocomplete
-  useGooglePlacesAutocomplete(pickupAddressRef, (address) => {
-    setFormData(prev => ({ ...prev, pickup_address: address }));
-  }, googleLoaded);
-
-  useGooglePlacesAutocomplete(dropoffAddressRef, (address) => {
-    setFormData(prev => ({ ...prev, dropoff_address: address }));
-  }, googleLoaded);
-
   const sizeReference = {
     "extra-small": "📦 Envelope/Small Box (up to 25×20×10cm) - Documents, phone, small items",
     "small": "📦 Shoebox (up to 35×25×15cm) - Shoes, books, toys",
@@ -103,7 +68,7 @@ export default function AdminCreateOrderPage() {
 
   useEffect(() => {
     loadAdminAndClients();
-    loadGoogleMapsScript();
+
   }, []);
 
   useEffect(() => {
@@ -119,16 +84,6 @@ export default function AdminCreateOrderPage() {
     formData.insurance_required
   ]);
 
-  
-
-  function loadGoogleMapsScript() {
-    if (typeof window === "undefined") return;
-    window.initGoogleMaps = () => setGoogleLoaded(true);
-    if (window.google) { setGoogleLoaded(true); return; }
-
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyDfUuYmjPmDBrP3ABmdAgHva8gaWmSvRmg&libraries=places&callback=initGoogleMaps`;
-    script.async = true;
     script.defer = true;
     
     document.head.appendChild(script);
@@ -554,9 +509,7 @@ export default function AdminCreateOrderPage() {
                       <label className="block text-sm font-bold text-gray-700 mb-2">
                         Pickup Address *
                       </label>
-                      <input
-                        ref={pickupAddressRef}
-                        type="text"
+                      <AddressAutocomplete
                         name="pickup_address"
                         value={formData.pickup_address}
                         onChange={handleInputChange}
@@ -606,9 +559,7 @@ export default function AdminCreateOrderPage() {
                       <label className="block text-sm font-bold text-gray-700 mb-2">
                         Delivery Address *
                       </label>
-                      <input
-                        ref={dropoffAddressRef}
-                        type="text"
+                      <AddressAutocomplete
                         name="dropoff_address"
                         value={formData.dropoff_address}
                         onChange={handleInputChange}
