@@ -119,14 +119,16 @@ export default function AdminCreateOrderPage() {
     formData.insurance_required
   ]);
 
+  window.initGoogleMaps = () => setGoogleLoaded(true);
+
   function loadGoogleMapsScript() {
     if (window.google) { setGoogleLoaded(true); return; }
 
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyDfUuYmjPmDBrP3ABmdAgHva8gaWmSvRmg&libraries=places`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyDfUuYmjPmDBrP3ABmdAgHva8gaWmSvRmg&libraries=places&callback=initGoogleMaps`;
     script.async = true;
     script.defer = true;
-    script.onload = () => setGoogleLoaded(true);
+    
     document.head.appendChild(script);
   }
 
