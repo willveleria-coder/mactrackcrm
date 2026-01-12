@@ -7,7 +7,8 @@ import HamburgerMenu from "@/components/HamburgerMenu";
 
 export default function ClientFeedbackPage() {
   const [client, setClient] = useState(null);
-  const [rating, setRating] = useState(5);
+  const [rating,
+          review_text: feedback, setRating] = useState(5);
   const [feedback, setFeedback] = useState("");
   const [category, setCategory] = useState("general");
   const [loading, setLoading] = useState(true);
@@ -63,11 +64,11 @@ export default function ClientFeedbackPage() {
 
     try {
       const { error } = await supabase
-        .from("feedback")
+        .from("customer_feedback")
         .insert([{
           client_id: client.id,
           rating,
-          feedback,
+          review_text: feedback,
           category,
           created_at: new Date().toISOString()
         }]);
