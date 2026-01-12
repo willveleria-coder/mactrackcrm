@@ -173,11 +173,6 @@ export default function AdminFeedbackPage() {
     }
   }
 
-  async function handleLogout() {
-    await supabase.auth.signOut();
-    router.push("/admin/login");
-  }
-
   const filteredFeedbacks = filterRating === 'all' 
     ? feedbacks 
     : feedbacks.filter(f => {
@@ -316,7 +311,7 @@ export default function AdminFeedbackPage() {
                     <div className="grid grid-cols-2 gap-4 text-sm mb-3">
                       <div>
                         <p className="text-gray-600">Order:</p>
-                        <p className="font-semibold">#{feedback.order_id.slice(0, 8).toUpperCase()}</p>
+                        <p className="font-semibold">#{(feedback.order_id?.slice(0, 8) || 'N/A').toUpperCase()}</p>
                       </div>
                       <div>
                         <p className="text-gray-600">Driver:</p>
@@ -410,7 +405,7 @@ export default function AdminFeedbackPage() {
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-gray-600 mb-1">Order</p>
-                  <p className="font-semibold">#{viewFeedback.order_id.slice(0, 8).toUpperCase()}</p>
+                  <p className="font-semibold">#{(viewFeedback.order_id?.slice(0, 8) || 'N/A').toUpperCase()}</p>
                 </div>
                 <div>
                   <p className="text-gray-600 mb-1">Driver</p>
