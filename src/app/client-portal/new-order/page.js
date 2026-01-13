@@ -602,6 +602,7 @@ export default function NewOrderPage() {
         });
       } catch (e) { console.error("Notification error:", e);
       }
+      console.log("Client bypass_payment:", client.bypass_payment);
       // Check if client bypasses payment (invoice only)
       if (client.bypass_payment) {
         alert("✅ Order placed successfully! You will be invoiced separately.");
