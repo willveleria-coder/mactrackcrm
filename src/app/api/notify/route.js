@@ -9,6 +9,7 @@ const supabase = createClient(
 );
 
 export async function POST(request) {
+  console.log("Notify API called");
   try {
     const { type, orderId } = await request.json();
 
