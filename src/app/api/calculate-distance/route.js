@@ -29,7 +29,7 @@ export async function POST(request) {
     if (data.status !== 'OK') {
       console.error('Google Maps API error:', data.status);
       return NextResponse.json(
-        { error: data.status, distance: 0, duration: 0 },
+        { error: data.error_message || data.status, googleStatus: data.status, distance: 0, duration: 0 },
         { status: 200 }
       );
     }
