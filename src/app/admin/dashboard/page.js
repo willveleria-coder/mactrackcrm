@@ -244,6 +244,7 @@ function AdminDashboardContent() {
     { href: "/admin/payouts", icon: "💸", label: "Payments" },
     { href: "/admin/pricing", icon: "💲", label: "Pricing" },
     { href: "/admin/feedback", icon: "💬", label: "Feedback" },
+    { href: "/admin/chat", icon: "💬", label: "Live Chat" },
     { href: "/admin/settings", icon: "⚙️", label: "Settings" },
   ];
   const quickActions = [
