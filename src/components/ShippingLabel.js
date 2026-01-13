@@ -44,7 +44,7 @@ export default function ShippingLabel({ order, client, showPrintButton = true })
       )}
 
       <div 
-        className="label"
+        className="shipping-label"
         style={{
           width: '100%',
           maxWidth: '420px',
@@ -54,17 +54,21 @@ export default function ShippingLabel({ order, client, showPrintButton = true })
           borderRadius: '8px',
           overflow: 'hidden',
           boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
-          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+          WebkitPrintColorAdjust: 'exact',
+          printColorAdjust: 'exact'
         }}
       >
         {/* Header */}
-        <div style={{
+        <div className="label-header" style={{
           backgroundColor: '#dc2626',
           color: 'white',
           padding: '10px 14px',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
+          WebkitPrintColorAdjust: 'exact',
+          printColorAdjust: 'exact'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <img 
@@ -96,7 +100,7 @@ export default function ShippingLabel({ order, client, showPrintButton = true })
             <img src={qrUrl} alt="QR" style={{ width: '70px', height: '70px' }} />
             <div style={{ fontSize: '8px', color: '#6b7280', marginTop: '4px', fontWeight: '600' }}>SCAN TO TRACK</div>
           </div>
-          <div style={{ flex: 1, padding: '12px', backgroundColor: '#f9fafb' }}>
+          <div className="service-section" style={{ flex: 1, padding: '12px', backgroundColor: '#f9fafb', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
                 <div style={{ fontSize: '9px', color: '#6b7280', fontWeight: '600' }}>SERVICE TYPE</div>
@@ -112,7 +116,9 @@ export default function ShippingLabel({ order, client, showPrintButton = true })
                   padding: '3px 8px',
                   fontSize: '10px',
                   fontWeight: '900',
-                  color: '#dc2626'
+                  color: '#dc2626',
+                  WebkitPrintColorAdjust: 'exact',
+                  printColorAdjust: 'exact'
                 }}>
                   ⚠️ FRAGILE
                 </div>
@@ -132,7 +138,7 @@ export default function ShippingLabel({ order, client, showPrintButton = true })
         {/* Addresses */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', borderBottom: '2px solid #000' }}>
           {/* Pickup */}
-          <div style={{ padding: '12px', backgroundColor: '#eff6ff', borderRight: '2px solid #000' }}>
+          <div className="pickup-section" style={{ padding: '12px', backgroundColor: '#eff6ff', borderRight: '2px solid #000', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '6px' }}>
               <span style={{ fontSize: '14px' }}>📍</span>
               <span style={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', color: '#1e40af' }}>Pickup From</span>
@@ -151,7 +157,7 @@ export default function ShippingLabel({ order, client, showPrintButton = true })
           </div>
 
           {/* Delivery */}
-          <div style={{ padding: '12px', backgroundColor: '#f0fdf4' }}>
+          <div className="delivery-section" style={{ padding: '12px', backgroundColor: '#f0fdf4', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '6px' }}>
               <span style={{ fontSize: '14px' }}>🎯</span>
               <span style={{ fontSize: '10px', fontWeight: '900', textTransform: 'uppercase', color: '#166534' }}>Deliver To</span>
@@ -171,13 +177,15 @@ export default function ShippingLabel({ order, client, showPrintButton = true })
         </div>
 
         {/* Parcel Details */}
-        <div style={{
+        <div className="parcel-section" style={{
           padding: '10px 12px',
           backgroundColor: '#f3f4f6',
           borderBottom: '2px solid #000',
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center'
+          alignItems: 'center',
+          WebkitPrintColorAdjust: 'exact',
+          printColorAdjust: 'exact'
         }}>
           <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
             <div>
@@ -200,7 +208,7 @@ export default function ShippingLabel({ order, client, showPrintButton = true })
 
         {/* Notes */}
         {order.notes && (
-          <div style={{ padding: '10px 12px', backgroundColor: '#fefce8', borderBottom: '2px solid #000' }}>
+          <div className="notes-section" style={{ padding: '10px 12px', backgroundColor: '#fefce8', borderBottom: '2px solid #000', WebkitPrintColorAdjust: 'exact', printColorAdjust: 'exact' }}>
             <div style={{ fontSize: '9px', fontWeight: '900', color: '#a16207', textTransform: 'uppercase', marginBottom: '4px' }}>
               📋 Delivery Instructions
             </div>
@@ -227,11 +235,13 @@ export default function ShippingLabel({ order, client, showPrintButton = true })
         </div>
 
         {/* Footer */}
-        <div style={{
+        <div className="label-footer" style={{
           backgroundColor: '#111827',
           color: 'white',
           padding: '10px 12px',
-          textAlign: 'center'
+          textAlign: 'center',
+          WebkitPrintColorAdjust: 'exact',
+          printColorAdjust: 'exact'
         }}>
           <div style={{ fontSize: '10px', fontWeight: '600' }}>
             📞 1300 170 718 | ✉️ macwithavan@mail.com
@@ -244,13 +254,61 @@ export default function ShippingLabel({ order, client, showPrintButton = true })
 
       <style jsx global>{`
         @media print {
-          @page { size: A4 portrait; margin: 15mm; }
-          body { background: white !important; }
-          .no-print { display: none !important; }
-          .label-container { padding: 0 !important; }
-          .label {
+          @page { 
+            size: A4 portrait; 
+            margin: 15mm; 
+          }
+          body { 
+            background: white !important; 
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .no-print { 
+            display: none !important; 
+          }
+          .label-container { 
+            padding: 0 !important; 
+          }
+          .shipping-label {
             box-shadow: none !important;
             max-width: 100% !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .label-header {
+            background-color: #dc2626 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .service-section {
+            background-color: #f9fafb !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .pickup-section {
+            background-color: #eff6ff !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .delivery-section {
+            background-color: #f0fdf4 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .parcel-section {
+            background-color: #f3f4f6 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .notes-section {
+            background-color: #fefce8 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .label-footer {
+            background-color: #111827 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
         }
       `}</style>
