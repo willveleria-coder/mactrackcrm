@@ -84,11 +84,6 @@ export default function AdminCreateOrderPage() {
     formData.insurance_required
   ]);
 
-    script.defer = true;
-    
-    document.head.appendChild(script);
-  }
-
   async function loadAdminAndClients() {
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
