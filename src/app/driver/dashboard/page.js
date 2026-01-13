@@ -456,10 +456,6 @@ function DriverDashboardContent() {
             <div className="text-3xl mb-2">⏱️</div>
             <p className="text-sm font-bold text-gray-900">My Hours</p>
           </Link>
-          <Link href="/driver/wallet" className="bg-white/80 backdrop-blur-sm rounded-xl p-4 shadow-md border border-gray-100 hover:shadow-lg transition text-center">
-            <div className="text-3xl mb-2">💳</div>
-            <p className="text-sm font-bold text-gray-900">Wallet</p>
-          </Link>
           <Link href="/driver/feedback" className="bg-white/80 backdrop-blur-sm rounded-xl p-4 shadow-md border border-gray-100 hover:shadow-lg transition text-center">
             <div className="text-3xl mb-2">⭐</div>
             <p className="text-sm font-bold text-gray-900">Feedback</p>

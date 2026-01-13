@@ -307,7 +307,7 @@ export default function AdminPayoutsPage() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">💳 Payout Management</h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">💳 Payments</h2>
           <p className="text-gray-600">Approve requests and manage driver wallets</p>
         </div>
 
@@ -360,9 +360,9 @@ export default function AdminPayoutsPage() {
           </div>
         </div>
 
-        {/* Payout Requests */}
+        {/* Payments */}
         <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-8">
-          <h3 className="text-xl font-bold text-gray-900 mb-6">Payout Requests</h3>
+          <h3 className="text-xl font-bold text-gray-900 mb-6">Payments</h3>
           <div className="space-y-4">
             {requestsWithDrivers.length === 0 ? (
               <div className="text-center py-12">
