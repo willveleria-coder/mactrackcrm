@@ -11,7 +11,7 @@ export async function POST(request) {
       );
     }
 
-    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY || "AIzaSyDfUuYmjPmDBrP3ABmdAgHva8gaWmSvRmg";
 
     if (!apiKey) {
       console.error('Google Maps API key not configured');
