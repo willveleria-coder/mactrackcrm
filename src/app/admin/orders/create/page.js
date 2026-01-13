@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "../../../../lib/supabase/client";
 import Image from "next/image";
 import HamburgerMenu from "@/components/HamburgerMenu";
+import AddressAutocomplete from "@/components/AddressAutocomplete";
 
 export default function AdminCreateOrderPage() {
   const router = useRouter();
@@ -401,7 +402,7 @@ export default function AdminCreateOrderPage() {
             <div className="space-y-6">
               <div className="bg-blue-50 rounded-xl p-4">
                 <h4 className="font-bold text-blue-900 mb-3">Pickup Details</h4>
-                <input type="text" name="pickup_address" value={formData.pickup_address} onChange={handleInputChange} required placeholder="Pickup Address *" className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl mb-3" />
+                <AddressAutocomplete value={formData.pickup_address} onChange={(val) => setFormData(prev => ({ ...prev, pickup_address: val }))} placeholder="Pickup Address *" className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl mb-3" />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <input type="text" name="pickup_contact_name" value={formData.pickup_contact_name} onChange={handleInputChange} required placeholder="Contact Name *" className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl" />
                   <input type="tel" name="pickup_contact_phone" value={formData.pickup_contact_phone} onChange={handleInputChange} required placeholder="Contact Phone *" className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl" />
@@ -409,7 +410,7 @@ export default function AdminCreateOrderPage() {
               </div>
               <div className="bg-green-50 rounded-xl p-4">
                 <h4 className="font-bold text-green-900 mb-3">Delivery Details</h4>
-                <input type="text" name="dropoff_address" value={formData.dropoff_address} onChange={handleInputChange} required placeholder="Delivery Address *" className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl mb-3" />
+                <AddressAutocomplete value={formData.dropoff_address} onChange={(val) => setFormData(prev => ({ ...prev, dropoff_address: val }))} placeholder="Delivery Address *" className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl mb-3" />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <input type="text" name="dropoff_contact_name" value={formData.dropoff_contact_name} onChange={handleInputChange} required placeholder="Contact Name *" className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl" />
                   <input type="tel" name="dropoff_contact_phone" value={formData.dropoff_contact_phone} onChange={handleInputChange} required placeholder="Contact Phone *" className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl" />
