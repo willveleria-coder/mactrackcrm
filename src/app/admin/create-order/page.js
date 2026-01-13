@@ -5,8 +5,7 @@ import { createClient } from "../../../lib/supabase/client";
 import Image from "next/image";
 import HamburgerMenu from "@/components/HamburgerMenu";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
-
-  }, []);
+export default function AdminCreateOrderPage() {
   const [admin, setAdmin] = useState(null);
   const [clients, setClients] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
