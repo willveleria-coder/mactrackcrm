@@ -6,15 +6,6 @@ import Image from "next/image";
 import HamburgerMenu from "@/components/HamburgerMenu";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
 
-export default function AdminCreateOrderPage() {
-  // Load Google Maps script on mount
-  useEffect(() => {
-    if (typeof window !== "undefined" && !window.google) {
-      const script = document.createElement("script");
-      script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyDfUuYmjPmDBrP3ABmdAgHva8gaWmSvRmg&libraries=places";
-      script.async = true;
-      document.head.appendChild(script);
-    }
   }, []);
   const [admin, setAdmin] = useState(null);
   const [clients, setClients] = useState([]);
@@ -53,6 +44,16 @@ export default function AdminCreateOrderPage() {
   const [isDrawing, setIsDrawing] = useState(false);
   const router = useRouter();
   const supabase = createClient();
+
+  // Load Google Maps script on mount
+  useEffect(() => {
+    if (typeof window !== "undefined" && !window.google) {
+      const script = document.createElement("script");
+      script.src = "https://maps.googleapis.com/maps/api/js?key=AIzaSyDfUuYmjPmDBrP3ABmdAgHva8gaWmSvRmg&libraries=places";
+      script.async = true;
+      document.head.appendChild(script);
+    }
+  }, []);
 
   // Refs for autocomplete
   const sizeReference = {
