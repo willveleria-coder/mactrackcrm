@@ -20,7 +20,7 @@ export default function NewOrderPage() {
     
     const now = new Date();
     const hour = now.getHours();
-    if (hour < 7 || hour >= 17) {
+    if ((hour < 7 || hour >= 17) && formData.service_type !== 'scheduled' && formData.service_type !== 'after_hours') {
       router.push("/client-portal/orders-closed");
     }
   }, [router]);
@@ -460,14 +460,14 @@ export default function NewOrderPage() {
   }
 
   async function handleSubmit(e) {
+    e.preventDefault();
     // Check booking hours (7am - 5pm)
     const now = new Date();
     const hour = now.getHours();
-    if (hour < 7 || hour >= 17) {
+    if ((hour < 7 || hour >= 17) && formData.service_type !== 'scheduled' && formData.service_type !== 'after_hours') {
       setError("Online bookings are available between 7:00 AM and 5:00 PM. For after-hours bookings, please call 1300 170 718.");
       return;
     }
-    e.preventDefault();
     
     if (!client) {
       setError("Client data not loaded. Please refresh and try again.");
