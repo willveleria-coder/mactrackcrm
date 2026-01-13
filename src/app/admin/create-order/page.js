@@ -350,6 +350,15 @@ export default function AdminCreateOrderPage() {
         console.error("Order creation error:", orderError);
         throw new Error(orderError.message || "Failed to create order");
       }
+      // Send order created notification
+      try {
+        await fetch("/api/notify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "order_created", orderId: order[0].id })
+        });
+      } catch (e) { console.error("Notification error:", e);
+      }
 
       alert(`✅ Order created successfully for ${selectedClient.name}! Order ID: ${order[0].id}`);
       router.push("/admin/orders");

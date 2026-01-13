@@ -593,6 +593,15 @@ export default function NewOrderPage() {
         console.error("Order creation error:", orderError);
         throw new Error(orderError.message || "Failed to create order");
       }
+      // Send order created notification
+      try {
+        await fetch("/api/notify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "order_created", orderId: order[0].id })
+        });
+      } catch (e) { console.error("Notification error:", e);
+      }
       // Check if client bypasses payment (invoice only)
       if (client.bypass_payment) {
         alert("✅ Order placed successfully! You will be invoiced separately.");

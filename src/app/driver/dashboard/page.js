@@ -190,6 +190,14 @@ function DriverDashboardContent() {
       setNewJobAlert(null);
       loadDashboard();
       alert("✅ Order accepted successfully!");
+      // Send notification to client
+      try {
+        await fetch("/api/notify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "order_picked_up", orderId: orderId })
+        });
+      } catch (e) { console.error("Notification error:", e); }
     } catch (error) {
       console.error("Accept error:", error);
       alert("Failed to accept order: " + error.message);

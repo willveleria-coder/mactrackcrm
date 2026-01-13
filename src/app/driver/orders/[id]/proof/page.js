@@ -205,6 +205,14 @@ export default function ProofOfDeliveryPage() {
         .eq("id", params.id);
 
       if (updateError) throw updateError;
+      // Send notification to client
+      try {
+        await fetch("/api/notify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "order_delivered", orderId: params.id })
+        });
+      } catch (e) { console.error("Notification error:", e); }
 
       alert("✅ Proof of delivery submitted successfully!");
       router.push("/driver/dashboard");
