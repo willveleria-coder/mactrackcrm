@@ -9,9 +9,20 @@ import AddressAutocomplete from "@/components/AddressAutocomplete";
 export default function NewOrderPage() {
   const router = useRouter();
   
+  // Check booking hours on page load
+  useEffect(() => {
+    // Check for bypass parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const bypass = urlParams.get("bypass");
+    if (bypass === "mac123") {
+      return;
     }
     
     const now = new Date();
+    const hour = now.getHours();
+    if (hour < 7 || hour >= 17) {
+      router.push("/client-portal/orders-closed");
+    }
   }, [router]);
   
   const [client, setClient] = useState(null);
@@ -449,6 +460,13 @@ export default function NewOrderPage() {
   }
 
   async function handleSubmit(e) {
+    // Check booking hours (7am - 5pm)
+    const now = new Date();
+    const hour = now.getHours();
+    if (hour < 7 || hour >= 17) {
+      setError("Online bookings are available between 7:00 AM and 5:00 PM. For after-hours bookings, please call 1300 170 718.");
+      return;
+    }
     e.preventDefault();
     
     if (!client) {
