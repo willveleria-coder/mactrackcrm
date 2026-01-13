@@ -136,6 +136,7 @@ export default function AdminOrdersPage() {
   });
 
   async function handleAssignDriver(orderId) {
+    console.log("Assigning driver, orderId:", orderId);
     if (!selectedDriver) { alert("Please select a driver first"); return; }
     try {
       const { error } = await supabase.from("orders").update({ driver_id: selectedDriver, status: "pending", driver_status: null }).eq("id", orderId);
