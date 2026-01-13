@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { sendEmail, emailTemplates } from '@/lib/email';
 import { sendSMS, smsTemplates } from '@/lib/sms';
+import { sendEmail, emailTemplates } from '@/lib/email';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -9,67 +9,100 @@ const supabase = createClient(
 );
 
 export async function POST(request) {
-  console.log("Notify API called");
   try {
-    const { type, orderId } = await request.json();
+    const body = await request.json();
+    console.log("Notify called with:", body);
+    
+    const { type, orderId } = body;
+    
+    if (!orderId) {
+      return NextResponse.json({ error: 'Missing orderId' }, { status: 400 });
+    }
 
-    const { data: order } = await supabase
+    const { data: order, error: orderError } = await supabase
       .from('orders')
       .select('*, client:clients(*), driver:drivers(*)')
       .eq('id', orderId)
       .single();
 
-    if (!order) {
-      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    if (orderError || !order) {
+      console.log("Order error:", orderError);
+      return NextResponse.json({ error: 'Order not found', details: orderError }, { status: 404 });
     }
+
+    console.log("Order found:", order.id);
+    console.log("Driver:", order.driver?.name, order.driver?.phone);
+    console.log("Client:", order.client?.name, order.client?.phone);
 
     const results = { email: null, sms: null };
 
-    switch (type) {
-      case 'order_created':
-        if (order.client?.email) {
-          const template = emailTemplates.orderCreated(order);
-          results.email = await sendEmail({ to: order.client.email, ...template });
-        }
-        if (order.client?.phone) {
-          results.sms = await sendSMS({ to: order.client.phone, message: smsTemplates.orderCreated(order) });
-        }
-        break;
-
-      case 'order_picked_up':
-        if (order.client?.email) {
-          const template = emailTemplates.orderPickedUp(order);
-          results.email = await sendEmail({ to: order.client.email, ...template });
-        }
-        if (order.client?.phone) {
-          results.sms = await sendSMS({ to: order.client.phone, message: smsTemplates.orderPickedUp(order) });
-        }
-        break;
-
-      case 'order_delivered':
-        if (order.client?.email) {
-          const template = emailTemplates.orderDelivered(order);
-          results.email = await sendEmail({ to: order.client.email, ...template });
-        }
-        if (order.client?.phone) {
-          results.sms = await sendSMS({ to: order.client.phone, message: smsTemplates.orderDelivered(order) });
-        }
-        break;
-
-      case 'driver_assigned':
-        if (order.driver?.email) {
-          const template = emailTemplates.driverAssigned(order, order.driver);
-          results.email = await sendEmail({ to: order.driver.email, ...template });
-        }
-        if (order.driver?.phone) {
-          results.sms = await sendSMS({ to: order.driver.phone, message: smsTemplates.driverAssigned(order) });
-        }
-        break;
+    if (type === 'driver_assigned' && order.driver) {
+      console.log("Sending to driver:", order.driver.phone);
+      
+      if (order.driver.phone) {
+        results.sms = await sendSMS({ 
+          to: order.driver.phone, 
+          message: smsTemplates.driverAssigned(order) 
+        });
+        console.log("SMS result:", results.sms);
+      }
+      
+      if (order.driver.email) {
+        const template = emailTemplates.driverAssigned(order, order.driver);
+        results.email = await sendEmail({ 
+          to: order.driver.email, 
+          ...template 
+        });
+        console.log("Email result:", results.email);
+      }
     }
 
-    return NextResponse.json({ success: true, results });
+    if (type === 'order_created' && order.client) {
+      if (order.client.phone) {
+        results.sms = await sendSMS({ 
+          to: order.client.phone, 
+          message: smsTemplates.orderCreated(order) 
+        });
+      }
+      if (order.client.email) {
+        const template = emailTemplates.orderCreated(order);
+        results.email = await sendEmail({ to: order.client.email, ...template });
+      }
+    }
+
+    if (type === 'order_picked_up' && order.client) {
+      if (order.client.phone) {
+        results.sms = await sendSMS({ 
+          to: order.client.phone, 
+          message: smsTemplates.orderPickedUp(order) 
+        });
+      }
+      if (order.client.email) {
+        const template = emailTemplates.orderPickedUp(order);
+        results.email = await sendEmail({ to: order.client.email, ...template });
+      }
+    }
+
+    if (type === 'order_delivered' && order.client) {
+      if (order.client.phone) {
+        results.sms = await sendSMS({ 
+          to: order.client.phone, 
+          message: smsTemplates.orderDelivered(order) 
+        });
+      }
+      if (order.client.email) {
+        const template = emailTemplates.orderDelivered(order);
+        results.email = await sendEmail({ to: order.client.email, ...template });
+      }
+    }
+
+    return NextResponse.json({ success: true, results, type, orderId });
   } catch (error) {
     console.error('Notification error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+}
+
+export async function GET() {
+  return NextResponse.json({ message: 'Use POST method', status: 'ok' });
 }

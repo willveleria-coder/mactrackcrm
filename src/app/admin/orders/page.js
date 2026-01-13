@@ -146,7 +146,7 @@ export default function AdminOrdersPage() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ type: "driver_assigned", orderId, userId: selectedDriver, userType: "driver" })
           });
-        } catch (e) { console.log("Notification error:", e); }
+        } catch (e) { console.log("Notification fetch error:", e); console.log("Notification response:", e?.message); }
       }
       if (error) throw error;
       alert("✅ Driver assigned successfully!");
