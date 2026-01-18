@@ -603,7 +603,7 @@ function DriverDashboardContent() {
           animation: bounce-in 0.4s ease-out forwards;
         }
       `}</style>
-      {/* Order Details Modal */}
+      {/* Order Details Modal - NO PRICING */}
       {selectedOrder && (
         <>
           <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={() => setSelectedOrder(null)} />
@@ -628,14 +628,11 @@ function DriverDashboardContent() {
                 <p className="text-sm text-gray-900 font-medium">{selectedOrder.dropoff_address}</p>
                 {selectedOrder.dropoff_contact_name && <p className="text-xs text-gray-600 mt-1">Contact: {selectedOrder.dropoff_contact_name} {selectedOrder.dropoff_contact_phone}</p>}
               </div>
+              {/* REMOVED PRICING - Only showing service, weight, distance, size */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-gray-50 rounded-xl p-3">
                   <p className="text-xs text-gray-500">Service</p>
                   <p className="font-bold text-gray-900">{selectedOrder.service_type?.replace(/_/g, ' ')}</p>
-                </div>
-                <div className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-xs text-gray-500">Price</p>
-                  <p className="font-bold text-green-600">${selectedOrder.price?.toFixed(2)}</p>
                 </div>
                 <div className="bg-gray-50 rounded-xl p-3">
                   <p className="text-xs text-gray-500">Weight</p>
@@ -644,6 +641,10 @@ function DriverDashboardContent() {
                 <div className="bg-gray-50 rounded-xl p-3">
                   <p className="text-xs text-gray-500">Distance</p>
                   <p className="font-bold text-gray-900">{selectedOrder.distance_km?.toFixed(1)}km</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-3">
+                  <p className="text-xs text-gray-500">Size</p>
+                  <p className="font-bold text-gray-900">{selectedOrder.parcel_size}</p>
                 </div>
               </div>
               {selectedOrder.notes && (

@@ -75,12 +75,6 @@ export default function DriverOrdersPage() {
     { href: "/driver/settings", icon: "⚙️", label: "Settings" },
   ];
 
-
-
-
-
-
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff] flex items-center justify-center">
@@ -145,7 +139,8 @@ export default function DriverOrdersPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {orders.filter(o => o.status !== 'delivered').map((order) => (
+              {/* SHOWING ALL ORDERS INCLUDING COMPLETED - NO FILTER */}
+              {orders.map((order) => (
                 <div 
                   key={order.id} 
                   className="border-2 border-gray-200 rounded-2xl p-4 sm:p-6 hover:shadow-md transition bg-white"
@@ -179,7 +174,7 @@ export default function DriverOrdersPage() {
                     </div>
                   </div>
 
-                  {/* Order Details */}
+                  {/* Order Details - NO PRICING */}
                   <div className="flex flex-wrap gap-2 text-xs sm:text-sm text-gray-600 mb-4">
                     <span className="bg-gray-100 px-3 py-1.5 rounded-full font-medium">
                       📦 {order.parcel_size}
