@@ -8,6 +8,7 @@ import AddressAutocomplete from "@/components/AddressAutocomplete";
 
 export default function NewOrderPage() {
   const router = useRouter();
+  const [bypassTimeCheck, setBypassTimeCheck] = useState(false); // ADDED THIS
   
   // Check booking hours on page load
   useEffect(() => {
@@ -15,6 +16,7 @@ export default function NewOrderPage() {
     const urlParams = new URLSearchParams(window.location.search);
     const bypass = urlParams.get("bypass");
     if (bypass === "mac123") {
+      setBypassTimeCheck(true); // ADDED THIS
       return;
     }
     
@@ -460,14 +462,17 @@ export default function NewOrderPage() {
   }
 
   async function handleSubmit(e) {
-    // Check booking hours (7am - 5pm)
-    const now = new Date();
-    const hour = now.getHours();
-    if (hour < 7 || hour >= 17) {
-      setError("Online bookings are available between 7:00 AM and 5:00 PM. For after-hours bookings, please call 1300 170 718.");
-      return;
-    }
     e.preventDefault();
+    
+    // Check booking hours ONLY if bypass is not active (UPDATED THIS SECTION)
+    if (!bypassTimeCheck) {
+      const now = new Date();
+      const hour = now.getHours();
+      if (hour < 7 || hour >= 17) {
+        setError("Online bookings are available between 7:00 AM and 5:00 PM. For after-hours bookings, please call 1300 170 718.");
+        return;
+      }
+    }
     
     if (!client) {
       setError("Client data not loaded. Please refresh and try again.");
