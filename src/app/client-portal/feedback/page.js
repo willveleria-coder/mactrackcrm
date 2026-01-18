@@ -10,6 +10,7 @@ export default function ClientFeedbackPage() {
   const [rating, setRating] = useState(5);
   const [feedback, setFeedback] = useState("");
   const [category, setCategory] = useState("general");
+  const [businessHours, setBusinessHours] = useState("Mon-Fri, 8AM-6PM AEST"); // Default
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
@@ -26,7 +27,24 @@ export default function ClientFeedbackPage() {
 
   useEffect(() => {
     loadClient();
+    loadBusinessHours();
   }, []);
+
+  async function loadBusinessHours() {
+    try {
+      const { data } = await supabase
+        .from("settings")
+        .select("*")
+        .eq("key", "business_info")
+        .single();
+      
+      if (data?.value?.operatingHours) {
+        setBusinessHours(data.value.operatingHours);
+      }
+    } catch (error) {
+      console.log("Using default business hours");
+    }
+  }
 
   async function loadClient() {
     try {
@@ -241,7 +259,7 @@ export default function ClientFeedbackPage() {
           </div>
           
           <p className="text-xs text-gray-600 text-center mt-4">
-            📅 Support Hours: Mon-Fri 8AM-6PM AEST
+            📅 Support Hours: {businessHours}
           </p>
         </div>
       </main>

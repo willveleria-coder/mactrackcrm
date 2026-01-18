@@ -14,6 +14,7 @@ function ClientDashboardContent() {
   const [client, setClient] = useState(null);
   const [showPhonePopup, setShowPhonePopup] = useState(false);
   const [orders, setOrders] = useState([]);
+  const [businessHours, setBusinessHours] = useState("Mon-Fri, 7AM-5PM AEST"); // Default
   const [stats, setStats] = useState({
     totalOrders: 0,
     inProgress: 0,
@@ -36,7 +37,24 @@ function ClientDashboardContent() {
 
   useEffect(() => {
     loadDashboard();
+    loadBusinessHours();
   }, []);
+
+  async function loadBusinessHours() {
+    try {
+      const { data } = await supabase
+        .from("settings")
+        .select("*")
+        .eq("key", "business_info")
+        .single();
+      
+      if (data?.value?.operatingHours) {
+        setBusinessHours(data.value.operatingHours);
+      }
+    } catch (error) {
+      console.log("Using default business hours");
+    }
+  }
 
   async function loadDashboard() {
     try {
@@ -251,7 +269,7 @@ function ClientDashboardContent() {
                 </a>
               </div>
 
-              <p className="text-xs opacity-75 mt-4 text-center">Mon-Fri, 7AM-5PM AEST</p>
+              <p className="text-xs opacity-75 mt-4 text-center">{businessHours}</p>
             </div>
           </div>
         </div>
@@ -299,7 +317,7 @@ function ClientDashboardContent() {
                 <div className="text-5xl mb-4">📞</div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">Call Us</h3>
                 <p className="text-3xl font-black text-red-600 mb-4">1300 170 718</p>
-                <p className="text-sm text-gray-500 mb-6">Mon-Fri, 7AM-5PM AEST</p>
+                <p className="text-sm text-gray-500 mb-6">{businessHours}</p>
                 <div className="flex gap-3">
                   <a href="tel:1300170718" className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition">Call Now</a>
                   <button onClick={() => setShowPhonePopup(false)} className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 transition">Close</button>

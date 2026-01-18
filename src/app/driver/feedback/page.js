@@ -8,6 +8,7 @@ import Image from "next/image";
 export default function DriverFeedbackPage() {
   const [driver, setDriver] = useState(null);
   const [feedbacks, setFeedbacks] = useState([]);
+  const [businessHours, setBusinessHours] = useState("Mon-Fri, 6AM-8PM AEST"); // Default
   const [stats, setStats] = useState({
     totalReviews: 0,
     averageRating: 0,
@@ -22,7 +23,24 @@ export default function DriverFeedbackPage() {
 
   useEffect(() => {
     loadFeedback();
+    loadBusinessHours();
   }, []);
+
+  async function loadBusinessHours() {
+    try {
+      const { data } = await supabase
+        .from("settings")
+        .select("*")
+        .eq("key", "business_info")
+        .single();
+      
+      if (data?.value?.operatingHours) {
+        setBusinessHours(data.value.operatingHours);
+      }
+    } catch (error) {
+      console.log("Using default business hours");
+    }
+  }
 
   async function loadFeedback() {
     try {
@@ -245,7 +263,7 @@ export default function DriverFeedbackPage() {
         {/* Contact Support */}
         <div className="mt-8 bg-blue-50 border-2 border-blue-200 rounded-2xl shadow-lg p-6">
           <h3 className="text-xl font-bold text-gray-900 mb-2">📞 Need Help?</h3>
-          <p className="text-sm text-gray-600 mb-4">Our driver support team is available 6:00 AM - 8:00 PM</p>
+          <p className="text-sm text-gray-600 mb-4">Our driver support team is available</p>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <a
@@ -271,7 +289,7 @@ export default function DriverFeedbackPage() {
           </div>
           
           <p className="text-xs text-gray-600 text-center mt-4">
-            📅 Driver Support: Mon-Fri 6AM-8PM AEST
+            📅 Driver Support: {businessHours}
           </p>
         </div>
       </main>
