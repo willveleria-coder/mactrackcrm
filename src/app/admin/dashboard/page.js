@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import HamburgerMenu from "@/components/HamburgerMenu";
 import { ThemeProvider, useTheme } from "../../../context/ThemeContext";
+import AdminNotificationBell from "@/components/AdminNotificationBell";
 
 function AdminDashboardContent() {
   const { theme } = useTheme();
@@ -301,28 +302,28 @@ function AdminDashboardContent() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Image
-                src="/bus-icon.png"
-                alt="Mac Track"
-                width={40}
-                height={40}
-                className="object-contain"
-              />
-              <div>
-                <h1 className={`text-xl sm:text-2xl font-black ${theme.text}`}>Mac Track</h1>
-                <p className="text-xs text-gray-500">Admin Portal</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-4">
-              <span className="text-sm text-gray-600 hidden sm:inline">👋 {admin?.name || 'Admin'}</span>
-              <HamburgerMenu
-                items={menuItems}
-                onLogout={handleLogout}
-                userName={admin?.name || 'Admin'}
-                userRole="Admin"
-                onMenuToggle={setHamburgerMenuOpen}
-              />
-            </div>
+  <Image
+    src="/bus-icon.png"
+    alt="Mac Track"
+    width={40}
+    height={40}
+    className="object-contain"
+  />
+  <div>
+    <h1 className="text-xl sm:text-2xl font-black text-red-600">Mac Track</h1>
+    <p className="text-xs text-gray-500">Admin Portal</p>
+  </div>
+</div>
+
+<div className="flex items-center gap-3">
+  <AdminNotificationBell />
+  <HamburgerMenu 
+    items={menuItems}
+    onLogout={handleLogout}
+    userName={admin?.name || 'Admin'}
+    userRole="Admin"
+  />
+</div>
           </div>
         </div>
       </nav>

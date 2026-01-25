@@ -140,62 +140,109 @@ export default function DriverOrdersPage() {
           ) : (
             <div className="space-y-4">
               {/* SHOWING ALL ORDERS INCLUDING COMPLETED - NO FILTER */}
-              {orders.map((order) => (
-                <div 
-                  key={order.id} 
-                  className="border-2 border-gray-200 rounded-2xl p-4 sm:p-6 hover:shadow-md transition bg-white"
-                >
-                  {/* Order Header */}
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 sm:gap-0 mb-4">
-                    <div>
-                      <p className="text-xs sm:text-sm text-gray-500 mb-1">
-                        Order #{order.id.slice(0, 8)}
-                      </p>
-                      <StatusBadge status={order.status} />
-                    </div>
-                    <p className="text-xs sm:text-sm text-gray-500">
-                      {new Date(order.created_at).toLocaleDateString()}
-                    </p>
-                  </div>
+{orders.map((order) => {
+  // Calculate ETA outside JSX
+  const etaHours = {
+    standard: 5, 
+    same_day: 12, 
+    next_day: 24, 
+    local_overnight: 24,
+    emergency: 2, 
+    vip: 3, 
+    priority: 1.5, 
+    scheduled: 0, 
+    after_hours: 24
+  };
+  const hours = etaHours[order.service_type] || 5;
+  let etaString = '';
+  
+  if (hours === 0 && order.scheduled_date) {
+    const scheduledDateTime = new Date(order.scheduled_date + (order.scheduled_time ? ' ' + order.scheduled_time : ''));
+    etaString = scheduledDateTime.toLocaleString("en-AU", { 
+      day: "numeric", 
+      month: "short", 
+      hour: "numeric", 
+      minute: "2-digit" 
+    });
+  } else {
+    const etaDate = new Date(order.created_at || Date.now());
+    etaDate.setHours(etaDate.getHours() + hours);
+    etaString = etaDate.toLocaleString("en-AU", { 
+      day: "numeric", 
+      month: "short", 
+      hour: "numeric", 
+      minute: "2-digit" 
+    });
+  }
+  
+  const placedTime = new Date(order.created_at).toLocaleString("en-AU", {
+    day: "numeric", 
+    month: "short", 
+    year: "numeric",
+    hour: "numeric", 
+    minute: "2-digit"
+  });
 
-                  {/* Addresses */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mb-4">
-                    <div className="bg-blue-50 rounded-xl p-3">
-                      <p className="text-xs font-bold text-blue-700 mb-1">📍 PICKUP</p>
-                      <p className="text-sm text-gray-900 font-medium leading-snug">
-                        {order.pickup_address}
-                      </p>
-                    </div>
-                    <div className="bg-green-50 rounded-xl p-3">
-                      <p className="text-xs font-bold text-green-700 mb-1">🎯 DROPOFF</p>
-                      <p className="text-sm text-gray-900 font-medium leading-snug">
-                        {order.dropoff_address}
-                      </p>
-                    </div>
-                  </div>
+  return (
+    <div 
+      key={order.id} 
+      className="border-2 border-gray-200 rounded-2xl p-4 sm:p-6 hover:shadow-md transition bg-white"
+    >
+      {/* Order Header */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 sm:gap-0 mb-4">
+        <div>
+          <p className="text-xs sm:text-sm text-gray-500 mb-1">
+            Order #{order.id.slice(0, 8)}
+          </p>
+          <StatusBadge status={order.status} />
+        </div>
+        <div className="text-xs sm:text-sm text-gray-500">
+          <p>📅 Placed: {placedTime}</p>
+        </div>
+      </div>
 
-                  {/* Order Details - NO PRICING */}
-                  <div className="flex flex-wrap gap-2 text-xs sm:text-sm text-gray-600 mb-4">
-                    <span className="bg-gray-100 px-3 py-1.5 rounded-full font-medium">
-                      📦 {order.parcel_size}
-                    </span>
-                    <span className="bg-gray-100 px-3 py-1.5 rounded-full font-medium">
-                      ⚖️ {order.parcel_weight}kg
-                    </span>
-                    <span className="bg-gray-100 px-3 py-1.5 rounded-full font-medium">
-                      ⚡ {order.service_type}
-                    </span>
-                  </div>
+      {/* Addresses */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mb-4">
+        <div className="bg-blue-50 rounded-xl p-3">
+          <p className="text-xs font-bold text-blue-700 mb-1">📍 PICKUP</p>
+          <p className="text-sm text-gray-900 font-medium leading-snug">
+            {order.pickup_address}
+          </p>
+        </div>
+        <div className="bg-green-50 rounded-xl p-3">
+          <p className="text-xs font-bold text-green-700 mb-1">🎯 DROPOFF</p>
+          <p className="text-sm text-gray-900 font-medium leading-snug">
+            {order.dropoff_address}
+          </p>
+        </div>
+      </div>
 
-                  {/* Navigate Button */}
-                  <button 
-                    onClick={() => handleNavigate(order.pickup_address, order.dropoff_address, order.status)}
-                    className="w-full sm:w-auto px-6 py-3 sm:py-2 bg-[#0072ab] text-white rounded-xl font-bold text-base sm:text-sm hover:bg-[#005d8c] transition shadow-lg"
-                  >
-                    🗺️ Navigate
-                  </button>
-                </div>
-              ))}
+      {/* Order Details with ETA */}
+      <div className="flex flex-wrap gap-2 text-xs sm:text-sm text-gray-600 mb-4">
+        <span className="bg-gray-100 px-3 py-1.5 rounded-full font-medium">
+          📦 {order.parcel_size}
+        </span>
+        <span className="bg-gray-100 px-3 py-1.5 rounded-full font-medium">
+          ⚖️ {order.parcel_weight}kg
+        </span>
+        <span className="bg-gray-100 px-3 py-1.5 rounded-full font-medium">
+          ⚡ {order.service_type}
+        </span>
+        <span className="bg-blue-100 px-3 py-1.5 rounded-full font-medium text-blue-700">
+          🕐 ETA: {etaString}
+        </span>
+      </div>
+
+      {/* Navigate Button */}
+      <button 
+        onClick={() => handleNavigate(order.pickup_address, order.dropoff_address, order.status)}
+        className="w-full sm:w-auto px-6 py-3 sm:py-2 bg-[#0072ab] text-white rounded-xl font-bold text-base sm:text-sm hover:bg-[#005d8c] transition shadow-lg"
+      >
+        🗺️ Navigate
+      </button>
+    </div>
+  );
+})}
             </div>
           )}
         </div>

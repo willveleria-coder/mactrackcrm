@@ -84,6 +84,18 @@ export default function AdminOrdersPage() {
 
   useEffect(() => { loadData(); }, []);
 
+  // Auto-open order from notification link
+useEffect(() => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const orderId = urlParams.get('orderId');
+  if (orderId && orders.length > 0) {
+    const order = orders.find(o => o.id === orderId);
+    if (order) {
+      setViewOrderDetails(order);
+    }
+  }
+}, [orders]);
+
   async function loadData() {
     try {
       const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -156,17 +168,18 @@ export default function AdminOrdersPage() {
   }
 
   function handleEditOrder(order) {
-    setEditFormData({
-      pickup_address: order.pickup_address || '', pickup_contact_name: order.pickup_contact_name || '', pickup_contact_phone: order.pickup_contact_phone || '',
-      dropoff_address: order.dropoff_address || '', dropoff_contact_name: order.dropoff_contact_name || '', dropoff_contact_phone: order.dropoff_contact_phone || '',
-      parcel_size: order.parcel_size || 'small_box', quantity: order.quantity || 1, parcel_weight: order.parcel_weight || '',
-      length: order.length || '', width: order.width || '', height: order.height || '',
-      service_type: order.service_type || 'standard', scheduled_date: order.scheduled_date || '', scheduled_time: order.scheduled_time || '',
-      notes: order.notes || '', fragile: order.fragile || false, driver_id: order.driver_id || '', status: order.status || 'pending',
-      price: order.price || 0, base_price: order.base_price || order.price || 0, fuel_levy: order.fuel_levy || 0, fuel_levy_percent: order.fuel_levy_percent || 10, gst: order.gst || 0,
-    });
-    setEditOrder(order);
-  }
+  setEditFormData({
+    pickup_address: order.pickup_address || '', pickup_contact_name: order.pickup_contact_name || '', pickup_contact_phone: order.pickup_contact_phone || '',
+    dropoff_address: order.dropoff_address || '', dropoff_contact_name: order.dropoff_contact_name || '', dropoff_contact_phone: order.dropoff_contact_phone || '',
+    parcel_size: order.parcel_size || 'small_box', quantity: order.quantity || 1, parcel_weight: order.parcel_weight || '',
+    length: order.length || '', width: order.width || '', height: order.height || '',
+    service_type: order.service_type || 'standard', scheduled_date: order.scheduled_date || '', scheduled_time: order.scheduled_time || '',
+    notes: order.notes || '', fragile: order.fragile || false, driver_id: order.driver_id || '', status: order.status || 'pending',
+    price: order.price || 0, base_price: order.base_price || order.price || 0, fuel_levy: order.fuel_levy || 0, fuel_levy_percent: order.fuel_levy_percent || 10, gst: order.gst || 0,
+    wait_time: order.wait_time || 0,
+  });
+  setEditOrder(order);
+}
 
   function handleEditInputChange(e) {
     const { name, value, type, checked } = e.target;
@@ -174,14 +187,22 @@ export default function AdminOrdersPage() {
   }
 
   function recalculatePrice() {
-    const basePrice = parseFloat(editFormData.base_price) || 0;
-    const fuelLevyPercent = parseFloat(editFormData.fuel_levy_percent) || 10;
-    const fuelLevy = basePrice * (fuelLevyPercent / 100);
-    const subtotal = basePrice + fuelLevy;
-    const gst = subtotal * 0.10;
-    const total = subtotal + gst;
-    setEditFormData(prev => ({ ...prev, fuel_levy: fuelLevy, gst: gst, price: total }));
-  }
+  const basePrice = parseFloat(editFormData.base_price) || 0;
+  const waitTime = parseFloat(editFormData.wait_time) || 0;
+  const waitTimeFee = waitTime * 1; // $1 per minute
+  const fuelLevyPercent = parseFloat(editFormData.fuel_levy_percent) || 10;
+  const subtotalBeforeFuel = basePrice + waitTimeFee;
+  const fuelLevy = subtotalBeforeFuel * (fuelLevyPercent / 100);
+  const subtotal = subtotalBeforeFuel + fuelLevy;
+  const gst = subtotal * 0.10;
+  const total = subtotal + gst;
+  setEditFormData(prev => ({ 
+    ...prev, 
+    fuel_levy: fuelLevy, 
+    gst: gst, 
+    price: total 
+  }));
+}
 
   async function handleSaveEdit() {
     if (!editOrder) return;
@@ -565,18 +586,45 @@ export default function AdminOrdersPage() {
               </div>
               <div><label className="block text-sm font-bold text-gray-700 mb-2">Notes</label><textarea name="notes" value={editFormData.notes} onChange={handleEditInputChange} rows={3} className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl resize-none" /></div>
               <div className="bg-yellow-50 rounded-xl p-4">
-                <h4 className="font-bold text-yellow-900 mb-3">💰 Pricing</h4>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div><label className="block text-xs font-bold text-gray-600 mb-1">Base ($)</label><input type="number" name="base_price" value={editFormData.base_price} onChange={(e) => { handleEditInputChange(e); setTimeout(recalculatePrice, 0); }} step="0.01" className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg" /></div>
-                  <div><label className="block text-xs font-bold text-gray-600 mb-1">Fuel %</label><input type="number" name="fuel_levy_percent" value={editFormData.fuel_levy_percent} onChange={(e) => { handleEditInputChange(e); setTimeout(recalculatePrice, 0); }} className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg" /></div>
-                  <div><label className="block text-xs font-bold text-gray-600 mb-1">Fuel ($)</label><input type="number" value={editFormData.fuel_levy?.toFixed?.(2) || 0} readOnly className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg bg-gray-100" /></div>
-                  <div><label className="block text-xs font-bold text-gray-600 mb-1">GST ($)</label><input type="number" value={editFormData.gst?.toFixed?.(2) || 0} readOnly className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg bg-gray-100" /></div>
-                </div>
-                <div className="mt-3 flex justify-between items-center">
-                  <button type="button" onClick={recalculatePrice} className="px-4 py-2 bg-yellow-500 text-white rounded-lg text-sm font-bold hover:bg-yellow-600">Recalculate</button>
-                  <div className="text-right"><p className="text-xs text-gray-600">Total (inc. GST)</p><p className="text-2xl font-black text-green-600">${parseFloat(editFormData.price || 0).toFixed(2)}</p></div>
-                </div>
-              </div>
+  <h4 className="font-bold text-yellow-900 mb-3">💰 Pricing</h4>
+  
+  {/* Wait Time Field */}
+  <div className="mb-4 p-3 bg-orange-50 border-2 border-orange-200 rounded-xl">
+    <label className="block text-sm font-bold text-orange-900 mb-2">
+      ⏱️ Wait Time (minutes) - $1 per minute
+    </label>
+    <input 
+      type="number" 
+      name="wait_time" 
+      value={editFormData.wait_time || 0} 
+      onChange={(e) => { 
+        handleEditInputChange(e); 
+        setTimeout(recalculatePrice, 0); 
+      }} 
+      min="0"
+      step="1"
+      placeholder="0"
+      className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-orange-500" 
+    />
+    {editFormData.wait_time > 0 && (
+      <p className="text-xs text-orange-700 mt-2">
+        Wait time fee: ${(parseFloat(editFormData.wait_time) * 1).toFixed(2)}
+      </p>
+    )}
+  </div>
+
+  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <div><label className="block text-xs font-bold text-gray-600 mb-1">Base ($)</label><input type="number" name="base_price" value={editFormData.base_price} onChange={(e) => { handleEditInputChange(e); setTimeout(recalculatePrice, 0); }} step="0.01" className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg" /></div>
+    <div><label className="block text-xs font-bold text-gray-600 mb-1">Fuel %</label><input type="number" name="fuel_levy_percent" value={editFormData.fuel_levy_percent} onChange={(e) => { handleEditInputChange(e); setTimeout(recalculatePrice, 0); }} className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg" /></div>
+    <div><label className="block text-xs font-bold text-gray-600 mb-1">Fuel ($)</label><input type="number" value={editFormData.fuel_levy?.toFixed?.(2) || 0} readOnly className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg bg-gray-100" /></div>
+    <div><label className="block text-xs font-bold text-gray-600 mb-1">GST ($)</label><input type="number" value={editFormData.gst?.toFixed?.(2) || 0} readOnly className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg bg-gray-100" /></div>
+  </div>
+  
+  <div className="mt-3 flex justify-between items-center">
+    <button type="button" onClick={recalculatePrice} className="px-4 py-2 bg-yellow-500 text-white rounded-lg text-sm font-bold hover:bg-yellow-600">Recalculate</button>
+    <div className="text-right"><p className="text-xs text-gray-600">Total (inc. GST)</p><p className="text-2xl font-black text-green-600">${parseFloat(editFormData.price || 0).toFixed(2)}</p></div>
+  </div>
+</div>
             </div>
             <div className="p-6 border-t border-gray-200 bg-gray-50 flex flex-col sm:flex-row gap-3 sticky bottom-0">
               <button onClick={handleSaveEdit} disabled={saving} className="flex-1 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition disabled:opacity-50">{saving ? "Saving..." : "💾 Save Changes"}</button>

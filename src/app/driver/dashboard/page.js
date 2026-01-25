@@ -255,21 +255,31 @@ function DriverDashboardContent() {
   }
 
   async function handleSendToAdmin(orderId) {
-    try {
-      const order = orders.find(o => o.id === orderId);
-      const message = `Driver ${driver.name} has sent order details:\nOrder ID: ${orderId.slice(0, 8)}\nPickup: ${order.pickup_address}\nDropoff: ${order.dropoff_address}\nStatus: ${order.status}`;
-
-      const { error } = await supabase
-        .from("admin_notifications")
-        .insert([{ order_id: orderId, driver_id: driver.id, message: message, type: "order_details" }]);
-
-      if (error) throw error;
-      alert("✅ Order details sent to admin successfully!");
-    } catch (error) {
-      console.error("Send to admin error:", error);
-      alert("Failed to send to admin: " + error.message);
+  try {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) {
+      alert("❌ Order not found");
+      return;
     }
+
+    // Save notification to database
+    const { error } = await supabase
+      .from("driver_notifications")
+      .insert([{
+        driver_id: driver.id,
+        driver_name: driver.name,
+        order_id: orderId,
+        message: `Order #${orderId.slice(0, 8)} - ${order.pickup_address} → ${order.dropoff_address} (${order.status})`
+      }]);
+
+    if (error) throw error;
+
+    alert("✅ Order details sent to admin!");
+  } catch (error) {
+    console.error("Send to admin error:", error);
+    alert("❌ Failed to send: " + error.message);
   }
+}
 
   function handleCall() { window.location.href = `tel:0430233811`; }
   function handleSMS() { window.location.href = `sms:0430233811`; }

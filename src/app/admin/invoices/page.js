@@ -92,9 +92,11 @@ export default function AdminInvoicesPage() {
       const invoiceNumber = `INV-${new Date().getFullYear()}-${timestamp.toString().slice(-6)}`;
 
       // Calculate amounts (10% tax)
-      const amount = Number(order.price);
-      const taxAmount = amount * 0.10;
-      const totalAmount = amount + taxAmount;
+      // Order price already includes GST, so extract it
+const totalAmount = Number(order.price);
+const beforeGst = totalAmount / 1.10; // Remove GST to get base amount
+const taxAmount = totalAmount - beforeGst; // Calculate GST portion
+const amount = beforeGst; // Base amount without GST
 
       const { error } = await supabase
         .from("invoices")
@@ -255,7 +257,7 @@ export default function AdminInvoicesPage() {
                         <span className="font-semibold">${Number(invoice.amount).toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-sm mb-1">
-                        <span className="text-gray-600">Tax:</span>
+                        <span className="text-gray-600">GST:</span>
                         <span className="font-semibold">${Number(invoice.tax_amount).toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-sm pt-2 border-t border-gray-200">
@@ -293,7 +295,7 @@ export default function AdminInvoicesPage() {
                       <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">Date</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">Order ID</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">Amount</th>
-                      <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">Tax</th>
+                      <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">GST</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">Total</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">Status</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">Due Date</th>
@@ -402,7 +404,7 @@ export default function AdminInvoicesPage() {
                         </div>
                         <div className="text-right">
                           <p className="font-black text-gray-900">${Number(order.price).toFixed(2)}</p>
-                          <p className="text-xs text-gray-500">+ 10% tax</p>
+                          <p className="text-xs text-gray-500">+ 10% GST</p>
                         </div>
                       </div>
                     </button>
