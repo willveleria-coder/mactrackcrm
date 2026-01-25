@@ -1,27 +1,21 @@
-// src/app/layout.js
+import { Inter } from "next/font/google";
 import "./globals.css";
-import SessionRefresh from '@/components/SessionRefresh'
+import SessionRefresh from "@/components/SessionRefresh";
 
-export default function RootLayout({ children }) {
-  return (
-    <html lang="en">
-      <body>
-        <SessionRefresh />
-        {children}
-      </body>
-    </html>
-  )
-}
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
   title: "Mac Track CRM",
-  description: "Courier CRM",
+  description: "Delivery management system",
 };
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className={inter.className}>
+        <SessionRefresh />
+        {children}
+      </body>
     </html>
   );
 }

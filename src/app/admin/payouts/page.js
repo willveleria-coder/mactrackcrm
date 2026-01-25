@@ -11,6 +11,7 @@ export default function AdminPayoutsPage() {
   const [payoutRequests, setPayoutRequests] = useState([]);
   const [drivers, setDrivers] = useState([]);
   const [wallets, setWallets] = useState([]);
+  const [driverStats, setDriverStats] = useState({});
   const [filterStatus, setFilterStatus] = useState('pending');
   const [viewRequest, setViewRequest] = useState(null);
   const [rejectionReason, setRejectionReason] = useState('');
@@ -66,36 +67,53 @@ export default function AdminPayoutsPage() {
   }
 
   async function loadPayoutData() {
-    try {
-      // Load payout requests
-      const { data: requestsData } = await supabase
-        .from("payout_requests")
-        .select("*")
-        .order("requested_at", { ascending: false });
+  try {
+    // Load payout requests
+    const { data: requestsData } = await supabase
+  .from("payout_requests")
+  .select("*")
+  .order("created_at", { ascending: false }); // FIXED
 
-      setPayoutRequests(requestsData || []);
+    setPayoutRequests(requestsData || []);
 
-      // Load drivers
-      const { data: driversData } = await supabase
-        .from("drivers")
-        .select("*");
+    // Load drivers with bank details
+    const { data: driversData } = await supabase
+      .from("drivers")
+      .select("*");
 
-      setDrivers(driversData || []);
+    setDrivers(driversData || []);
 
-      // Load wallets
-      const { data: walletsData } = await supabase
-        .from("driver_wallets")
-        .select("*");
+    // Load wallets
+    const { data: walletsData } = await supabase
+      .from("driver_wallets")
+      .select("*");
 
-      setWallets(walletsData || []);
+    setWallets(walletsData || []);
 
-    } catch (error) {
-      console.error("Error loading payout data:", error);
-      setMessage("❌ Failed to load payout data");
-    } finally {
-      setLoading(false);
-    }
+    // Load driver stats (completed orders count)
+    const { data: ordersData } = await supabase
+      .from("orders")
+      .select("driver_id, id, status")
+      .eq("status", "delivered");
+
+    // Calculate stats per driver
+    const driverStats = {};
+    ordersData?.forEach(order => {
+      if (!driverStats[order.driver_id]) {
+        driverStats[order.driver_id] = { deliveries: 0 };
+      }
+      driverStats[order.driver_id].deliveries++;
+    });
+
+    setDriverStats(driverStats);
+
+  } catch (error) {
+    console.error("Error loading payout data:", error);
+    setMessage("❌ Failed to load payout data");
+  } finally {
+    setLoading(false);
   }
+}
 
   async function handleApprove(requestId, amount, driverId) {
   if (!confirm("Approve this payout request?")) return;
@@ -205,7 +223,7 @@ export default function AdminPayoutsPage() {
   }
 
   async function handleResetWallet(driverId) {
-  if (!confirm("Reset this driver's wallet? This will set balance to $0.00 and create a payout history record.")) return;
+  if (!confirm("Reset this driver's wallet? This will mark the balance as paid and allow new payout requests.")) return;
 
   setProcessing(true);
   setMessage('');
@@ -221,12 +239,31 @@ export default function AdminPayoutsPage() {
     const currentBalance = parseFloat(wallet.balance);
     const currentTotalPaidOut = parseFloat(wallet.total_paid_out);
 
+    // Create approved payout request (shows it was paid)
+    const { data: newRequest, error: requestError } = await supabase
+      .from("payout_requests")
+      .insert([{
+        driver_id: driverId,
+        amount: currentBalance,
+        payment_method: 'manual_reset',
+        status: 'approved',
+        requested_at: new Date().toISOString(),
+        processed_at: new Date().toISOString(),
+        processed_by: admin.id,
+        notes: 'Wallet manually reset and paid by admin'
+      }])
+      .select()
+      .single();
+
+    if (requestError) throw requestError;
+
     // Create payout history
     const { error: historyError } = await supabase
       .from("payout_history")
       .insert([{
         driver_id: driverId,
         amount: currentBalance,
+        payout_request_id: newRequest.id,
         payment_method: 'manual_reset',
         notes: 'Wallet reset by admin',
         paid_by: admin.id
@@ -246,13 +283,13 @@ export default function AdminPayoutsPage() {
 
     if (walletError) throw walletError;
 
-    setMessage("✅ Wallet reset successfully!");
+    setMessage("✅ Wallet reset successfully! Driver can now request new payouts.");
     await loadPayoutData();
     setTimeout(() => setMessage(''), 3000);
 
   } catch (error) {
     console.error("Error resetting wallet:", error);
-    setMessage("❌ Failed to reset wallet");
+    setMessage("❌ Failed to reset wallet: " + error.message);
   } finally {
     setProcessing(false);
   }
@@ -472,130 +509,175 @@ export default function AdminPayoutsPage() {
       </main>
 
       {/* View Request Modal */}
-      {viewRequest && (
-        <>
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-50"
-            onClick={() => setViewRequest(null)}
-          />
-          <div className="fixed top-8 left-1/2 transform -translate-x-1/2 bg-white rounded-2xl shadow-2xl p-6 sm:p-8 z-50 w-11/12 max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-start mb-6">
-              <h3 className="text-2xl font-bold text-gray-900">Payout Request Details</h3>
-              <button 
-                onClick={() => setViewRequest(null)}
-                className="text-gray-500 hover:text-gray-700 text-3xl font-bold leading-none"
-              >
-                ×
-              </button>
-            </div>
+{viewRequest && (
+  <>
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-50 z-50"
+      onClick={() => setViewRequest(null)}
+    />
+    <div className="fixed top-8 left-1/2 transform -translate-x-1/2 bg-white rounded-2xl shadow-2xl p-6 sm:p-8 z-50 w-11/12 max-w-3xl max-h-[90vh] overflow-y-auto">
+      <div className="flex justify-between items-start mb-6">
+        <div>
+          <h3 className="text-2xl font-bold text-gray-900">Payment Request Details</h3>
+          <p className="text-sm text-gray-500 mt-1">Review driver payment information</p>
+        </div>
+        <button 
+          onClick={() => setViewRequest(null)}
+          className="text-gray-500 hover:text-gray-700 text-3xl font-bold leading-none"
+        >
+          ×
+        </button>
+      </div>
 
-            <div className="space-y-4 mb-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Driver</p>
-                  <p className="font-bold text-gray-900">{viewRequest.driver?.name}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Amount</p>
-                  <p className="font-bold text-2xl text-green-600">${parseFloat(viewRequest.amount).toFixed(2)}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Status</p>
-                  <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${
-                    viewRequest.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
-                    viewRequest.status === 'approved' ? 'bg-green-100 text-green-700' :
-                    'bg-red-100 text-red-700'
-                  }`}>
-                    {viewRequest.status.toUpperCase()}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Requested</p>
-                  <p className="font-semibold text-gray-900">{new Date(viewRequest.requested_at).toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Payment Method</p>
-                  <p className="font-semibold text-gray-900 capitalize">{viewRequest.payment_method?.replace('_', ' ')}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Wallet Balance</p>
-                  <p className="font-semibold text-gray-900">${viewRequest.wallet?.balance.toFixed(2) || '0.00'}</p>
-                </div>
-              </div>
-
-              {viewRequest.bank_account_details && (
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Payment Details</p>
-                  <div className="p-3 bg-gray-100 rounded-lg">
-                    <p className="text-sm font-mono text-gray-900 whitespace-pre-wrap">{viewRequest.bank_account_details}</p>
-                  </div>
-                </div>
-              )}
-
-              {viewRequest.notes && (
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Notes</p>
-                  <div className="p-3 bg-gray-100 rounded-lg">
-                    <p className="text-sm text-gray-900">{viewRequest.notes}</p>
-                  </div>
-                </div>
-              )}
-
-              {viewRequest.status === 'rejected' && viewRequest.rejection_reason && (
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Rejection Reason</p>
-                  <div className="p-3 bg-red-50 rounded-lg border border-red-200">
-                    <p className="text-sm text-red-700">{viewRequest.rejection_reason}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {viewRequest.status === 'pending' && (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">
-                    Rejection Reason (if rejecting)
-                  </label>
-                  <textarea
-                    value={rejectionReason}
-                    onChange={(e) => setRejectionReason(e.target.value)}
-                    rows={3}
-                    placeholder="Enter reason for rejection..."
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent resize-none"
-                  />
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => handleApprove(viewRequest.id, viewRequest.amount, viewRequest.driver_id)}
-                    disabled={processing}
-                    className="flex-1 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition disabled:opacity-50"
-                  >
-                    {processing ? "Processing..." : "✅ Approve Payout"}
-                  </button>
-                  <button
-                    onClick={() => handleReject(viewRequest.id)}
-                    disabled={processing}
-                    className="flex-1 py-3 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition disabled:opacity-50"
-                  >
-                    {processing ? "Processing..." : "❌ Reject"}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {viewRequest.status !== 'pending' && (
-              <button
-                onClick={() => setViewRequest(null)}
-                className="w-full py-3 bg-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-400 transition"
-              >
-                Close
-              </button>
-            )}
+      {/* Driver Info Section */}
+      <div className="bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl p-5 mb-6">
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-4xl">🚐</span>
+          <div>
+            <h4 className="text-2xl font-black">{viewRequest.driver?.name}</h4>
+            <p className="text-sm opacity-90">{viewRequest.driver?.email}</p>
           </div>
-        </>
+        </div>
+        <div className="grid grid-cols-2 gap-4 mt-4 text-sm">
+          <div>
+            <p className="opacity-75">Phone</p>
+            <p className="font-bold">{viewRequest.driver?.phone || 'N/A'}</p>
+          </div>
+          <div>
+            <p className="opacity-75">ABN</p>
+            <p className="font-bold">{viewRequest.driver?.abn || 'N/A'}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+        <div className="bg-blue-50 rounded-xl p-4 border-2 border-blue-200">
+          <p className="text-xs text-blue-700 font-bold mb-1">AMOUNT</p>
+          <p className="text-2xl font-black text-blue-900">${parseFloat(viewRequest.amount).toFixed(2)}</p>
+        </div>
+        <div className="bg-purple-50 rounded-xl p-4 border-2 border-purple-200">
+          <p className="text-xs text-purple-700 font-bold mb-1">BALANCE</p>
+          <p className="text-2xl font-black text-purple-900">${viewRequest.wallet?.balance.toFixed(2) || '0.00'}</p>
+        </div>
+        <div className="bg-green-50 rounded-xl p-4 border-2 border-green-200">
+          <p className="text-xs text-green-700 font-bold mb-1">DELIVERIES</p>
+          <p className="text-2xl font-black text-green-900">{driverStats[viewRequest.driver_id]?.deliveries || 0}</p>
+        </div>
+        <div className="bg-orange-50 rounded-xl p-4 border-2 border-orange-200">
+          <p className="text-xs text-orange-700 font-bold mb-1">HOURS</p>
+          <p className="text-2xl font-black text-orange-900">{viewRequest.driver?.hours_worked?.toFixed(1) || '0.0'}</p>
+        </div>
+      </div>
+
+      {/* Bank Details */}
+      {viewRequest.driver?.bank_account_name && (
+        <div className="bg-yellow-50 border-2 border-yellow-200 rounded-xl p-5 mb-6">
+          <h4 className="font-bold text-yellow-900 mb-3 flex items-center gap-2">
+            <span className="text-xl">🏦</span> Bank Details
+          </h4>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <p className="text-gray-600">Account Name</p>
+              <p className="font-bold text-gray-900">{viewRequest.driver.bank_account_name}</p>
+            </div>
+            <div>
+              <p className="text-gray-600">BSB</p>
+              <p className="font-bold text-gray-900 font-mono">{viewRequest.driver.bank_bsb}</p>
+            </div>
+            <div className="col-span-2">
+              <p className="text-gray-600">Account Number</p>
+              <p className="font-bold text-gray-900 font-mono text-lg">{viewRequest.driver.bank_account_number}</p>
+            </div>
+          </div>
+        </div>
       )}
+
+      {/* Request Details */}
+      <div className="space-y-3 mb-6">
+        <div className="flex justify-between py-2 border-b border-gray-200">
+          <span className="text-gray-600">Payment Method</span>
+          <span className="font-semibold capitalize">{viewRequest.payment_method?.replace('_', ' ')}</span>
+        </div>
+        <div className="flex justify-between py-2 border-b border-gray-200">
+          <span className="text-gray-600">Requested</span>
+          <span className="font-semibold">{new Date(viewRequest.requested_at).toLocaleString('en-AU')}</span>
+        </div>
+        <div className="flex justify-between py-2 border-b border-gray-200">
+          <span className="text-gray-600">Status</span>
+          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+            viewRequest.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+            viewRequest.status === 'approved' ? 'bg-green-100 text-green-700' :
+            'bg-red-100 text-red-700'
+          }`}>
+            {viewRequest.status.toUpperCase()}
+          </span>
+        </div>
+      </div>
+
+      {viewRequest.notes && (
+        <div className="mb-6">
+          <p className="text-sm text-gray-600 mb-2">Notes</p>
+          <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <p className="text-sm text-gray-900">{viewRequest.notes}</p>
+          </div>
+        </div>
+      )}
+
+      {viewRequest.status === 'rejected' && viewRequest.rejection_reason && (
+        <div className="mb-6">
+          <p className="text-sm text-gray-600 mb-2">Rejection Reason</p>
+          <div className="p-4 bg-red-50 rounded-lg border-2 border-red-200">
+            <p className="text-sm text-red-700 font-semibold">{viewRequest.rejection_reason}</p>
+          </div>
+        </div>
+      )}
+
+      {viewRequest.status === 'pending' && (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">
+              Rejection Reason (if rejecting)
+            </label>
+            <textarea
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              rows={3}
+              placeholder="Enter reason for rejection..."
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent resize-none"
+            />
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => handleApprove(viewRequest.id, viewRequest.amount, viewRequest.driver_id)}
+              disabled={processing}
+              className="flex-1 py-4 bg-green-500 text-white rounded-xl font-bold text-lg hover:bg-green-600 transition disabled:opacity-50 shadow-lg"
+            >
+              {processing ? "Processing..." : "✅ Approve & Pay"}
+            </button>
+            <button
+              onClick={() => handleReject(viewRequest.id)}
+              disabled={processing || !rejectionReason.trim()}
+              className="flex-1 py-4 bg-red-500 text-white rounded-xl font-bold text-lg hover:bg-red-600 transition disabled:opacity-50 shadow-lg"
+            >
+              {processing ? "Processing..." : "❌ Reject"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {viewRequest.status !== 'pending' && (
+        <button
+          onClick={() => setViewRequest(null)}
+          className="w-full py-3 bg-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-400 transition"
+        >
+          Close
+        </button>
+      )}
+    </div>
+  </>
+)}
     </div>
   );
 }

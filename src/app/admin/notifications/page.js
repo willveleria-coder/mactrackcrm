@@ -101,20 +101,30 @@ export default function AdminNotificationsPage() {
   }
 
   async function deleteNotification(notificationId) {
-    if (!confirm("Delete this notification?")) return;
-    
-    try {
-      const { error } = await supabase
-        .from("driver_notifications")
-        .delete()
-        .eq("id", notificationId);
+  if (!confirm("Delete this notification?")) return;
+  
+  try {
+    // Delete from database
+    const { error } = await supabase
+      .from("driver_notifications")
+      .delete()
+      .eq("id", notificationId);
 
-      if (error) throw error;
-      loadData();
-    } catch (error) {
-      console.error("Error deleting:", error);
+    if (error) {
+      console.error("Supabase delete error:", error);
+      alert("❌ Failed to delete: " + error.message);
+      return;
     }
+
+    // Remove from local state immediately
+    setNotifications(prev => prev.filter(n => n.id !== notificationId));
+    
+    console.log("✅ Notification deleted successfully");
+  } catch (error) {
+    console.error("Error deleting:", error);
+    alert("❌ Failed to delete: " + error.message);
   }
+}
 
   function formatTime(timestamp) {
     const date = new Date(timestamp);
@@ -255,55 +265,69 @@ export default function AdminNotificationsPage() {
           ) : (
             <div className="divide-y divide-gray-100">
               {filteredNotifications.map((notification) => (
-                <div
-                  key={notification.id}
-                  className={`p-6 hover:bg-gray-50 transition ${
-                    !notification.is_read ? "bg-blue-50 border-l-4 border-l-blue-500" : ""
-                  }`}
-                >
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <span className="text-2xl">🚐</span>
-                        <div>
-                          <p className="font-bold text-gray-900">{notification.driver_name}</p>
-                          <p className="text-xs text-gray-500">{formatTime(notification.created_at)}</p>
-                        </div>
-                        {!notification.is_read && (
-                          <span className="bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full">
-                            NEW
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-700 mt-3 leading-relaxed">
-                        {notification.message}
-                      </p>
-                      <Link
-  href={`/admin/orders?orderId=${notification.order_id}`}
-  className="inline-block mt-3 text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline"
->
-  View Order #{notification.order_id?.slice(0, 8)} →
-</Link>
-                    </div>
-                    <div className="flex sm:flex-col gap-2">
-                      {!notification.is_read && (
-                        <button
-                          onClick={() => markAsRead(notification.id)}
-                          className="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-bold hover:bg-green-600 transition whitespace-nowrap"
-                        >
-                          ✅ Mark Read
-                        </button>
-                      )}
-                      <button
-                        onClick={() => deleteNotification(notification.id)}
-                        className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-bold hover:bg-red-600 transition"
-                      >
-                        🗑️
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
+  <div
+    key={notification.id}
+    onClick={() => setSelectedOrder(notification)}
+    className={`p-6 hover:bg-gray-50 transition ${
+      !notification.is_read ? "bg-blue-50 border-l-4 border-l-blue-500" : ""
+    }`}
+  >
+    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+      <div className="flex-1">
+        <div className="flex items-center gap-3 mb-2">
+          <span className="text-2xl">
+            {notification.type === 'payment_request' ? '💳' : '🚐'}
+          </span>
+          <div>
+            <p className="font-bold text-gray-900">{notification.driver_name}</p>
+            <p className="text-xs text-gray-500">{formatTime(notification.created_at)}</p>
+          </div>
+          {!notification.is_read && (
+            <span className="bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+              NEW
+            </span>
+          )}
+          {notification.type === 'payment_request' && notification.amount && (
+            <span className="bg-green-500 text-white text-sm font-bold px-3 py-1 rounded-full">
+              ${parseFloat(notification.amount).toFixed(2)}
+            </span>
+          )}
+        </div>
+        <p className="text-sm text-gray-700 mt-3 leading-relaxed">
+          {notification.message}
+        </p>
+        <Link
+          href={notification.type === 'payment_request' ? `/admin/payouts` : `/admin/orders`}
+          className="inline-block mt-3 text-sm font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+        >
+          {notification.type === 'payment_request' ? 'View Payment Request →' : 'View Order →'}
+        </Link>
+      </div>
+      <div className="flex sm:flex-col gap-2">
+        {!notification.is_read && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              markAsRead(notification.id);
+            }}
+            className="px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-bold hover:bg-green-600 transition whitespace-nowrap"
+          >
+            ✅ Mark Read
+          </button>
+        )}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            deleteNotification(notification.id);
+          }}
+          className="px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-bold hover:bg-red-600 transition"
+        >
+          🗑️
+        </button>
+      </div>
+    </div>
+  </div>
+))}
             </div>
           )}
         </div>

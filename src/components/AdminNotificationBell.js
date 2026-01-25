@@ -35,23 +35,23 @@ export default function AdminNotificationBell() {
   }, []);
 
   async function loadNotifications() {
-    try {
-      const { data, error } = await supabase
-        .from("driver_notifications")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(10);
+  try {
+    const { data, error } = await supabase
+      .from("driver_notifications")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(10);
 
-      if (error) throw error;
+    if (error) throw error;
 
-      setNotifications(data || []);
-      setUnreadCount(data?.filter(n => !n.is_read).length || 0);
-    } catch (error) {
-      console.error("Error loading notifications:", error);
-    } finally {
-      setLoading(false);
-    }
+    setNotifications(data || []);
+    setUnreadCount(data?.filter(n => !n.is_read).length || 0);
+  } catch (error) {
+    console.error("Error loading notifications:", error);
+  } finally {
+    setLoading(false);
   }
+}
 
   async function markAsRead(notificationId) {
     try {
@@ -66,6 +66,26 @@ export default function AdminNotificationBell() {
       console.error("Error marking as read:", error);
     }
   }
+
+  async function deleteNotification(notificationId, event) {
+  event.stopPropagation(); // Prevent click from bubbling
+  
+  if (!confirm("Delete this notification?")) return;
+  
+  try {
+    const { error } = await supabase
+      .from("driver_notifications")
+      .delete()
+      .eq("id", notificationId);
+
+    if (error) throw error;
+    
+    // Refresh the list
+    loadNotifications();
+  } catch (error) {
+    console.error("Error deleting:", error);
+  }
+}
 
   async function markAllAsRead() {
     try {
@@ -150,10 +170,15 @@ export default function AdminNotificationBell() {
                         !notification.is_read ? "bg-blue-50" : ""
                       }`}
                       onClick={() => {
-                        markAsRead(notification.id);
-                        setShowDropdown(false);
-                        window.location.href = `/admin/orders`;
-                      }}
+  markAsRead(notification.id);
+  setShowDropdown(false);
+  // Different routing based on type
+  if (notification.type === 'payment_request') {
+    window.location.href = `/admin/payouts`;
+  } else {
+    window.location.href = `/admin/orders`;
+  }
+}}
                     >
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex items-center gap-2">

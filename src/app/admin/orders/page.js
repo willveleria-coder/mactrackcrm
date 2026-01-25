@@ -35,6 +35,7 @@ export default function AdminOrdersPage() {
     client: true,
     pickup: true,
     dropoff: true,
+    service: true,
     driver: true,
     status: true,
     price: true,
@@ -76,6 +77,8 @@ export default function AdminOrdersPage() {
     client: "Client",
     pickup: "Pickup",
     dropoff: "Dropoff",
+    service: "Service",
+    eta: "ETA",
     driver: "Driver",
     status: "Status",
     price: "Price",
@@ -483,42 +486,137 @@ useEffect(() => {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    {visibleColumns.orderId && <th className="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase">Order ID</th>}
-                    {visibleColumns.client && <th className="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase">Client</th>}
-                    {visibleColumns.pickup && <th className="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase hidden lg:table-cell max-w-[200px]">Pickup</th>}
-                    {visibleColumns.dropoff && <th className="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase hidden lg:table-cell max-w-[200px]">Dropoff</th>}
-                    {visibleColumns.driver && <th className="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase">Driver</th>}
-                    {visibleColumns.status && <th className="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase">Status</th>}
-                    {visibleColumns.price && <th className="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase hidden sm:table-cell">Price</th>}
-                    {visibleColumns.actions && <th className="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase" style={{minWidth: '340px'}}>Actions</th>}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {filteredOrders.map((order) => (
-                    <tr key={order.id} className="hover:bg-gray-50 transition">
-                      {visibleColumns.orderId && <td className="px-4 py-4"><button onClick={() => setViewOrderDetails(order)} className="text-sm font-mono text-red-600 hover:underline font-bold">#{order.id.slice(0, 8)}</button></td>}
-                      {visibleColumns.client && <td className="px-4 py-4"><div className="text-sm"><p className="font-semibold text-gray-900">{order.client?.name || 'N/A'}</p><p className="text-gray-500 text-xs">{order.client?.email}</p></div></td>}
-                      {visibleColumns.pickup && <td className="px-4 py-4 text-sm text-gray-600 max-w-[200px] truncate hidden lg:table-cell" title={order.pickup_address}>{order.pickup_address}</td>}
-                      {visibleColumns.dropoff && <td className="px-4 py-4 text-sm text-gray-600 max-w-[200px] truncate hidden lg:table-cell" title={order.dropoff_address}>{order.dropoff_address}</td>}
-                      {visibleColumns.driver && <td className="px-4 py-4">{order.driver ? <button onClick={() => handleViewDriver(order.driver_id)} className="text-sm font-semibold text-red-600 hover:underline">{order.driver.name}</button> : <span className="text-sm text-gray-400">Unassigned</span>}</td>}
-                      {visibleColumns.status && <td className="px-4 py-4"><StatusBadge status={order.status} /></td>}
-                      {visibleColumns.price && <td className="px-4 py-4 text-sm font-bold text-gray-900 hidden sm:table-cell">${order.price?.toFixed(2)}</td>}
-                      {visibleColumns.actions && (
-                        <td className="px-4 py-4">
-                          <div className="flex flex-wrap gap-2">
-                            <button onClick={() => setViewOrderDetails(order)} className="px-3 py-2 bg-blue-500 text-white rounded-lg text-xs font-bold hover:bg-blue-600 transition whitespace-nowrap">👁️ View</button>
-                            <button onClick={() => handleEditOrder(order)} className="px-3 py-2 bg-yellow-500 text-white rounded-lg text-xs font-bold hover:bg-yellow-600 transition whitespace-nowrap">✏️ Edit</button>
-                            <button onClick={() => setSelectedOrder(selectedOrder === order.id ? null : order.id)} className="px-3 py-2 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600 transition whitespace-nowrap">🚐 Assign</button>
-                            <button onClick={() => handlePrintLabel(order)} className="px-3 py-2 bg-purple-600 text-white rounded-lg text-xs font-bold hover:bg-purple-700 transition whitespace-nowrap">🏷️ Print Label</button>
-                          </div>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+  <thead className="bg-gray-50 border-b border-gray-200">
+    <tr>
+      {visibleColumns.orderId && <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">Order ID</th>}
+      {visibleColumns.client && <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">Client</th>}
+      {visibleColumns.pickup && <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase hidden lg:table-cell max-w-[200px]">Pickup</th>}
+      {visibleColumns.dropoff && <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase hidden lg:table-cell max-w-[200px]">Dropoff</th>}
+      {visibleColumns.service && <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">Service</th>}
+      {visibleColumns.eta && <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">ETA</th>}
+      {visibleColumns.driver && <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">Driver</th>}
+      {visibleColumns.status && <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">Status</th>}
+      {visibleColumns.price && <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase hidden sm:table-cell">Price</th>}
+      {visibleColumns.actions && <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase" style={{minWidth: '340px'}}>Actions</th>}
+    </tr>
+  </thead>
+  <tbody className="divide-y divide-gray-200">
+    {filteredOrders.map((order) => {
+      // Calculate ETA
+      const etaHours = {
+        standard: 5, same_day: 12, next_day: 24, local_overnight: 24,
+        emergency: 2, vip: 3, priority: 1.5, scheduled: 0, after_hours: 24
+      };
+      const hours = etaHours[order.service_type] || 5;
+      let etaString = '';
+      
+      if (hours === 0 && order.scheduled_date) {
+        const scheduledDateTime = new Date(order.scheduled_date + (order.scheduled_time ? ' ' + order.scheduled_time : ''));
+        etaString = scheduledDateTime.toLocaleString("en-AU", { 
+          day: "numeric", month: "short", hour: "numeric", minute: "2-digit" 
+        });
+      } else {
+        const etaDate = new Date(order.created_at || Date.now());
+        etaDate.setHours(etaDate.getHours() + hours);
+        etaString = etaDate.toLocaleString("en-AU", { 
+          day: "numeric", month: "short", hour: "numeric", minute: "2-digit" 
+        });
+      }
+
+      return (
+        <tr key={order.id} className="hover:bg-gray-50 transition">
+          {visibleColumns.orderId && (
+            <td className="px-6 py-4">
+              <button onClick={() => setViewOrderDetails(order)} className="text-sm font-mono text-red-600 hover:underline font-bold">
+                #{order.id.slice(0, 8)}
+              </button>
+            </td>
+          )}
+          
+          {visibleColumns.client && (
+            <td className="px-6 py-4">
+              <div className="text-sm">
+                <p className="font-semibold text-gray-900">{order.client?.name || 'N/A'}</p>
+                <p className="text-gray-500 text-xs">{order.client?.email}</p>
+              </div>
+            </td>
+          )}
+          
+          {visibleColumns.pickup && (
+            <td className="px-6 py-4 text-sm text-gray-600 max-w-[200px] truncate hidden lg:table-cell" title={order.pickup_address}>
+              {order.pickup_address}
+            </td>
+          )}
+          
+          {visibleColumns.dropoff && (
+            <td className="px-6 py-4 text-sm text-gray-600 max-w-[200px] truncate hidden lg:table-cell" title={order.dropoff_address}>
+              {order.dropoff_address}
+            </td>
+          )}
+          
+          {visibleColumns.service && (
+            <td className="px-6 py-4">
+              <span className="inline-block bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-xs font-bold capitalize">
+                {order.service_type?.replace(/_/g, ' ') || 'Standard'}
+              </span>
+            </td>
+          )}
+          
+          {visibleColumns.eta && (
+            <td className="px-6 py-4">
+              <span className="inline-block bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold">
+                {etaString}
+              </span>
+            </td>
+          )}
+          
+          {visibleColumns.driver && (
+            <td className="px-6 py-4">
+              {order.driver ? (
+                <button onClick={() => handleViewDriver(order.driver_id)} className="text-sm font-semibold text-red-600 hover:underline">
+                  {order.driver.name}
+                </button>
+              ) : (
+                <span className="text-sm text-gray-400">Unassigned</span>
+              )}
+            </td>
+          )}
+          
+          {visibleColumns.status && (
+            <td className="px-6 py-4">
+              <StatusBadge status={order.status} />
+            </td>
+          )}
+          
+          {visibleColumns.price && (
+            <td className="px-6 py-4 text-sm font-bold text-gray-900 hidden sm:table-cell">
+              ${order.price?.toFixed(2)}
+            </td>
+          )}
+          
+          {visibleColumns.actions && (
+            <td className="px-6 py-4">
+              <div className="flex flex-wrap gap-2">
+                <button onClick={() => setViewOrderDetails(order)} className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-bold hover:bg-blue-600 transition">
+                  👁️ View
+                </button>
+                <button onClick={() => handleEditOrder(order)} className="px-3 py-1.5 bg-yellow-500 text-white rounded-lg text-xs font-bold hover:bg-yellow-600 transition">
+                  ✏️ Edit
+                </button>
+                <button onClick={() => handleAssignDriver(order)} className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600 transition">
+                  👤 Assign
+                </button>
+                <button onClick={() => handlePrintLabel(order)} className="px-3 py-1.5 bg-purple-500 text-white rounded-lg text-xs font-bold hover:bg-purple-600 transition">
+                  🏷️ Print Label
+                </button>
+              </div>
+            </td>
+          )}
+        </tr>
+      );
+    })}
+  </tbody>
+</table>
             </div>
           )}
         </div>

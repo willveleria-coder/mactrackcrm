@@ -161,48 +161,48 @@ function DriverHoursContent() {
   }
 
   async function handlePaymentRequest(e) {
-    e.preventDefault();
-    
-    if (!payoutAmount || parseFloat(payoutAmount) <= 0) {
-      alert("Please enter a valid amount");
-      return;
-    }
-
-    // Double-check 2-week restriction
-    if (!canRequestPayment) {
-      alert(`You can only request a payment every 2 weeks. Please wait ${daysUntilNextPayment} more day(s).`);
-      return;
-    }
-
-    setSubmitting(true);
-
-    try {
-      const { error } = await supabase
-        .from("payout_requests")
-        .insert([{
-          driver_id: driver.id,
-          driver_name: driver.name,
-          amount: parseFloat(payoutAmount),
-          hours_claimed: stats.thisWeekHours,
-          notes: payoutNotes || null,
-          status: "pending",
-          
-        }]);
-
-      if (error) throw error;
-
-      alert("✅ Payment request submitted successfully! Admin will review shortly.");
-      setShowPaymentModal(false);
-      setPaymentAmount("");
-      setPaymentNotes("");
-      loadData();
-    } catch (error) {
-      console.error("Payment request error:", error);
-      alert("Failed to submit payment request: " + error.message);
-    } finally {
-      setSubmitting(false);
-    }
+  e.preventDefault();
+  
+  if (!payoutAmount || parseFloat(payoutAmount) <= 0) {
+    alert("Please enter a valid amount");
+    return;
   }
+
+  // Double-check 2-week restriction
+  if (!canRequestPayment) {
+    alert(`You can only request a payment every 2 weeks. Please wait ${daysUntilNextPayment} more day(s).`);
+    return;
+  }
+
+  setSubmitting(true);
+
+  try {
+    const { error } = await supabase
+      .from("payout_requests")
+      .insert([{
+        driver_id: driver.id,
+        amount: parseFloat(payoutAmount),
+        notes: payoutNotes || null,
+        status: "pending",
+        payment_method: "bank_transfer", // ADD THIS
+        requested_at: new Date().toISOString(), // ADD THIS
+        bank_account_details: `BSB: ${bankDetails.bsb || 'N/A'}\nAccount: ${bankDetails.account_number || 'N/A'}\nName: ${bankDetails.account_name || 'N/A'}` // ADD THIS
+      }]);
+
+    if (error) throw error;
+
+    alert("✅ Payment request submitted successfully! Admin will review shortly.");
+    setShowPaymentModal(false);
+    setPaymentAmount("");
+    setPaymentNotes("");
+    loadData();
+  } catch (error) {
+    console.error("Payment request error:", error);
+    alert("Failed to submit payment request: " + error.message);
+  } finally {
+    setSubmitting(false);
+  }
+}
   async function handleSaveBankDetails(e) {
     e.preventDefault();
     if (!bankDetails.bsb || !bankDetails.account_number || !bankDetails.account_name) {
