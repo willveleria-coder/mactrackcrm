@@ -29,6 +29,8 @@ export default function AdminOrdersPage() {
   const [editFormData, setEditFormData] = useState({});
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+const [assignOrder, setAssignOrder] = useState(null);
 
   const [visibleColumns, setVisibleColumns] = useState({
     orderId: true,
@@ -150,25 +152,49 @@ useEffect(() => {
     return sortOrder === 'asc' ? (aVal > bVal ? 1 : -1) : (aVal < bVal ? 1 : -1);
   });
 
-  async function handleAssignDriver(orderId) {
-    if (!selectedDriver) { alert("Please select a driver first"); return; }
-    try {
-      const { error } = await supabase.from("orders").update({ driver_id: selectedDriver, status: "pending", driver_status: null }).eq("id", orderId);
-      if (!error) {
-        try {
-          await fetch("/api/notify", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ type: "driver_assigned", orderId, userId: selectedDriver, userType: "driver" })
-          });
-        } catch (e) { console.log("Notification fetch error:", e); console.log("Notification response:", e?.message); }
-      }
-      if (error) throw error;
-      alert("✅ Driver assigned successfully!");
-      setSelectedOrder(null); setSelectedDriver(null);
-      await loadData();
-    } catch (error) { alert("Failed to assign driver: " + error.message); }
+  async function handleAssignDriver() {
+  if (!selectedDriver) { 
+    alert("Please select a driver"); 
+    return; 
   }
+  
+  try {
+    const { error } = await supabase
+      .from("orders")
+      .update({ 
+        driver_id: selectedDriver, 
+        status: "assigned", 
+        driver_status: null 
+      })
+      .eq("id", assignOrder.id);
+
+    if (error) throw error;
+
+    // Send notification
+    try {
+      await fetch("/api/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          type: "driver_assigned", 
+          orderId: assignOrder.id, 
+          userId: selectedDriver, 
+          userType: "driver" 
+        })
+      });
+    } catch (e) { 
+      console.log("Notification error:", e); 
+    }
+
+    alert("✅ Driver assigned successfully!");
+    setShowAssignModal(false);
+    setAssignOrder(null); 
+    setSelectedDriver(null);
+    await loadData();
+  } catch (error) { 
+    alert("Failed to assign driver: " + error.message); 
+  }
+}
 
   function handleEditOrder(order) {
   setEditFormData({
@@ -595,23 +621,29 @@ useEffect(() => {
           )}
           
           {visibleColumns.actions && (
-            <td className="px-6 py-4">
-              <div className="flex flex-wrap gap-2">
-                <button onClick={() => setViewOrderDetails(order)} className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-bold hover:bg-blue-600 transition">
-                  👁️ View
-                </button>
-                <button onClick={() => handleEditOrder(order)} className="px-3 py-1.5 bg-yellow-500 text-white rounded-lg text-xs font-bold hover:bg-yellow-600 transition">
-                  ✏️ Edit
-                </button>
-                <button onClick={() => handleAssignDriver(order)} className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600 transition">
-                  👤 Assign
-                </button>
-                <button onClick={() => handlePrintLabel(order)} className="px-3 py-1.5 bg-purple-500 text-white rounded-lg text-xs font-bold hover:bg-purple-600 transition">
-                  🏷️ Print Label
-                </button>
-              </div>
-            </td>
-          )}
+  <td className="px-6 py-4">
+    <div className="flex flex-wrap gap-2">
+      <button onClick={() => setViewOrderDetails(order)} className="px-3 py-1.5 bg-blue-500 text-white rounded-lg text-xs font-bold hover:bg-blue-600 transition">
+        👁️ View
+      </button>
+      <button onClick={() => handleEditOrder(order)} className="px-3 py-1.5 bg-yellow-500 text-white rounded-lg text-xs font-bold hover:bg-yellow-600 transition">
+        ✏️ Edit
+      </button>
+      <button 
+        onClick={() => { 
+          setAssignOrder(order); 
+          setShowAssignModal(true); 
+        }} 
+        className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600 transition"
+      >
+        👤 Assign
+      </button>
+      <button onClick={() => handlePrintLabel(order)} className="px-3 py-1.5 bg-purple-500 text-white rounded-lg text-xs font-bold hover:bg-purple-600 transition">
+        🏷️ Print Label
+      </button>
+    </div>
+  </td>
+)}
         </tr>
       );
     })}
@@ -686,7 +718,7 @@ useEffect(() => {
               <div className="bg-yellow-50 rounded-xl p-4">
   <h4 className="font-bold text-yellow-900 mb-3">💰 Pricing</h4>
   
-  {/* Wait Time Field */}
+ {/* Wait Time Field */}
   <div className="mb-4 p-3 bg-orange-50 border-2 border-orange-200 rounded-xl">
     <label className="block text-sm font-bold text-orange-900 mb-2">
       ⏱️ Wait Time (minutes) - $1 per minute
@@ -781,6 +813,64 @@ useEffect(() => {
           </div>
         </>
       )}
+
+      {/* Assign Driver Modal */}
+      {showAssignModal && assignOrder && (
+        <>
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-50"
+            onClick={() => setShowAssignModal(false)}
+          />
+          <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl p-6 z-50 w-11/12 max-w-md">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h3 className="text-2xl font-bold text-gray-900">Assign Driver</h3>
+                <p className="text-sm text-gray-500 mt-1">Order #{assignOrder.id.slice(0, 8)}</p>
+              </div>
+              <button 
+                onClick={() => setShowAssignModal(false)}
+                className="text-gray-500 hover:text-gray-700 text-3xl font-bold leading-none"
+              >
+                ×
+              </button>
+            </div>
+            <div className="mb-6">
+              <label className="block text-sm font-bold text-gray-700 mb-3">
+                Select Driver
+              </label>
+              <select
+                value={selectedDriver || ""}
+                onChange={(e) => setSelectedDriver(e.target.value)}
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent text-base font-semibold"
+              >
+                <option value="">-- Select Driver --</option>
+                {drivers
+                  .filter(d => d.is_approved)
+                  .map((driver) => (
+                    <option key={driver.id} value={driver.id}>
+                      {driver.name} {driver.is_on_duty ? "✅" : "⏸️"}
+                    </option>
+                  ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-2">✅ = On Duty | ⏸️ = Off Duty</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowAssignModal(false)}
+                className="flex-1 py-3 bg-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-400 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAssignDriver}
+                className="flex-1 py-3 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition"
+              >
+                ✅ Assign Driver
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -816,3 +906,4 @@ function StatusBadge({ status }) {
     </span>
   );
 }
+
