@@ -57,6 +57,27 @@ export default function AdminChatPage() {
     await supabase.from("chat_conversations").update({ last_message: msg, last_message_at: new Date().toISOString() }).eq("id", selected.id);
   };
 
+  const deleteConversation = async (convId) => {
+    if (!confirm("Are you sure you want to delete this conversation? This cannot be undone.")) return;
+    
+    try {
+      // Delete all messages first
+      await supabase.from("chat_messages").delete().eq("conversation_id", convId);
+      // Delete the conversation
+      await supabase.from("chat_conversations").delete().eq("id", convId);
+      
+      // Update local state
+      setConversations(prev => prev.filter(c => c.id !== convId));
+      if (selected?.id === convId) {
+        setSelected(null);
+        setMessages([]);
+      }
+      alert("✅ Conversation deleted!");
+    } catch (error) {
+      alert("Failed to delete: " + error.message);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="bg-gradient-to-r from-red-600 to-red-700 text-white p-4">
@@ -82,17 +103,32 @@ export default function AdminChatPage() {
                 <div className="p-4 text-center text-gray-500">No conversations</div>
               ) : (
                 conversations.map((conv) => (
-                  <button key={conv.id} onClick={() => setSelected(conv)} className={`w-full p-4 text-left border-b hover:bg-gray-100 ${selected?.id === conv.id ? "bg-red-50 border-l-4 border-l-red-600" : ""}`}>
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white ${conv.participant_type === "client" ? "bg-blue-500" : "bg-green-500"}`}>
-                        {conv.participant_type === "client" ? "👤" : "🚗"}
+                  <div key={conv.id} className={`relative group ${selected?.id === conv.id ? "bg-red-50 border-l-4 border-l-red-600" : ""}`}>
+                    <button 
+                      onClick={() => setSelected(conv)} 
+                      className="w-full p-4 text-left border-b hover:bg-gray-100"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white ${conv.participant_type === "client" ? "bg-blue-500" : "bg-green-500"}`}>
+                          {conv.participant_type === "client" ? "👤" : "🚗"}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-bold truncate">{conv.participant?.name || "Unknown"}</p>
+                          <p className="text-sm text-gray-500 truncate">{conv.last_message || "No messages"}</p>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-bold truncate">{conv.participant?.name || "Unknown"}</p>
-                        <p className="text-sm text-gray-500 truncate">{conv.last_message || "No messages"}</p>
-                      </div>
-                    </div>
-                  </button>
+                    </button>
+                    {/* Delete Button */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteConversation(conv.id);
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-2 bg-red-500 text-white rounded-lg text-xs font-bold hover:bg-red-600"
+                    >
+                      🗑️
+                    </button>
+                  </div>
                 ))
               )}
             </div>
@@ -101,14 +137,22 @@ export default function AdminChatPage() {
           <div className="flex-1 flex flex-col">
             {selected ? (
               <>
-                <div className="p-4 border-b bg-white flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white text-xl ${selected.participant_type === "client" ? "bg-blue-500" : "bg-green-500"}`}>
-                    {selected.participant_type === "client" ? "👤" : "🚗"}
+                <div className="p-4 border-b bg-white flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white text-xl ${selected.participant_type === "client" ? "bg-blue-500" : "bg-green-500"}`}>
+                      {selected.participant_type === "client" ? "👤" : "🚗"}
+                    </div>
+                    <div>
+                      <p className="font-bold text-lg">{selected.participant?.name}</p>
+                      <p className="text-sm text-gray-500 capitalize">{selected.participant_type}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-bold text-lg">{selected.participant?.name}</p>
-                    <p className="text-sm text-gray-500 capitalize">{selected.participant_type}</p>
-                  </div>
+                  <button
+                    onClick={() => deleteConversation(selected.id)}
+                    className="px-4 py-2 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition text-sm"
+                  >
+                    🗑️ Delete Chat
+                  </button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">

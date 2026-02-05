@@ -147,7 +147,7 @@ export default function NewOrderPage() {
   // Recalculate price when relevant fields change
   useEffect(() => {
     calculatePrice();
-  }, [formData.service_type, items, pricing.distance, waitingTime, manualDistance, pricingSettings]);
+  }, [formData.service_type, items, pricing.distance, waitingTime, manualDistance, pricingSettings, client]);
 
   async function loadClient() {
     try {
@@ -232,19 +232,41 @@ export default function NewOrderPage() {
   }
 
   function calculatePrice() {
-    // Return zero if no distance calculated yet
     const dist = pricing.distance || 0;
     if (dist === 0) {
-      setPricing(prev => ({ ...prev, basePrice: 0, distanceCost: 0, weightCost: 0, subtotal: 0, fuelLevy: 0, gst: 0, total: 0 }));
+      setPricing(prev => ({ ...prev, basePrice: 0, distanceCost: 0, weightCost: 0, subtotal: 0, fuelLevy: 0, gst: 0, total: 0, clientDiscount: 0, discountAmount: 0, serviceDisabled: false }));
       return;
     }
     const distance = dist;
     const serviceType = formData.service_type;
-    
+
+    // === CLIENT-SPECIFIC PRICING ===
+    const clientDiscount = client?.discount_percent || 0;
+    const clientFuelLevy = client?.custom_fuel_levy_percent;
+    const fuelLevyPercent = clientFuelLevy !== null && clientFuelLevy !== undefined ? clientFuelLevy : (pricingSettings?.fuelLevy || 10);
+
+    // Per-service custom rates
+    const clientServiceRates = client?.custom_service_rates || {};
+    const currentServiceRate = clientServiceRates[serviceType] || {};
+
+    // Check if service is disabled for this client
+    if (currentServiceRate.enabled === false) {
+      setPricing(prev => ({
+        ...prev, basePrice: 0, distanceCost: 0, weightCost: 0, subtotal: 0,
+        fuelLevy: 0, gst: 0, total: 0, clientDiscount: 0, discountAmount: 0,
+        serviceDisabled: true,
+      }));
+      return;
+    }
+
+    // Check for flat custom price or per-service discount
+    const serviceCustomPrice = currentServiceRate.customPrice || null;
+    const serviceDiscountPercent = currentServiceRate.discountPercent || null;
+
     // Calculate total actual weight and volumetric weight from all items
     let totalActualWeight = 0;
     let totalVolumetricWeight = 0;
-    
+
     items.forEach(item => {
       const qty = parseInt(item.quantity) || 1;
       if (item.is_under_10kg) {
@@ -261,11 +283,9 @@ export default function NewOrderPage() {
         totalVolumetricWeight += qty * volumetric;
       }
     });
-    
-    // Chargeable Weight = MAX(Actual Weight, Volumetric Weight)
+
     const chargeableWeight = Math.max(totalActualWeight, totalVolumetricWeight);
-    
-    // Service multipliers and minimums - use database settings if available
+
     const serviceConfig = pricingSettings?.services || {
       priority: { multiplier: 1.70, minimum: 120, baseFee: 20 },
       after_hours: { multiplier: 1, minimum: 150, special: true, baseFee: 20 },
@@ -277,16 +297,19 @@ export default function NewOrderPage() {
       scheduled: { multiplier: 0.80, minimum: 50, baseFee: 10 },
       next_day: { multiplier: 0.80, minimum: 50, baseFee: 10 },
     };
-    
+
     const config = serviceConfig[serviceType] || serviceConfig.standard;
-    
+
     let finalPrice = 0;
     let basePrice = 0;
     let distanceCost = 0;
     let weightCost = 0;
-    
-    // SPECIAL AFTER HOURS PRICING
-    if (serviceType === 'after_hours') {
+
+    // If client has a FLAT custom price for this service, use it
+    if (serviceCustomPrice) {
+      finalPrice = parseFloat(serviceCustomPrice);
+      basePrice = finalPrice;
+    } else if (serviceType === 'after_hours') {
       if (distance <= 10) {
         finalPrice = 150;
       } else {
@@ -294,30 +317,33 @@ export default function NewOrderPage() {
       }
       basePrice = finalPrice;
     } else {
-      // STANDARD BASE PRICE FORMULA
-      // BasePrice = 45 + (Distance_km × 1.90) + (ChargeableWeight × 2.70)
       distanceCost = distance * (pricingSettings?.distanceRate ?? 1.90);
       weightCost = chargeableWeight > 10 ? (chargeableWeight - 10) * (pricingSettings?.weightRate ?? 2.70) : 0;
       basePrice = (config.baseFee || 10) + distanceCost + weightCost;
-      
-      // Apply service multiplier
-      let multipliedPrice = basePrice * config.multiplier;
-      
-      // Apply minimum
-      finalPrice = multipliedPrice; // No minimum applied
+      finalPrice = basePrice * config.multiplier;
     }
-    
-    // Fuel levy (10%)
-    const FUEL_LEVY_PERCENT = pricingSettings?.fuelLevy || 10;
-    const fuelLevy = finalPrice * (FUEL_LEVY_PERCENT / 100);
-    
-    // GST (10% of subtotal + fuel levy)
+
+    // Apply per-service discount % (if set and no flat price)
+    if (!serviceCustomPrice && serviceDiscountPercent) {
+      finalPrice = finalPrice * (1 - serviceDiscountPercent / 100);
+    }
+
+    // Apply global client discount %
+    let discountAmount = 0;
+    if (clientDiscount > 0) {
+      discountAmount = finalPrice * (clientDiscount / 100);
+      finalPrice = finalPrice - discountAmount;
+    }
+
+    // Fuel levy
+    const fuelLevy = finalPrice * (fuelLevyPercent / 100);
+
+    // GST
     const beforeGst = finalPrice + fuelLevy;
     const gst = beforeGst * ((pricingSettings?.gst || 10) / 100);
-    
-    // Total
+
     const total = beforeGst + gst;
-    
+
     setPricing(prev => ({
       ...prev,
       requiresQuote: false,
@@ -329,13 +355,18 @@ export default function NewOrderPage() {
       waitingFee: 0,
       subtotal: parseFloat(finalPrice.toFixed(2)),
       fuelLevy: parseFloat(fuelLevy.toFixed(2)),
-      fuelLevyPercent: FUEL_LEVY_PERCENT,
+      fuelLevyPercent: fuelLevyPercent,
       gst: parseFloat(gst.toFixed(2)),
       total: parseFloat(total.toFixed(2)),
       totalWeight: totalActualWeight,
       totalVolumetricWeight,
       chargeableWeight,
       effectiveDistance: distance,
+      clientDiscount,
+      discountAmount: parseFloat((discountAmount).toFixed(2)),
+      serviceDisabled: false,
+      serviceCustomPrice: serviceCustomPrice,
+      serviceDiscountPercent: serviceDiscountPercent,
     }));
   }
 
@@ -1125,6 +1156,18 @@ export default function NewOrderPage() {
                       <span>Subtotal</span>
                       <span className="font-bold">${pricing.subtotal.toFixed(2)}</span>
                     </div>
+                    {pricing.clientDiscount > 0 && (
+                      <div className="flex justify-between text-green-200">
+                        <span>Client Discount ({pricing.clientDiscount}%)</span>
+                        <span className="font-bold">-${pricing.discountAmount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {pricing.serviceDiscountPercent > 0 && (
+                      <div className="flex justify-between text-green-200">
+                        <span>Service Discount ({pricing.serviceDiscountPercent}%)</span>
+                        <span className="font-bold">Applied</span>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span>Fuel Levy (10%)</span>
                       <span className="font-bold">${pricing.fuelLevy.toFixed(2)}</span>

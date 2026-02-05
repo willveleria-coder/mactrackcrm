@@ -111,6 +111,48 @@ export default function OrdersHistoryPage() {
     setFilteredOrders(filtered);
   }
 
+  function getEtaString(order) {
+    // If delivered or cancelled, no ETA needed
+    if (order.status === 'delivered' || order.status === 'cancelled') {
+      return null;
+    }
+
+    if (order.custom_eta) {
+      const customDate = new Date(order.custom_eta);
+      return {
+        text: customDate.toLocaleString("en-AU", { 
+          day: "numeric", month: "short", hour: "numeric", minute: "2-digit" 
+        }),
+        isCustom: true
+      };
+    }
+    
+    const etaHours = {
+      standard: 5, same_day: 12, next_day: 24, local_overnight: 24,
+      emergency: 2, vip: 3, priority: 1.5, scheduled: 0, after_hours: 24
+    };
+    const hours = etaHours[order.service_type] || 5;
+
+    if (hours === 0 && order.scheduled_date) {
+      const scheduledDateTime = new Date(order.scheduled_date + (order.scheduled_time ? ' ' + order.scheduled_time : ''));
+      return {
+        text: scheduledDateTime.toLocaleString("en-AU", { 
+          day: "numeric", month: "short", hour: "numeric", minute: "2-digit" 
+        }),
+        isCustom: false
+      };
+    }
+    
+    const etaDate = new Date(order.created_at || Date.now());
+    etaDate.setHours(etaDate.getHours() + hours);
+    return {
+      text: etaDate.toLocaleString("en-AU", { 
+        day: "numeric", month: "short", hour: "numeric", minute: "2-digit" 
+      }),
+      isCustom: false
+    };
+  }
+
   async function handleLogout() {
     await supabase.auth.signOut();
     router.push("/client-portal/login");
@@ -191,7 +233,10 @@ export default function OrdersHistoryPage() {
               >
                 <option value="all">All Statuses</option>
                 <option value="pending">Pending</option>
+                <option value="assigned">Assigned</option>
                 <option value="active">Active</option>
+                <option value="picked_up">Picked Up</option>
+                <option value="in_transit">In Transit</option>
                 <option value="delivered">Delivered</option>
                 <option value="cancelled">Cancelled</option>
               </select>
@@ -221,34 +266,53 @@ export default function OrdersHistoryPage() {
               {/* Mobile View */}
               <div className="block lg:hidden">
                 <div className="divide-y divide-gray-100">
-                  {filteredOrders.map((order) => (
-                    <div key={order.id} onClick={() => openOrderDetails(order)} className="p-4 hover:bg-gray-50 transition cursor-pointer active:bg-gray-100">
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">{new Date(order.created_at).toLocaleDateString()}</p>
-                          <StatusBadge status={order.status} />
+                  {filteredOrders.map((order) => {
+                    const eta = getEtaString(order);
+                    return (
+                      <div key={order.id} onClick={() => openOrderDetails(order)} className="p-4 hover:bg-gray-50 transition cursor-pointer active:bg-gray-100">
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">{new Date(order.created_at).toLocaleDateString()}</p>
+                            <StatusBadge status={order.status} />
+                          </div>
+                          <p className="text-lg font-bold text-gray-900">${Number(order.price).toFixed(2)}</p>
                         </div>
-                        <p className="text-lg font-bold text-gray-900">${Number(order.price).toFixed(2)}</p>
+
+                        {/* ETA Banner for Mobile */}
+                        {eta && (
+                          <div className={`mb-3 p-2 rounded-lg ${eta.isCustom ? 'bg-orange-50 border border-orange-200' : 'bg-blue-50 border border-blue-200'}`}>
+                            <div className="flex items-center justify-between">
+                              <span className={`text-xs font-bold ${eta.isCustom ? 'text-orange-700' : 'text-blue-700'}`}>
+                                🕐 ETA: {eta.text}
+                              </span>
+                              {eta.isCustom && (
+                                <span className="text-xs bg-orange-200 text-orange-800 px-2 py-0.5 rounded-full font-semibold">
+                                  Updated
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                        
+                        <div className="space-y-2 mb-3">
+                          <div className="text-sm">
+                            <p className="font-semibold text-gray-900">📍 {order.pickup_address}</p>
+                            <p className="text-gray-500">🎯 {order.dropoff_address}</p>
+                          </div>
+                          <div className="flex flex-wrap gap-2 text-xs">
+                            <span className="px-2 py-1 bg-gray-100 rounded-full">{order.parcel_size?.replace(/_/g, ' ')}</span>
+                            <span className="px-2 py-1 bg-gray-100 rounded-full">{order.parcel_weight}kg</span>
+                            <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full font-semibold">{order.service_type?.replace(/_/g, ' ')}</span>
+                            {order.status === 'delivered' && !order.reviewed && (
+                              <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full font-semibold">⭐ Review</span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="text-center text-xs text-gray-500">Tap to view full details</div>
                       </div>
-                      
-                      <div className="space-y-2 mb-3">
-                        <div className="text-sm">
-                          <p className="font-semibold text-gray-900">📍 {order.pickup_address}</p>
-                          <p className="text-gray-500">🎯 {order.dropoff_address}</p>
-                        </div>
-                        <div className="flex flex-wrap gap-2 text-xs">
-                          <span className="px-2 py-1 bg-gray-100 rounded-full">{order.parcel_size}</span>
-                          <span className="px-2 py-1 bg-gray-100 rounded-full">{order.parcel_weight}kg</span>
-                          <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full font-semibold">{order.service_type}</span>
-                          {order.status === 'delivered' && !order.reviewed && (
-                            <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full font-semibold">⭐ Review</span>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="text-center text-xs text-gray-500">Tap to view full details</div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -261,41 +325,54 @@ export default function OrdersHistoryPage() {
                       <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase tracking-wider">Route</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase tracking-wider">Details</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase tracking-wider">Service</th>
+                      <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase tracking-wider">ETA</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase tracking-wider">Status</th>
                       <th className="text-right py-4 px-6 text-xs font-bold text-gray-600 uppercase tracking-wider">Price</th>
                       <th className="text-center py-4 px-6 text-xs font-bold text-gray-600 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 bg-white">
-                    {filteredOrders.map((order) => (
-                      <tr key={order.id} onClick={() => openOrderDetails(order)} className="hover:bg-gray-50 transition cursor-pointer">
-                        <td className="py-4 px-6 text-sm text-gray-600">
-                          {new Date(order.created_at).toLocaleDateString()}
-                          <div className="text-xs text-gray-400">{new Date(order.created_at).toLocaleTimeString()}</div>
-                        </td>
-                        <td className="py-4 px-6">
-                          <div className="text-sm font-semibold text-gray-900">📍 {order.pickup_address}</div>
-                          <div className="text-sm text-gray-500">🎯 {order.dropoff_address}</div>
-                        </td>
-                        <td className="py-4 px-6 text-sm text-gray-600">
-                          <div>{order.parcel_size} / {order.parcel_weight}kg</div>
-                          {order.quantity > 1 && <div className="text-xs text-gray-400">Qty: {order.quantity}</div>}
-                        </td>
-                        <td className="py-4 px-6">
-                          <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">{order.service_type}</span>
-                        </td>
-                        <td className="py-4 px-6">
-                          <StatusBadge status={order.status} />
-                          {order.status === 'delivered' && !order.reviewed && (
-                            <div className="text-xs text-yellow-600 font-semibold mt-1">⭐ Review pending</div>
-                          )}
-                        </td>
-                        <td className="py-4 px-6 text-sm font-bold text-gray-900 text-right">${Number(order.price).toFixed(2)}</td>
-                        <td className="py-4 px-6 text-center">
-                          <span className="text-xs text-gray-500">Click for details</span>
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredOrders.map((order) => {
+                      const eta = getEtaString(order);
+                      return (
+                        <tr key={order.id} onClick={() => openOrderDetails(order)} className="hover:bg-gray-50 transition cursor-pointer">
+                          <td className="py-4 px-6 text-sm text-gray-600">
+                            {new Date(order.created_at).toLocaleDateString()}
+                            <div className="text-xs text-gray-400">{new Date(order.created_at).toLocaleTimeString()}</div>
+                          </td>
+                          <td className="py-4 px-6">
+                            <div className="text-sm font-semibold text-gray-900">📍 {order.pickup_address}</div>
+                            <div className="text-sm text-gray-500">🎯 {order.dropoff_address}</div>
+                          </td>
+                          <td className="py-4 px-6 text-sm text-gray-600">
+                            <div>{order.parcel_size?.replace(/_/g, ' ')} / {order.parcel_weight}kg</div>
+                            {order.quantity > 1 && <div className="text-xs text-gray-400">Qty: {order.quantity}</div>}
+                          </td>
+                          <td className="py-4 px-6">
+                            <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">{order.service_type?.replace(/_/g, ' ')}</span>
+                          </td>
+                          <td className="py-4 px-6">
+                            {eta ? (
+                              <span className={`inline-block px-3 py-1 rounded-full text-xs font-bold ${eta.isCustom ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>
+                                {eta.isCustom && '✏️ '}{eta.text}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-gray-400">—</span>
+                            )}
+                          </td>
+                          <td className="py-4 px-6">
+                            <StatusBadge status={order.status} />
+                            {order.status === 'delivered' && !order.reviewed && (
+                              <div className="text-xs text-yellow-600 font-semibold mt-1">⭐ Review pending</div>
+                            )}
+                          </td>
+                          <td className="py-4 px-6 text-sm font-bold text-gray-900 text-right">${Number(order.price).toFixed(2)}</td>
+                          <td className="py-4 px-6 text-center">
+                            <span className="text-xs text-gray-500">Click for details</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -326,7 +403,7 @@ export default function OrdersHistoryPage() {
             <div className="bg-gradient-to-r from-red-600 to-red-700 text-white p-6 flex justify-between items-start">
               <div>
                 <h3 className="text-2xl font-black mb-1">Order Details</h3>
-                <p className="text-sm opacity-90">Order #{selectedOrder.id.slice(0, 8).toUpperCase()}</p>
+                <p className="text-sm opacity-90">{selectedOrder.order_number ? `Order #${selectedOrder.order_number}` : `Order #${selectedOrder.id.slice(0, 8).toUpperCase()}`}</p>
               </div>
               <button onClick={closeOrderModal} className="text-white hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-2xl font-bold transition">×</button>
             </div>
@@ -343,6 +420,31 @@ export default function OrdersHistoryPage() {
                   <p className="text-3xl font-black">${Number(selectedOrder.price).toFixed(2)}</p>
                 </div>
               </div>
+
+              {/* ETA Banner in Modal */}
+              {(() => {
+                const eta = getEtaString(selectedOrder);
+                if (!eta) return null;
+                return (
+                  <div className={`p-4 rounded-xl ${eta.isCustom ? 'bg-orange-50 border-2 border-orange-200' : 'bg-blue-50 border-2 border-blue-200'}`}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className={`text-xs font-bold ${eta.isCustom ? 'text-orange-800' : 'text-blue-800'} mb-1`}>
+                          🕐 Estimated Delivery Time
+                        </p>
+                        <p className={`text-lg font-black ${eta.isCustom ? 'text-orange-900' : 'text-blue-900'}`}>
+                          {eta.text}
+                        </p>
+                      </div>
+                      {eta.isCustom && (
+                        <span className="text-xs bg-orange-200 text-orange-800 px-3 py-1 rounded-full font-semibold">
+                          Updated by Admin
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Review Prompt */}
               {selectedOrder.status === 'delivered' && !selectedOrder.reviewed && (
@@ -404,7 +506,7 @@ export default function OrdersHistoryPage() {
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
                     <p className="text-gray-600 mb-1">Size</p>
-                    <p className="font-semibold text-gray-900 capitalize">{selectedOrder.parcel_size}</p>
+                    <p className="font-semibold text-gray-900 capitalize">{selectedOrder.parcel_size?.replace(/_/g, ' ')}</p>
                   </div>
                   <div>
                     <p className="text-gray-600 mb-1">Weight</p>
@@ -422,7 +524,7 @@ export default function OrdersHistoryPage() {
               {/* Service Type */}
               <div className="bg-yellow-50 rounded-xl p-4">
                 <p className="text-sm font-bold text-yellow-900 mb-2">🚚 Service Type</p>
-                <p className="text-sm font-semibold text-gray-900 capitalize">{selectedOrder.service_type}</p>
+                <p className="text-sm font-semibold text-gray-900 capitalize">{selectedOrder.service_type?.replace(/_/g, ' ')}</p>
               </div>
 
               {/* Driver Info */}

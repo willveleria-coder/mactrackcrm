@@ -6,12 +6,30 @@ export default function ShippingLabel({ order, client, showPrintButton = true })
   const trackingUrl = `https://mactrackcrm.vercel.app/track/${order.id}`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(trackingUrl)}`;
 
-  // Calculate ETA based on service type
-  const etaHours = { standard: 5, same_day: 12, next_day: 24, local_overnight: 24, emergency: 2, vip: 3, priority: 1.5, scheduled: 0, after_hours: 24 };
-  const hours = etaHours[order.service_type] || 5;
-  const etaDate = new Date(order.created_at || Date.now());
-  etaDate.setHours(etaDate.getHours() + hours);
-  const etaString = hours > 0 ? etaDate.toLocaleString("en-AU", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }) : "As Scheduled";
+  // Calculate ETA - check for custom_eta first
+  let etaString = '';
+  let isCustomEta = false;
+
+  if (order.custom_eta) {
+    const customDate = new Date(order.custom_eta);
+    etaString = customDate.toLocaleString("en-AU", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+    isCustomEta = true;
+  } else {
+    const etaHours = { standard: 5, same_day: 12, next_day: 24, local_overnight: 24, emergency: 2, vip: 3, priority: 1.5, scheduled: 0, after_hours: 24 };
+    const hours = etaHours[order.service_type] || 5;
+    
+    if (hours === 0 && order.scheduled_date) {
+      const scheduledDateTime = new Date(order.scheduled_date + (order.scheduled_time ? ' ' + order.scheduled_time : ''));
+      etaString = scheduledDateTime.toLocaleString("en-AU", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+    } else {
+      const etaDate = new Date(order.created_at || Date.now());
+      etaDate.setHours(etaDate.getHours() + hours);
+      etaString = etaDate.toLocaleString("en-AU", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+    }
+  }
+
+  // Order number display
+  const orderNumber = order.order_number ? `#${order.order_number}` : `#${order.id?.slice(0, 8).toUpperCase()}`;
 
   const handlePrint = () => {
     window.print();
@@ -83,7 +101,7 @@ export default function ShippingLabel({ order, client, showPrintButton = true })
           </div>
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontSize: '9px', opacity: 0.75 }}>ORDER</div>
-            <div style={{ fontSize: '14px', fontWeight: '900', fontFamily: 'monospace' }}>#{order.id?.slice(0, 8).toUpperCase()}</div>
+            <div style={{ fontSize: '14px', fontWeight: '900', fontFamily: 'monospace' }}>{orderNumber}</div>
           </div>
         </div>
 
@@ -230,7 +248,10 @@ export default function ShippingLabel({ order, client, showPrintButton = true })
           </div>
           <div>
             <div style={{ fontSize: '8px', color: '#6b7280', fontWeight: '600' }}>ETA</div>
-            <div style={{ fontSize: '11px', fontWeight: '700', color: '#111' }}>{etaString}</div>
+            <div style={{ fontSize: '11px', fontWeight: '700', color: isCustomEta ? '#ea580c' : '#111' }}>
+              {etaString}
+              {isCustomEta && <span style={{ fontSize: '8px', marginLeft: '4px' }}>✏️</span>}
+            </div>
           </div>
         </div>
 

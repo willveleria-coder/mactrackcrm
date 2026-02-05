@@ -16,9 +16,11 @@ export default function AdminCreateOrderPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [selectedClient, setSelectedClient] = useState(null);
 
   const [formData, setFormData] = useState({
     client_id: "",
+    department: "",
     pickup_address: "",
     pickup_contact_name: "",
     pickup_contact_phone: "",
@@ -63,6 +65,8 @@ export default function AdminCreateOrderPage() {
     totalWeight: 0,
     totalVolumetricWeight: 0,
     chargeableWeight: 0,
+    clientDiscount: 0,
+    discountAmount: 0,
   });
 
   const [calculatingDistance, setCalculatingDistance] = useState(false);
@@ -106,7 +110,17 @@ export default function AdminCreateOrderPage() {
     return () => { if (distanceTimerRef.current) clearTimeout(distanceTimerRef.current); };
   }, [formData.pickup_address, formData.dropoff_address]);
 
-  useEffect(() => { calculatePrice(); }, [formData.service_type, formData.use_custom_price, formData.custom_price, items, pricing.distance, manualDistance, pricingSettings]);
+  useEffect(() => { calculatePrice(); }, [formData.service_type, formData.use_custom_price, formData.custom_price, items, pricing.distance, manualDistance, pricingSettings, selectedClient]);
+
+  // Update selected client when client_id changes
+  useEffect(() => {
+    if (formData.client_id) {
+      const client = clients.find(c => c.id === formData.client_id);
+      setSelectedClient(client || null);
+    } else {
+      setSelectedClient(null);
+    }
+  }, [formData.client_id, clients]);
 
   async function loadData() {
     try {
@@ -150,45 +164,118 @@ export default function AdminCreateOrderPage() {
   }
 
   function calculatePrice() {
-    if (formData.use_custom_price && formData.custom_price) {
-      const customBase = parseFloat(formData.custom_price) || 0;
-      const fuelLevyPercent = pricingSettings?.fuelLevy || 10;
-      const fuelLevy = customBase * (fuelLevyPercent / 100);
-      const beforeGst = customBase + fuelLevy;
-      const gst = beforeGst * ((pricingSettings?.gst || 10) / 100);
-      const total = beforeGst + gst;
-      setPricing(prev => ({ ...prev, basePrice: customBase, distanceCost: 0, weightCost: 0, subtotal: customBase, fuelLevy, fuelLevyPercent, gst, total }));
-      return;
+  // Get client-specific pricing
+  const clientDiscount = selectedClient?.discount_percent || 0;
+  const clientFuelLevy = selectedClient?.custom_fuel_levy_percent;
+  const fuelLevyPercent = clientFuelLevy !== null && clientFuelLevy !== undefined ? clientFuelLevy : (pricingSettings?.fuelLevy || 10);
+  
+  // Get per-service custom rates for this client
+  const clientServiceRates = selectedClient?.custom_service_rates || {};
+  const currentServiceRate = clientServiceRates[formData.service_type] || {};
+  
+  // Check if service is disabled for this client
+  if (currentServiceRate.enabled === false) {
+    setPricing(prev => ({ 
+      ...prev, 
+      basePrice: 0, 
+      distanceCost: 0, 
+      weightCost: 0, 
+      subtotal: 0, 
+      fuelLevy: 0, 
+      gst: 0, 
+      total: 0, 
+      clientDiscount: 0, 
+      discountAmount: 0,
+      serviceDisabled: true,
+      serviceCustomPrice: null,
+      serviceDiscountPercent: null,
+    }));
+    return;
+  }
+
+  // Check if client has a flat custom price for this service
+  const serviceCustomPrice = currentServiceRate.customPrice || null;
+  const serviceDiscountPercent = currentServiceRate.discountPercent || null;
+
+  if (formData.use_custom_price && formData.custom_price) {
+    const customBase = parseFloat(formData.custom_price) || 0;
+    const discountAmount = customBase * (clientDiscount / 100);
+    const discountedBase = customBase - discountAmount;
+    const fuelLevy = discountedBase * (fuelLevyPercent / 100);
+    const beforeGst = discountedBase + fuelLevy;
+    const gst = beforeGst * ((pricingSettings?.gst || 10) / 100);
+    const total = beforeGst + gst;
+    setPricing(prev => ({ 
+      ...prev, 
+      basePrice: customBase, 
+      distanceCost: 0, 
+      weightCost: 0, 
+      subtotal: discountedBase, 
+      fuelLevy, 
+      fuelLevyPercent, 
+      gst, 
+      total, 
+      clientDiscount, 
+      discountAmount,
+      serviceDisabled: false,
+      serviceCustomPrice: null,
+      serviceDiscountPercent: null,
+    }));
+    return;
+  }
+
+  const dist = manualDistance ? parseFloat(manualDistance) : (pricing.distance || 0);
+  
+  let totalActualWeight = 0;
+  let totalVolumetricWeight = 0;
+  items.forEach(item => {
+    const qty = parseInt(item.quantity) || 1;
+    if (item.is_under_10kg) {
+      totalActualWeight += qty * 5;
+    } else {
+      totalActualWeight += qty * (parseFloat(item.weight_per_unit) || 0);
     }
-
-    const dist = manualDistance ? parseFloat(manualDistance) : (pricing.distance || 0);
-    
-    let totalActualWeight = 0;
-    let totalVolumetricWeight = 0;
-    items.forEach(item => {
-      const qty = parseInt(item.quantity) || 1;
-      if (item.is_under_10kg) {
-        totalActualWeight += qty * 5;
-      } else {
-        totalActualWeight += qty * (parseFloat(item.weight_per_unit) || 0);
-      }
-      const l = parseFloat(item.length) || 0;
-      const w = parseFloat(item.width) || 0;
-      const h = parseFloat(item.height) || 0;
-      if (l > 0 && w > 0 && h > 0) {
-        totalVolumetricWeight += qty * ((l * w * h) / 6000);
-      }
-    });
-    const chargeableWeight = Math.max(totalActualWeight, totalVolumetricWeight);
-
-    if (dist === 0) {
-      setPricing(prev => ({ ...prev, basePrice: 0, distanceCost: 0, weightCost: 0, subtotal: 0, fuelLevy: 0, gst: 0, total: 0, totalWeight: totalActualWeight, totalVolumetricWeight, chargeableWeight }));
-      return;
+    const l = parseFloat(item.length) || 0;
+    const w = parseFloat(item.width) || 0;
+    const h = parseFloat(item.height) || 0;
+    if (l > 0 && w > 0 && h > 0) {
+      totalVolumetricWeight += qty * ((l * w * h) / 6000);
     }
+  });
+  const chargeableWeight = Math.max(totalActualWeight, totalVolumetricWeight);
 
-    const distance = dist;
-    const serviceType = formData.service_type;
+  if (dist === 0) {
+    setPricing(prev => ({ 
+      ...prev, 
+      basePrice: 0, 
+      distanceCost: 0, 
+      weightCost: 0, 
+      subtotal: 0, 
+      fuelLevy: 0, 
+      gst: 0, 
+      total: 0, 
+      totalWeight: totalActualWeight, 
+      totalVolumetricWeight, 
+      chargeableWeight, 
+      clientDiscount, 
+      discountAmount: 0,
+      serviceDisabled: false,
+      serviceCustomPrice,
+      serviceDiscountPercent,
+    }));
+    return;
+  }
 
+  const distance = dist;
+  const serviceType = formData.service_type;
+
+  let basePrice = 0, distanceCost = 0, weightCost = 0;
+
+  // If client has a flat custom price for this service, use it
+  if (serviceCustomPrice) {
+    basePrice = serviceCustomPrice;
+  } else {
+    // Calculate normal price
     const serviceConfig = pricingSettings?.services || {
       priority: { multiplier: 1.70, minimum: 120, baseFee: 20 },
       after_hours: { multiplier: 1, minimum: 150, special: true, baseFee: 20 },
@@ -202,8 +289,6 @@ export default function AdminCreateOrderPage() {
     };
     const config = serviceConfig[serviceType] || serviceConfig.standard;
 
-    let basePrice = 0, distanceCost = 0, weightCost = 0;
-
     if (serviceType === 'after_hours') {
       basePrice = distance <= 10 ? 150 : 150 + ((distance - 10) * 1.70);
     } else {
@@ -211,28 +296,45 @@ export default function AdminCreateOrderPage() {
       weightCost = chargeableWeight > 10 ? (chargeableWeight - 10) * (pricingSettings?.weightRate ?? 2.70) : 0;
       basePrice = ((config.baseFee || 10) + distanceCost + weightCost) * config.multiplier;
     }
-
-    const fuelLevyPercent = pricingSettings?.fuelLevy || 10;
-    const fuelLevy = basePrice * (fuelLevyPercent / 100);
-    const beforeGst = basePrice + fuelLevy;
-    const gst = beforeGst * ((pricingSettings?.gst || 10) / 100);
-    const total = beforeGst + gst;
-
-    setPricing(prev => ({
-      ...prev,
-      basePrice: parseFloat(basePrice.toFixed(2)),
-      distanceCost: parseFloat(distanceCost.toFixed(2)),
-      weightCost: parseFloat(weightCost.toFixed(2)),
-      subtotal: parseFloat(basePrice.toFixed(2)),
-      fuelLevy: parseFloat(fuelLevy.toFixed(2)),
-      fuelLevyPercent,
-      gst: parseFloat(gst.toFixed(2)),
-      total: parseFloat(total.toFixed(2)),
-      totalWeight: totalActualWeight,
-      totalVolumetricWeight,
-      chargeableWeight,
-    }));
   }
+
+  // Apply service-specific discount first (if set)
+  let serviceDiscountAmount = 0;
+  if (serviceDiscountPercent && !serviceCustomPrice) {
+    serviceDiscountAmount = basePrice * (serviceDiscountPercent / 100);
+    basePrice = basePrice - serviceDiscountAmount;
+  }
+
+  // Then apply global client discount
+  const discountAmount = basePrice * (clientDiscount / 100);
+  const discountedBase = basePrice - discountAmount;
+
+  const fuelLevy = discountedBase * (fuelLevyPercent / 100);
+  const beforeGst = discountedBase + fuelLevy;
+  const gst = beforeGst * ((pricingSettings?.gst || 10) / 100);
+  const total = beforeGst + gst;
+
+  setPricing(prev => ({
+    ...prev,
+    basePrice: parseFloat((basePrice + serviceDiscountAmount).toFixed(2)), // Show original base before service discount
+    distanceCost: parseFloat(distanceCost.toFixed(2)),
+    weightCost: parseFloat(weightCost.toFixed(2)),
+    subtotal: parseFloat(discountedBase.toFixed(2)),
+    fuelLevy: parseFloat(fuelLevy.toFixed(2)),
+    fuelLevyPercent,
+    gst: parseFloat(gst.toFixed(2)),
+    total: parseFloat(total.toFixed(2)),
+    totalWeight: totalActualWeight,
+    totalVolumetricWeight,
+    chargeableWeight,
+    clientDiscount,
+    discountAmount: parseFloat((discountAmount + serviceDiscountAmount).toFixed(2)),
+    serviceDisabled: false,
+    serviceCustomPrice,
+    serviceDiscountPercent,
+    serviceDiscountAmount: parseFloat(serviceDiscountAmount.toFixed(2)),
+  }));
+}
 
   function handleInputChange(e) {
     const { name, value, type, checked } = e.target;
@@ -295,6 +397,7 @@ export default function AdminCreateOrderPage() {
 
       const orderData = {
         client_id: formData.client_id,
+        department: formData.department || null,
         pickup_address: formData.pickup_address,
         pickup_contact_name: formData.pickup_contact_name,
         pickup_contact_phone: formData.pickup_contact_phone,
@@ -315,6 +418,8 @@ export default function AdminCreateOrderPage() {
         driver_id: formData.driver_id || null,
         distance_km: finalDistance,
         base_price: pricing.basePrice,
+        client_discount_percent: pricing.clientDiscount || 0,
+        discount_amount: pricing.discountAmount || 0,
         distance_charge: pricing.distanceCost,
         weight_charge: pricing.weightCost,
         fuel_levy: pricing.fuelLevy,
@@ -330,10 +435,11 @@ export default function AdminCreateOrderPage() {
       if (orderError) throw orderError;
 
       setSuccess(`✅ Order #${order.id.slice(0, 8)} created!`);
-      setFormData({ client_id: "", pickup_address: "", dropoff_address: "", pickup_contact_name: "", pickup_contact_phone: "", dropoff_contact_name: "", dropoff_contact_phone: "", service_type: "standard", scheduled_date: "", scheduled_time: "", notes: "", driver_id: "", custom_price: "", use_custom_price: false });
+      setFormData({ client_id: "", department: "", pickup_address: "", dropoff_address: "", pickup_contact_name: "", pickup_contact_phone: "", dropoff_contact_name: "", dropoff_contact_phone: "", service_type: "standard", scheduled_date: "", scheduled_time: "", notes: "", driver_id: "", custom_price: "", use_custom_price: false });
       setItems([{ id: 1, item_type: "small_box", quantity: 1, weight_per_unit: "", is_under_10kg: false, length: "", width: "", height: "", fragile: false, description: "" }]);
       setManualDistance("");
-      setPricing(prev => ({ ...prev, distance: 0, duration: 0, basePrice: 0, distanceCost: 0, weightCost: 0, subtotal: 0, fuelLevy: 0, gst: 0, total: 0 }));
+      setSelectedClient(null);
+      setPricing(prev => ({ ...prev, distance: 0, duration: 0, basePrice: 0, distanceCost: 0, weightCost: 0, subtotal: 0, fuelLevy: 0, gst: 0, total: 0, clientDiscount: 0, discountAmount: 0 }));
       setTimeout(() => router.push("/admin/orders"), 2000);
     } catch (err) { setError(err.message || "Failed to create order"); }
     finally { setSubmitting(false); }
@@ -379,6 +485,7 @@ export default function AdminCreateOrderPage() {
                 {(pricing.distance > 0 || manualDistance) && <span>{manualDistance ? parseFloat(manualDistance).toFixed(1) : pricing.distance.toFixed(1)}km</span>}
                 {pricing.chargeableWeight > 0 && <span>• {pricing.chargeableWeight.toFixed(1)}kg</span>}
                 {pricing.duration > 0 && !manualDistance && <span>• ~{pricing.duration} mins</span>}
+                {pricing.clientDiscount > 0 && <span className="bg-white/20 px-2 py-0.5 rounded-full">• {pricing.clientDiscount}% discount applied</span>}
               </div>
               {calculatingDistance && <p className="text-xs opacity-75 mt-1">Calculating distance...</p>}
             </div>
@@ -392,8 +499,61 @@ export default function AdminCreateOrderPage() {
             <h3 className="text-xl font-bold text-gray-900 mb-4">👤 Select Client</h3>
             <select name="client_id" value={formData.client_id} onChange={handleInputChange} required className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl">
               <option value="">-- Select a Client --</option>
-              {clients.map(c => <option key={c.id} value={c.id}>{c.name} {c.company ? `(${c.company})` : ''} - {c.email}</option>)}
+              {clients.map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.name} {c.company ? `(${c.company})` : ''} - {c.email}
+                  {c.is_contract_client ? ' ⭐' : ''}
+                  {c.discount_percent > 0 ? ` [${c.discount_percent}% OFF]` : ''}
+                </option>
+              ))}
             </select>
+
+            {/* Client Pricing Info Banner */}
+{selectedClient && (
+  selectedClient.is_contract_client || 
+  selectedClient.discount_percent > 0 || 
+  (selectedClient.custom_fuel_levy_percent !== null && selectedClient.custom_fuel_levy_percent !== undefined && selectedClient.custom_fuel_levy_percent !== '') ||
+  (selectedClient.custom_service_rates && Object.keys(selectedClient.custom_service_rates).length > 0) ||
+  selectedClient.pricing_notes
+) && (
+  <div className="mt-4 bg-gradient-to-r from-purple-50 to-green-50 border-2 border-purple-200 rounded-xl p-4">
+    <div className="flex items-center gap-2 mb-2 flex-wrap">
+      {selectedClient.is_contract_client && (
+        <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-bold">⭐ Contract Client</span>
+      )}
+      {selectedClient.discount_percent > 0 && (
+        <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-bold">{selectedClient.discount_percent}% Global Discount</span>
+      )}
+      {selectedClient.custom_fuel_levy_percent !== null && selectedClient.custom_fuel_levy_percent !== undefined && (
+        <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-bold">Fuel: {selectedClient.custom_fuel_levy_percent}%</span>
+      )}
+    </div>
+    
+    {/* Show per-service custom rate if applicable */}
+    {selectedClient.custom_service_rates?.[formData.service_type] && (
+      <div className="mt-2 p-2 bg-orange-50 rounded-lg border border-orange-200">
+        <p className="text-sm font-bold text-orange-800">
+          🎯 Custom rate for {formData.service_type.replace(/_/g, ' ')}:
+          {selectedClient.custom_service_rates[formData.service_type].enabled === false && (
+            <span className="ml-2 text-red-600">❌ DISABLED</span>
+          )}
+          {selectedClient.custom_service_rates[formData.service_type].customPrice && (
+            <span className="ml-2 text-green-700">${selectedClient.custom_service_rates[formData.service_type].customPrice} flat rate</span>
+          )}
+          {selectedClient.custom_service_rates[formData.service_type].discountPercent && (
+            <span className="ml-2 text-blue-700">{selectedClient.custom_service_rates[formData.service_type].discountPercent}% off this service</span>
+          )}
+        </p>
+      </div>
+    )}
+    
+    {selectedClient.pricing_notes && (
+      <p className="text-sm text-gray-600 mt-2">
+        <span className="font-semibold">Notes:</span> {selectedClient.pricing_notes}
+      </p>
+    )}
+  </div>
+)}
           </div>
 
           {/* Addresses */}
@@ -408,6 +568,20 @@ export default function AdminCreateOrderPage() {
                   <input type="tel" name="pickup_contact_phone" value={formData.pickup_contact_phone} onChange={handleInputChange} required placeholder="Contact Phone *" className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl" />
                 </div>
               </div>
+
+              {/* Department Field */}
+              <div className="bg-purple-50 rounded-xl p-4">
+                <h4 className="font-bold text-purple-900 mb-3">🏢 Department / Reference</h4>
+                <input
+                  type="text"
+                  name="department"
+                  value={formData.department || ""}
+                  onChange={handleInputChange}
+                  placeholder="Company name, department, or reference (optional)"
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
+              </div>
+
               <div className="bg-green-50 rounded-xl p-4">
                 <h4 className="font-bold text-green-900 mb-3">Delivery Details</h4>
                 <AddressAutocomplete value={formData.dropoff_address} onChange={(e) => setFormData(prev => ({ ...prev, dropoff_address: e.target ? e.target.value : e }))} name="dropoff_address" placeholder="Delivery Address *" className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl mb-3" />
@@ -553,32 +727,93 @@ export default function AdminCreateOrderPage() {
           </div>
 
           {/* Pricing */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">💰 Pricing</h3>
+<div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-6">
+  <h3 className="text-xl font-bold text-gray-900 mb-4">💰 Pricing</h3>
 
-            <label className="flex items-center p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 mb-4">
-              <input type="checkbox" name="use_custom_price" checked={formData.use_custom_price} onChange={handleInputChange} className="mr-3" />
-              <div><span className="font-bold text-gray-900">Use Custom Price</span><p className="text-xs text-gray-600">Override calculated price</p></div>
-            </label>
+  {/* Service Disabled Warning */}
+  {pricing.serviceDisabled && (
+    <div className="mb-4 p-4 bg-red-50 border-2 border-red-200 rounded-xl">
+      <p className="text-red-700 font-bold">❌ This service is disabled for {selectedClient?.name}</p>
+      <p className="text-sm text-red-600 mt-1">Please select a different service type or use custom pricing.</p>
+    </div>
+  )}
 
-            {formData.use_custom_price && (
-              <div className="mb-4">
-                <label className="block text-sm font-bold text-gray-700 mb-2">Custom Base Price ($)</label>
-                <input type="number" name="custom_price" value={formData.custom_price} onChange={handleInputChange} min="0" step="0.01" placeholder="0.00" className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl text-lg font-bold" />
-              </div>
-            )}
+  <label className="flex items-center p-4 border-2 border-gray-200 rounded-xl cursor-pointer hover:bg-gray-50 mb-4">
+    <input type="checkbox" name="use_custom_price" checked={formData.use_custom_price} onChange={handleInputChange} className="mr-3" />
+    <div><span className="font-bold text-gray-900">Use Custom Price</span><p className="text-xs text-gray-600">Override calculated price</p></div>
+  </label>
 
-            <div className="bg-gray-50 rounded-xl p-4 space-y-2">
-              <div className="flex justify-between text-sm"><span className="text-gray-600">Base Price:</span><span className="font-semibold">${pricing.basePrice.toFixed(2)}</span></div>
-              <div className="flex justify-between text-sm"><span className="text-gray-600">Fuel Levy ({pricing.fuelLevyPercent}%):</span><span className="font-semibold">${pricing.fuelLevy.toFixed(2)}</span></div>
-              <div className="flex justify-between text-sm"><span className="text-gray-600">GST (10%):</span><span className="font-semibold">${pricing.gst.toFixed(2)}</span></div>
-              <div className="flex justify-between text-lg border-t pt-2"><span className="font-bold text-gray-900">Total (inc. GST):</span><span className="font-black text-green-600">${pricing.total.toFixed(2)}</span></div>
-            </div>
-          </div>
+  {formData.use_custom_price && (
+    <div className="mb-4">
+      <label className="block text-sm font-bold text-gray-700 mb-2">Custom Base Price ($)</label>
+      <input type="number" name="custom_price" value={formData.custom_price} onChange={handleInputChange} min="0" step="0.01" placeholder="0.00" className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl text-lg font-bold" />
+    </div>
+  )}
 
-          <button type="submit" disabled={submitting} className="w-full py-4 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-2xl font-black text-lg hover:from-red-600 hover:to-red-700 transition shadow-xl disabled:opacity-50">
-            {submitting ? "Creating Order..." : "Create Order ✓"}
-          </button>
+  <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+    <div className="flex justify-between text-sm">
+      <span className="text-gray-600">Base Price:</span>
+      <span className="font-semibold">${pricing.basePrice.toFixed(2)}</span>
+    </div>
+    
+    {/* Service-specific custom price indicator */}
+    {pricing.serviceCustomPrice && (
+      <div className="flex justify-between text-sm text-orange-600">
+        <span>🎯 Custom flat rate for service</span>
+        <span className="font-semibold">${pricing.serviceCustomPrice.toFixed(2)}</span>
+      </div>
+    )}
+    
+    {/* Service-specific discount */}
+    {pricing.serviceDiscountPercent > 0 && pricing.serviceDiscountAmount > 0 && (
+      <div className="flex justify-between text-sm text-orange-600">
+        <span>Service Discount ({pricing.serviceDiscountPercent}%):</span>
+        <span className="font-semibold">-${pricing.serviceDiscountAmount.toFixed(2)}</span>
+      </div>
+    )}
+    
+    {/* Global client discount */}
+    {pricing.clientDiscount > 0 && pricing.discountAmount > 0 && !pricing.serviceDiscountPercent && (
+      <div className="flex justify-between text-sm text-green-600">
+        <span>Client Discount ({pricing.clientDiscount}%):</span>
+        <span className="font-semibold">-${pricing.discountAmount.toFixed(2)}</span>
+      </div>
+    )}
+    
+    {/* Combined discounts */}
+    {pricing.clientDiscount > 0 && pricing.serviceDiscountPercent > 0 && (
+      <div className="flex justify-between text-sm text-green-600">
+        <span>Total Discounts (Service {pricing.serviceDiscountPercent}% + Global {pricing.clientDiscount}%):</span>
+        <span className="font-semibold">-${pricing.discountAmount.toFixed(2)}</span>
+      </div>
+    )}
+    
+    <div className="flex justify-between text-sm">
+      <span className="text-gray-600">Subtotal:</span>
+      <span className="font-semibold">${pricing.subtotal.toFixed(2)}</span>
+    </div>
+    <div className="flex justify-between text-sm">
+      <span className="text-gray-600">Fuel Levy ({pricing.fuelLevyPercent}%):</span>
+      <span className="font-semibold">${pricing.fuelLevy.toFixed(2)}</span>
+    </div>
+    <div className="flex justify-between text-sm">
+      <span className="text-gray-600">GST (10%):</span>
+      <span className="font-semibold">${pricing.gst.toFixed(2)}</span>
+    </div>
+    <div className="flex justify-between text-lg border-t pt-2">
+      <span className="font-bold text-gray-900">Total (inc. GST):</span>
+      <span className="font-black text-green-600">${pricing.total.toFixed(2)}</span>
+    </div>
+  </div>
+</div>
+
+         <button 
+  type="submit" 
+  disabled={submitting || pricing.serviceDisabled} 
+  className="w-full py-4 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-2xl font-black text-lg hover:from-red-600 hover:to-red-700 transition shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
+>
+  {submitting ? "Creating Order..." : pricing.serviceDisabled ? "⚠️ Service Disabled for Client" : "Create Order ✓"}
+</button>
         </form>
       </main>
     </div>

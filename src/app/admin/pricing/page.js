@@ -17,6 +17,7 @@ export default function AdminPricingPage() {
     weightRate: 2.70,
     fuelLevy: 10,
     gst: 10,
+    afterHoursText: "",
     services: {
       priority: { baseFee: 20, multiplier: 1.70, minimum: 120 },
       after_hours: { baseFee: 20, multiplier: 1.00, minimum: 150 },
@@ -48,7 +49,7 @@ export default function AdminPricingPage() {
         .single();
       
       if (settingsData?.value) {
-        setPricing(settingsData.value);
+        setPricing(prev => ({ ...prev, ...settingsData.value }));
       }
     } catch (error) {
       console.error("Error loading data:", error);
@@ -239,17 +240,6 @@ export default function AdminPricingPage() {
               </tbody>
             </table>
           </div>
-        </div>
-
-        {/* After Hours Special */}
-        <div className="bg-yellow-50 border-2 border-yellow-200 rounded-2xl p-6 mb-6">
-          <h2 className="text-xl font-bold text-yellow-800 mb-2">🌙 After Hours Pricing</h2>
-          <p className="text-sm text-yellow-700 mb-4">
-            After Hours uses special flat-rate pricing: <strong>$150</strong> for first 10km, then <strong>$1.70</strong> per km after.
-          </p>
-          <p className="text-xs text-yellow-600">
-            This is configured separately in the system code.
-          </p>
         </div>
 
         {/* Save Button */}

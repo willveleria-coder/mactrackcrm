@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { createClient } from "../../../lib/supabase/client";
 import Image from "next/image";
@@ -12,6 +12,12 @@ export default function PublicTrackingPage() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [driverLocation, setDriverLocation] = useState(null);
+  const [liveEta, setLiveEta] = useState(null);
+  const [lastEtaUpdate, setLastEtaUpdate] = useState(null);
+  const mapRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const driverMarkerRef = useRef(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -20,11 +26,132 @@ export default function PublicTrackingPage() {
     }
   }, [orderId]);
 
+  // Poll for live ETA updates every 15 seconds
+  useEffect(() => {
+    if (!orderId || !order || order.status === 'delivered' || order.status === 'cancelled') return;
+
+    const fetchLiveEta = async () => {
+      try {
+        const response = await fetch(`/api/driver/get-location?order_id=${orderId}`);
+        const data = await response.json();
+        
+        if (data.location) {
+          setDriverLocation(data.location);
+        }
+        if (data.eta_minutes) {
+          setLiveEta(data.eta_minutes);
+          setLastEtaUpdate(new Date());
+        }
+      } catch (e) {
+        console.log("ETA fetch error:", e);
+      }
+    };
+
+    // Initial fetch
+    fetchLiveEta();
+
+    // Poll every 15 seconds
+    const intervalId = setInterval(fetchLiveEta, 15000);
+
+    return () => clearInterval(intervalId);
+  }, [orderId, order?.status]);
+
+  // Initialize map when driver location is available
+  useEffect(() => {
+    if (!driverLocation || !mapRef.current || !order) return;
+    
+    // Load Google Maps script if not already loaded
+    if (!window.google) {
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`;
+      script.async = true;
+      script.onload = () => initMap();
+      document.head.appendChild(script);
+    } else {
+      initMap();
+    }
+  }, [driverLocation, order]);
+
+  function initMap() {
+    if (!mapRef.current || !driverLocation || !window.google) return;
+
+    const driverPos = {
+      lat: parseFloat(driverLocation.latitude),
+      lng: parseFloat(driverLocation.longitude)
+    };
+
+    // Create or update map
+    if (!mapInstanceRef.current) {
+      mapInstanceRef.current = new window.google.maps.Map(mapRef.current, {
+        zoom: 14,
+        center: driverPos,
+        disableDefaultUI: true,
+        zoomControl: true,
+        styles: [
+          { featureType: "poi", stylers: [{ visibility: "off" }] }
+        ]
+      });
+
+      // Add delivery destination marker
+      if (order?.dropoff_address) {
+        const geocoder = new window.google.maps.Geocoder();
+        geocoder.geocode({ address: order.dropoff_address }, (results, status) => {
+          if (status === 'OK' && results[0]) {
+            new window.google.maps.Marker({
+              position: results[0].geometry.location,
+              map: mapInstanceRef.current,
+              icon: {
+                url: 'data:image/svg+xml,' + encodeURIComponent(`
+                  <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="#22c55e">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+                  </svg>
+                `),
+                scaledSize: new window.google.maps.Size(40, 40),
+                anchor: new window.google.maps.Point(20, 40)
+              },
+              title: 'Delivery Location'
+            });
+
+            // Fit bounds to show both markers
+            const bounds = new window.google.maps.LatLngBounds();
+            bounds.extend(driverPos);
+            bounds.extend(results[0].geometry.location);
+            mapInstanceRef.current.fitBounds(bounds, { padding: 50 });
+          }
+        });
+      }
+    }
+
+    // Update or create driver marker
+    if (driverMarkerRef.current) {
+      driverMarkerRef.current.setPosition(driverPos);
+    } else {
+      driverMarkerRef.current = new window.google.maps.Marker({
+        position: driverPos,
+        map: mapInstanceRef.current,
+        icon: {
+          url: 'data:image/svg+xml,' + encodeURIComponent(`
+            <svg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 24 24" fill="#dc2626">
+              <circle cx="12" cy="12" r="10" fill="#dc2626"/>
+              <text x="12" y="16" text-anchor="middle" fill="white" font-size="12">🚚</text>
+            </svg>
+          `),
+          scaledSize: new window.google.maps.Size(50, 50),
+          anchor: new window.google.maps.Point(25, 25)
+        },
+        title: 'Driver Location'
+      });
+    }
+
+    // Center on driver with smooth pan
+    mapInstanceRef.current.panTo(driverPos);
+  }
+
   async function loadOrder() {
     try {
       const { data: orderData, error: orderError } = await supabase
         .from("orders")
-        .select("id, status, pickup_address, dropoff_address, service_type, parcel_size, parcel_weight, created_at, delivered_at, scheduled_date, scheduled_time, driver_status")
+        .select("id, order_number, status, pickup_address, dropoff_address, service_type, parcel_size, parcel_weight, created_at, delivered_at, scheduled_date, scheduled_time, driver_status, driver_id, live_eta, live_eta_minutes, driver_distance_km, eta_updated_at, custom_eta")
         .eq("id", orderId)
         .single();
 
@@ -34,6 +161,12 @@ export default function PublicTrackingPage() {
       }
 
       setOrder(orderData);
+      
+      // Set initial ETA from database
+      if (orderData.live_eta_minutes) {
+        setLiveEta(orderData.live_eta_minutes);
+        setLastEtaUpdate(orderData.eta_updated_at ? new Date(orderData.eta_updated_at) : null);
+      }
     } catch (err) {
       console.error("Error loading order:", err);
       setError("Failed to load order");
@@ -41,6 +174,35 @@ export default function PublicTrackingPage() {
       setLoading(false);
     }
   }
+
+  // Subscribe to real-time order updates
+  useEffect(() => {
+    if (!orderId) return;
+
+    const channel = supabase
+      .channel(`order-${orderId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'orders',
+          filter: `id=eq.${orderId}`
+        },
+        (payload) => {
+          setOrder(payload.new);
+          if (payload.new.live_eta_minutes) {
+            setLiveEta(payload.new.live_eta_minutes);
+            setLastEtaUpdate(new Date());
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [orderId]);
 
   function getStatusInfo(status) {
     const statuses = {
@@ -51,7 +213,28 @@ export default function PublicTrackingPage() {
         icon: "⏳",
         step: 1
       },
+      assigned: {
+        label: "Driver Assigned",
+        description: "A driver has been assigned to your order",
+        color: "bg-purple-100 text-purple-800 border-purple-300",
+        icon: "👤",
+        step: 1
+      },
+      picked_up: {
+        label: "Picked Up",
+        description: "Your parcel has been picked up",
+        color: "bg-indigo-100 text-indigo-800 border-indigo-300",
+        icon: "📦",
+        step: 2
+      },
       active: {
+        label: "In Transit",
+        description: "Your parcel is on its way",
+        color: "bg-blue-100 text-blue-800 border-blue-300",
+        icon: "🚚",
+        step: 2
+      },
+      in_transit: {
         label: "In Transit",
         description: "Your parcel is on its way",
         color: "bg-blue-100 text-blue-800 border-blue-300",
@@ -74,6 +257,18 @@ export default function PublicTrackingPage() {
       }
     };
     return statuses[status] || statuses.pending;
+  }
+
+  function formatEta(minutes) {
+    if (minutes < 60) {
+      return `${minutes} min${minutes !== 1 ? 's' : ''}`;
+    }
+    const hours = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (mins === 0) {
+      return `${hours} hr${hours !== 1 ? 's' : ''}`;
+    }
+    return `${hours} hr${hours !== 1 ? 's' : ''} ${mins} min${mins !== 1 ? 's' : ''}`;
   }
 
   if (loading) {
@@ -108,6 +303,7 @@ export default function PublicTrackingPage() {
   }
 
   const statusInfo = getStatusInfo(order.status);
+  const showLiveTracking = ['assigned', 'active', 'picked_up', 'in_transit'].includes(order.status) && order.driver_id;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff]">
@@ -124,7 +320,7 @@ export default function PublicTrackingPage() {
             />
             <div className="text-center">
               <h1 className="text-xl sm:text-2xl font-black text-red-600">Mac Track</h1>
-              <p className="text-xs text-gray-500">Order Tracking</p>
+              <p className="text-xs text-gray-500">Live Order Tracking</p>
             </div>
           </div>
         </div>
@@ -132,10 +328,62 @@ export default function PublicTrackingPage() {
 
       <main className="max-w-2xl mx-auto px-4 py-8">
         {/* Order ID */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6">
           <p className="text-sm text-gray-500 mb-1">Tracking Order</p>
-          <p className="text-2xl font-black font-mono text-gray-900">#{order.id.slice(0, 8).toUpperCase()}</p>
+          <p className="text-2xl font-black font-mono text-gray-900">
+            {order.order_number ? `#${order.order_number}` : `#${order.id.slice(0, 8).toUpperCase()}`}
+          </p>
         </div>
+
+        {/* Live ETA Banner */}
+        {showLiveTracking && liveEta && (
+          <div className="bg-gradient-to-r from-green-500 to-green-600 rounded-2xl p-5 mb-6 text-white shadow-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm opacity-90 mb-1">Estimated Arrival</p>
+                <p className="text-4xl font-black">{formatEta(liveEta)}</p>
+                {order.driver_distance_km && (
+                  <p className="text-sm opacity-80 mt-1">
+                    📍 Driver is {order.driver_distance_km.toFixed(1)} km away
+                  </p>
+                )}
+              </div>
+              <div className="text-6xl animate-bounce">🚚</div>
+            </div>
+            {lastEtaUpdate && (
+              <p className="text-xs opacity-70 mt-3">
+                Last updated: {lastEtaUpdate.toLocaleTimeString()}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Live Map */}
+        {showLiveTracking && driverLocation && (
+          <div className="bg-white rounded-2xl shadow-lg overflow-hidden mb-6">
+            <div className="bg-gray-900 text-white px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="text-sm font-bold">Live Driver Location</span>
+              </div>
+              <span className="text-xs opacity-70">
+                Updated: {new Date(driverLocation.updated_at).toLocaleTimeString()}
+              </span>
+            </div>
+            <div 
+              ref={mapRef} 
+              className="w-full h-64 sm:h-80 bg-gray-100"
+            >
+              {/* Map loads here */}
+              <div className="w-full h-full flex items-center justify-center text-gray-400">
+                <div className="text-center">
+                  <div className="animate-spin w-8 h-8 border-4 border-red-600 border-t-transparent rounded-full mx-auto mb-2"></div>
+                  <p className="text-sm">Loading map...</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Status Card */}
         <div className={`rounded-2xl p-6 mb-6 border-2 ${statusInfo.color}`}>

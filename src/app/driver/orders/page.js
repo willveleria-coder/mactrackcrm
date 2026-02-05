@@ -9,6 +9,7 @@ import Image from "next/image";
 export default function DriverOrdersPage() {
   const [driver, setDriver] = useState(null);
   const [orders, setOrders] = useState([]);
+  const [filter, setFilter] = useState("today");
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const supabase = createClient();
@@ -53,18 +54,78 @@ export default function DriverOrdersPage() {
     }
   }
 
+  // Filter orders based on selected filter
+  const filteredOrders = orders.filter(order => {
+    if (filter === "today") {
+      const today = new Date();
+      const orderDate = new Date(order.created_at);
+      // Must be from today AND not delivered/cancelled
+      if (orderDate.toDateString() !== today.toDateString()) return false;
+      if (order.status === "delivered" || order.status === "cancelled") return false;
+    }
+    if (filter === "active") {
+      if (order.status === "delivered" || order.status === "cancelled") return false;
+    }
+    return true;
+  });
+
+  // Counts for buttons
+  const todayActiveCount = orders.filter(o => {
+    const today = new Date();
+    const orderDate = new Date(o.created_at);
+    return orderDate.toDateString() === today.toDateString() && o.status !== "delivered" && o.status !== "cancelled";
+  }).length;
+
+  const allActiveCount = orders.filter(o => o.status !== "delivered" && o.status !== "cancelled").length;
+
   async function handleLogout() {
     await supabase.auth.signOut();
     router.push("/driver/login");
   }
 
   function handleNavigate(pickupAddress, dropoffAddress, orderStatus) {
-    const destination = orderStatus === "pending" ? pickupAddress : dropoffAddress;
+    const destination = orderStatus === "pending" || orderStatus === "assigned" ? pickupAddress : dropoffAddress;
     const encodedDestination = encodeURIComponent(destination);
     const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodedDestination}&travelmode=driving`;
     window.open(googleMapsUrl, '_blank');
   }
 
+  function getEtaString(order) {
+    if (order.custom_eta) {
+      const customDate = new Date(order.custom_eta);
+      return {
+        text: customDate.toLocaleString("en-AU", { 
+          day: "numeric", month: "short", hour: "numeric", minute: "2-digit" 
+        }),
+        isCustom: true
+      };
+    }
+    
+    const etaHours = {
+      standard: 5, same_day: 12, next_day: 24, local_overnight: 24,
+      emergency: 2, vip: 3, priority: 1.5, scheduled: 0, after_hours: 24
+    };
+    const hours = etaHours[order.service_type] || 5;
+
+    if (hours === 0 && order.scheduled_date) {
+      const scheduledDateTime = new Date(order.scheduled_date + (order.scheduled_time ? ' ' + order.scheduled_time : ''));
+      return {
+        text: scheduledDateTime.toLocaleString("en-AU", { 
+          day: "numeric", month: "short", hour: "numeric", minute: "2-digit" 
+        }),
+        isCustom: false
+      };
+    }
+    
+    const etaDate = new Date(order.created_at || Date.now());
+    etaDate.setHours(etaDate.getHours() + hours);
+    return {
+      text: etaDate.toLocaleString("en-AU", { 
+        day: "numeric", month: "short", hour: "numeric", minute: "2-digit" 
+      }),
+      isCustom: false
+    };
+  }
 
   const menuItems = [
     { href: "/driver/dashboard", icon: "🏠", label: "Dashboard" },
@@ -129,120 +190,176 @@ export default function DriverOrdersPage() {
           <p className="text-sm sm:text-base text-gray-600">All your assigned orders</p>
         </div>
 
+        {/* Today / History Toggle */}
+        <div className="flex gap-2 mb-6">
+          <button 
+            onClick={() => setFilter("today")} 
+            className={`flex-1 sm:flex-none px-6 py-3 rounded-xl font-bold text-sm transition ${filter === "today" ? "bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg" : "bg-white text-gray-700 border-2 border-gray-200 hover:border-orange-500"}`}
+          >
+            📅 Today ({todayActiveCount})
+          </button>
+          <button 
+            onClick={() => setFilter("active")} 
+            className={`flex-1 sm:flex-none px-6 py-3 rounded-xl font-bold text-sm transition ${filter === "active" ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg" : "bg-white text-gray-700 border-2 border-gray-200 hover:border-blue-500"}`}
+          >
+            🔄 Active ({allActiveCount})
+          </button>
+          <button 
+            onClick={() => setFilter("all")} 
+            className={`flex-1 sm:flex-none px-6 py-3 rounded-xl font-bold text-sm transition ${filter === "all" ? "bg-gradient-to-r from-gray-600 to-gray-700 text-white shadow-lg" : "bg-white text-gray-700 border-2 border-gray-200 hover:border-gray-500"}`}
+          >
+            📚 History ({orders.length})
+          </button>
+        </div>
+
         {/* Orders List */}
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-4 sm:p-8">
-          {orders.length === 0 ? (
+          {filteredOrders.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-6xl mb-4">📦</div>
-              <p className="text-gray-500 text-lg font-semibold">No deliveries yet</p>
-              <p className="text-gray-400 text-sm mt-2">Your assigned orders will appear here</p>
+              <p className="text-gray-500 text-lg font-semibold">
+                {filter === "today" ? "No active deliveries for today" : filter === "active" ? "No active deliveries" : "No deliveries yet"}
+              </p>
+              <p className="text-gray-400 text-sm mt-2">
+                {filter === "today" && orders.length > 0 ? "Check History for completed orders" : "Your assigned orders will appear here"}
+              </p>
+              {filter === "today" && orders.filter(o => o.status === "delivered" || o.status === "cancelled").length > 0 && (
+                <button
+                  onClick={() => setFilter("all")}
+                  className="mt-4 px-6 py-2 bg-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-300 transition"
+                >
+                  View History →
+                </button>
+              )}
             </div>
           ) : (
             <div className="space-y-4">
-              {/* SHOWING ALL ORDERS INCLUDING COMPLETED - NO FILTER */}
-{orders.map((order) => {
-  // Calculate ETA outside JSX
-  const etaHours = {
-    standard: 5, 
-    same_day: 12, 
-    next_day: 24, 
-    local_overnight: 24,
-    emergency: 2, 
-    vip: 3, 
-    priority: 1.5, 
-    scheduled: 0, 
-    after_hours: 24
-  };
-  const hours = etaHours[order.service_type] || 5;
-  let etaString = '';
-  
-  if (hours === 0 && order.scheduled_date) {
-    const scheduledDateTime = new Date(order.scheduled_date + (order.scheduled_time ? ' ' + order.scheduled_time : ''));
-    etaString = scheduledDateTime.toLocaleString("en-AU", { 
-      day: "numeric", 
-      month: "short", 
-      hour: "numeric", 
-      minute: "2-digit" 
-    });
-  } else {
-    const etaDate = new Date(order.created_at || Date.now());
-    etaDate.setHours(etaDate.getHours() + hours);
-    etaString = etaDate.toLocaleString("en-AU", { 
-      day: "numeric", 
-      month: "short", 
-      hour: "numeric", 
-      minute: "2-digit" 
-    });
-  }
-  
-  const placedTime = new Date(order.created_at).toLocaleString("en-AU", {
-    day: "numeric", 
-    month: "short", 
-    year: "numeric",
-    hour: "numeric", 
-    minute: "2-digit"
-  });
+              {filteredOrders.map((order) => {
+                const eta = getEtaString(order);
+                const placedTime = new Date(order.created_at).toLocaleString("en-AU", {
+                  day: "numeric", 
+                  month: "short", 
+                  year: "numeric",
+                  hour: "numeric", 
+                  minute: "2-digit"
+                });
+                const isCompleted = order.status === "delivered" || order.status === "cancelled";
 
-  return (
-    <div 
-      key={order.id} 
-      className="border-2 border-gray-200 rounded-2xl p-4 sm:p-6 hover:shadow-md transition bg-white"
-    >
-      {/* Order Header */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 sm:gap-0 mb-4">
-        <div>
-          <p className="text-xs sm:text-sm text-gray-500 mb-1">
-            Order #{order.id.slice(0, 8)}
-          </p>
-          <StatusBadge status={order.status} />
-        </div>
-        <div className="text-xs sm:text-sm text-gray-500">
-          <p>📅 Placed: {placedTime}</p>
-        </div>
-      </div>
+                return (
+                  <div 
+                    key={order.id} 
+                    className={`border-2 rounded-2xl p-4 sm:p-6 hover:shadow-md transition bg-white ${isCompleted ? 'border-gray-200 opacity-75' : 'border-gray-200'}`}
+                  >
+                    {/* Order Header */}
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 sm:gap-0 mb-4">
+                      <div>
+                        <p className="text-xs sm:text-sm text-gray-500 mb-1">
+                          {order.order_number ? `Order #${order.order_number}` : `Order #${order.id.slice(0, 8)}`}
+                        </p>
+                        <StatusBadge status={order.status} />
+                      </div>
+                      <div className="text-xs sm:text-sm text-gray-500">
+                        <p>📅 Placed: {placedTime}</p>
+                      </div>
+                    </div>
 
-      {/* Addresses */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mb-4">
-        <div className="bg-blue-50 rounded-xl p-3">
-          <p className="text-xs font-bold text-blue-700 mb-1">📍 PICKUP</p>
-          <p className="text-sm text-gray-900 font-medium leading-snug">
-            {order.pickup_address}
-          </p>
-        </div>
-        <div className="bg-green-50 rounded-xl p-3">
-          <p className="text-xs font-bold text-green-700 mb-1">🎯 DROPOFF</p>
-          <p className="text-sm text-gray-900 font-medium leading-snug">
-            {order.dropoff_address}
-          </p>
-        </div>
-      </div>
+                    {/* ETA Banner - Only show if not completed */}
+                    {!isCompleted && (
+                      <div className={`mb-4 p-3 rounded-xl ${eta.isCustom ? 'bg-orange-50 border-2 border-orange-200' : 'bg-blue-50 border-2 border-blue-200'}`}>
+                        <div className="flex items-center justify-between">
+                          <span className={`text-sm font-bold ${eta.isCustom ? 'text-orange-800' : 'text-blue-800'}`}>
+                            🕐 ETA: {eta.text}
+                          </span>
+                          {eta.isCustom && (
+                            <span className="text-xs bg-orange-200 text-orange-800 px-2 py-1 rounded-full font-semibold">
+                              Updated by Admin
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
-      {/* Order Details with ETA */}
-      <div className="flex flex-wrap gap-2 text-xs sm:text-sm text-gray-600 mb-4">
-        <span className="bg-gray-100 px-3 py-1.5 rounded-full font-medium">
-          📦 {order.parcel_size}
-        </span>
-        <span className="bg-gray-100 px-3 py-1.5 rounded-full font-medium">
-          ⚖️ {order.parcel_weight}kg
-        </span>
-        <span className="bg-gray-100 px-3 py-1.5 rounded-full font-medium">
-          ⚡ {order.service_type}
-        </span>
-        <span className="bg-blue-100 px-3 py-1.5 rounded-full font-medium text-blue-700">
-          🕐 ETA: {etaString}
-        </span>
-      </div>
+                    {/* Completed Banner */}
+                    {order.status === "delivered" && (
+                      <div className="mb-4 p-3 rounded-xl bg-green-50 border-2 border-green-200">
+                        <span className="text-sm font-bold text-green-800">
+                          ✅ Delivered {order.delivered_at ? `on ${new Date(order.delivered_at).toLocaleString("en-AU", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}` : ''}
+                        </span>
+                      </div>
+                    )}
 
-      {/* Navigate Button */}
-      <button 
-        onClick={() => handleNavigate(order.pickup_address, order.dropoff_address, order.status)}
-        className="w-full sm:w-auto px-6 py-3 sm:py-2 bg-[#0072ab] text-white rounded-xl font-bold text-base sm:text-sm hover:bg-[#005d8c] transition shadow-lg"
-      >
-        🗺️ Navigate
-      </button>
-    </div>
-  );
-})}
+                    {order.status === "cancelled" && (
+                      <div className="mb-4 p-3 rounded-xl bg-red-50 border-2 border-red-200">
+                        <span className="text-sm font-bold text-red-800">
+                          ❌ Cancelled
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Addresses */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 mb-4">
+                      <div className="bg-blue-50 rounded-xl p-3">
+                        <p className="text-xs font-bold text-blue-700 mb-1">📍 PICKUP</p>
+                        <p className="text-sm text-gray-900 font-medium leading-snug">
+                          {order.pickup_address}
+                        </p>
+                        {order.pickup_contact_name && (
+                          <p className="text-xs text-gray-600 mt-2">
+                            👤 {order.pickup_contact_name} {order.pickup_contact_phone && `• 📞 ${order.pickup_contact_phone}`}
+                          </p>
+                        )}
+                      </div>
+                      <div className="bg-green-50 rounded-xl p-3">
+                        <p className="text-xs font-bold text-green-700 mb-1">🎯 DROPOFF</p>
+                        <p className="text-sm text-gray-900 font-medium leading-snug">
+                          {order.dropoff_address}
+                        </p>
+                        {order.dropoff_contact_name && (
+                          <p className="text-xs text-gray-600 mt-2">
+                            👤 {order.dropoff_contact_name} {order.dropoff_contact_phone && `• 📞 ${order.dropoff_contact_phone}`}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Order Details */}
+                    <div className="flex flex-wrap gap-2 text-xs sm:text-sm text-gray-600 mb-4">
+                      <span className="bg-gray-100 px-3 py-1.5 rounded-full font-medium">
+                        📦 {order.parcel_size?.replace(/_/g, ' ')}
+                      </span>
+                      <span className="bg-gray-100 px-3 py-1.5 rounded-full font-medium">
+                        ⚖️ {order.parcel_weight}kg
+                      </span>
+                      <span className="bg-gray-100 px-3 py-1.5 rounded-full font-medium">
+                        ⚡ {order.service_type?.replace(/_/g, ' ')}
+                      </span>
+                      {order.fragile && (
+                        <span className="bg-red-100 px-3 py-1.5 rounded-full font-medium text-red-700">
+                          ⚠️ Fragile
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Notes */}
+                    {order.notes && (
+                      <div className="bg-yellow-50 rounded-xl p-3 mb-4">
+                        <p className="text-xs font-bold text-yellow-700 mb-1">📝 Notes</p>
+                        <p className="text-sm text-gray-700">{order.notes}</p>
+                      </div>
+                    )}
+
+                    {/* Navigate Button - Only show if not completed */}
+                    {!isCompleted && (
+                      <button 
+                        onClick={() => handleNavigate(order.pickup_address, order.dropoff_address, order.status)}
+                        className="w-full sm:w-auto px-6 py-3 sm:py-2 bg-[#0072ab] text-white rounded-xl font-bold text-base sm:text-sm hover:bg-[#005d8c] transition shadow-lg"
+                      >
+                        🗺️ Navigate to {order.status === "pending" || order.status === "assigned" ? "Pickup" : "Dropoff"}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
