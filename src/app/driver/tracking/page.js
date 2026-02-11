@@ -34,8 +34,9 @@ export default function DriverTrackingPage() {
 
   async function loadDriverData() {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+      if (!session) {
         router.push("/driver/login");
         return;
       }

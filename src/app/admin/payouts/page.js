@@ -45,8 +45,9 @@ export default function AdminPayoutsPage() {
   }, []);
 
   async function checkAuth() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
+      if (!session) {
       router.push("/admin/login");
       return;
     }
@@ -67,6 +68,7 @@ export default function AdminPayoutsPage() {
   }
 
   async function loadPayoutData() {
+  setWallets([]);
   try {
     // Load payout requests
     const { data: requestsData } = await supabase
@@ -215,9 +217,10 @@ export default function AdminPayoutsPage() {
       setTimeout(() => setMessage(''), 3000);
 
     } catch (error) {
-      console.error("Error rejecting payout:", error);
-      setMessage("❌ Failed to reject payout");
-    } finally {
+    console.error("Error rejecting payout:", error);
+    setViewRequest(null);
+    setMessage("❌ Failed to reject payout: " + error.message);
+  } finally {
       setProcessing(false);
     }
   }
@@ -241,19 +244,18 @@ export default function AdminPayoutsPage() {
 
     // Create approved payout request (shows it was paid)
     const { data: newRequest, error: requestError } = await supabase
-      .from("payout_requests")
-      .insert([{
-        driver_id: driverId,
-        amount: currentBalance,
-        payment_method: 'manual_reset',
-        status: 'approved',
-        requested_at: new Date().toISOString(),
-        processed_at: new Date().toISOString(),
-        processed_by: admin.id,
-        notes: 'Wallet manually reset and paid by admin'
-      }])
-      .select()
-      .single();
+  .from("payout_requests")
+  .insert([{
+    driver_id: driverId,
+    amount: currentBalance,
+    payment_method: 'manual_reset',
+    status: 'approved',
+    processed_at: new Date().toISOString(),
+    processed_by: admin.id,
+    notes: 'Wallet manually reset and paid by admin'
+  }])
+  .select()
+  .single();
 
     if (requestError) throw requestError;
 

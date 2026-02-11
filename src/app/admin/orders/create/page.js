@@ -18,6 +18,14 @@ export default function AdminCreateOrderPage() {
   const [success, setSuccess] = useState("");
   const [selectedClient, setSelectedClient] = useState(null);
 
+  // Walk-in mode
+  const [isWalkIn, setIsWalkIn] = useState(false);
+  const [walkInCustomer, setWalkInCustomer] = useState({
+    name: "",
+    email: "",
+    phone: "",
+  });
+
   const [formData, setFormData] = useState({
     client_id: "",
     department: "",
@@ -34,6 +42,7 @@ export default function AdminCreateOrderPage() {
     driver_id: "",
     custom_price: "",
     use_custom_price: false,
+    dropoff_department: "",
   });
 
   const [items, setItems] = useState([
@@ -124,8 +133,9 @@ export default function AdminCreateOrderPage() {
 
   async function loadData() {
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) { router.push("/admin/login"); return; }
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+      if (!session) { router.push("/admin/login"); return; }
       const { data: adminData } = await supabase.from("admins").select("*").eq("user_id", user.id).single();
       if (!adminData) { router.push("/admin/login"); return; }
       setAdmin(adminData);
@@ -336,6 +346,11 @@ export default function AdminCreateOrderPage() {
   }));
 }
 
+function handleWalkInChange(e) {
+    const { name, value } = e.target;
+    setWalkInCustomer(prev => ({ ...prev, [name]: value }));
+  }
+
   function handleInputChange(e) {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
@@ -365,7 +380,13 @@ export default function AdminCreateOrderPage() {
   async function handleSubmit(e) {
     e.preventDefault();
     setError(""); setSuccess("");
-    if (!formData.client_id) { setError("Please select a client"); return; }
+    if (isWalkIn) {
+      if (!walkInCustomer.name) { setError("Customer name is required"); return; }
+      if (!walkInCustomer.email) { setError("Customer email is required to send payment link"); return; }
+      if (!walkInCustomer.phone) { setError("Customer phone is required"); return; }
+    } else {
+      if (!formData.client_id) { setError("Please select a client"); return; }
+    }
     if (!formData.pickup_address || !formData.dropoff_address) { setError("Addresses required"); return; }
     if (!formData.pickup_contact_name || !formData.dropoff_contact_name) { setError("Contact names required"); return; }
     if (!formData.pickup_contact_phone || !formData.dropoff_contact_phone) { setError("Contact phones required"); return; }
@@ -396,8 +417,13 @@ export default function AdminCreateOrderPage() {
       const primaryItem = items[0];
 
       const orderData = {
-        client_id: formData.client_id,
+        client_id: isWalkIn ? null : formData.client_id,
+        is_walkin: isWalkIn,
+        walkin_customer_name: isWalkIn ? walkInCustomer.name : null,
+        walkin_customer_email: isWalkIn ? walkInCustomer.email : null,
+        walkin_customer_phone: isWalkIn ? walkInCustomer.phone : null,
         department: formData.department || null,
+        dropoff_department: formData.dropoff_department || null,
         pickup_address: formData.pickup_address,
         pickup_contact_name: formData.pickup_contact_name,
         pickup_contact_phone: formData.pickup_contact_phone,
@@ -426,7 +452,7 @@ export default function AdminCreateOrderPage() {
         fuel_levy_percent: pricing.fuelLevyPercent,
         gst: pricing.gst,
         price: pricing.total,
-        status: formData.driver_id ? "assigned" : "pending",
+        status: isWalkIn ? "pending_payment" : (formData.driver_id ? "assigned" : "pending"),
         created_by_admin: admin.id,
         items_detail: itemsSummary,
       };
@@ -434,11 +460,47 @@ export default function AdminCreateOrderPage() {
       const { data: order, error: orderError } = await supabase.from("orders").insert([orderData]).select().single();
       if (orderError) throw orderError;
 
-      setSuccess(`✅ Order #${order.id.slice(0, 8)} created!`);
-      setFormData({ client_id: "", department: "", pickup_address: "", dropoff_address: "", pickup_contact_name: "", pickup_contact_phone: "", dropoff_contact_name: "", dropoff_contact_phone: "", service_type: "standard", scheduled_date: "", scheduled_time: "", notes: "", driver_id: "", custom_price: "", use_custom_price: false });
+      // Send payment link for walk-in orders
+      if (isWalkIn) {
+        try {
+          const paymentResponse = await fetch("/api/send-payment-link", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              orderId: order.id,
+              orderNumber: order.order_number || order.id.slice(0, 8).toUpperCase(),
+              customerEmail: walkInCustomer.email,
+              customerName: walkInCustomer.name,
+              amount: pricing.total,
+              pickupAddress: formData.pickup_address,
+              dropoffAddress: formData.dropoff_address,
+              serviceType: formData.service_type,
+            }),
+          });
+          
+          const paymentResult = await paymentResponse.json();
+          
+          if (paymentResponse.ok && paymentResult.success) {
+            setSuccess(`✅ Order created! Payment link sent to ${walkInCustomer.email}`);
+          } else {
+            console.error("Payment link error:", paymentResult);
+            setSuccess(`✅ Order created but payment link failed: ${paymentResult.error || 'Unknown error'}. You can resend from the Orders page.`);
+          }
+        } catch (payErr) {
+          console.error("Payment link error:", payErr);
+          setSuccess(`✅ Order created but payment link failed to send. You can resend from the Orders page.`);
+        }
+      } else {
+        setSuccess(`✅ Order #${order.id.slice(0, 8)} created!`);
+      }
+      
+      // Reset form
+      setFormData({ client_id: "", department: "", pickup_address: "", dropoff_address: "", pickup_contact_name: "", pickup_contact_phone: "", dropoff_contact_name: "", dropoff_contact_phone: "", service_type: "standard", scheduled_date: "", scheduled_time: "", notes: "", driver_id: "", custom_price: "", use_custom_price: false, dropoff_department: "" });
+      setWalkInCustomer({ name: "", email: "", phone: "" });
       setItems([{ id: 1, item_type: "small_box", quantity: 1, weight_per_unit: "", is_under_10kg: false, length: "", width: "", height: "", fragile: false, description: "" }]);
       setManualDistance("");
       setSelectedClient(null);
+      setIsWalkIn(false);
       setPricing(prev => ({ ...prev, distance: 0, duration: 0, basePrice: 0, distanceCost: 0, weightCost: 0, subtotal: 0, fuelLevy: 0, gst: 0, total: 0, clientDiscount: 0, discountAmount: 0 }));
       setTimeout(() => router.push("/admin/orders"), 2000);
     } catch (err) { setError(err.message || "Failed to create order"); }
@@ -494,9 +556,84 @@ export default function AdminCreateOrderPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Client Selection */}
+          {/* Order Type Toggle */}
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">👤 Select Client</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-4">📋 Order Type</h3>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsWalkIn(false);
+                  setSelectedClient(null);
+                  setFormData(prev => ({ ...prev, client_id: "", pickup_contact_name: "", pickup_contact_phone: "" }));
+                }}
+                className={`p-4 rounded-xl border-2 font-bold text-sm transition ${
+                  !isWalkIn
+                    ? 'border-red-600 bg-red-50 text-red-700'
+                    : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
+                }`}
+              >
+                <span className="text-2xl block mb-2">👥</span>
+                Existing Client
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsWalkIn(true);
+                  setSelectedClient(null);
+                  setFormData(prev => ({ ...prev, client_id: "" }));
+                }}
+                className={`p-4 rounded-xl border-2 font-bold text-sm transition ${
+                  isWalkIn
+                    ? 'border-orange-600 bg-orange-50 text-orange-700'
+                    : 'border-gray-300 bg-white text-gray-600 hover:border-gray-400'
+                }`}
+              >
+                <span className="text-2xl block mb-2">📞</span>
+                Walk-in / Phone Order
+              </button>
+            </div>
+
+            {/* Walk-in info banner */}
+            {isWalkIn && (
+              <div className="mb-4 p-4 bg-orange-50 border-2 border-orange-200 rounded-xl">
+                <p className="text-sm font-bold text-orange-900">📞 Walk-in / Phone Order Mode</p>
+                <p className="text-xs text-orange-700 mt-1">
+                  Enter the customer&apos;s details below. A Stripe payment link will be emailed to them after the order is created.
+                  The order stays in &quot;Pending Payment&quot; until they pay.
+                </p>
+              </div>
+            )}
+
+            {/* Walk-in Customer Fields */}
+            {isWalkIn && (
+              <div className="space-y-4 mb-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Customer Name *</label>
+                  <input type="text" name="name" value={walkInCustomer.name} onChange={handleWalkInChange} required placeholder="e.g. John Smith" className="w-full px-4 py-3 border-2 border-orange-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Email * <span className="text-xs text-gray-500">(payment link sent here)</span></label>
+                    <input type="email" name="email" value={walkInCustomer.email} onChange={handleWalkInChange} required placeholder="john@email.com" className="w-full px-4 py-3 border-2 border-orange-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Phone *</label>
+                    <input type="tel" name="phone" value={walkInCustomer.phone} onChange={handleWalkInChange} required placeholder="0412 345 678" className="w-full px-4 py-3 border-2 border-orange-300 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-transparent bg-white" />
+                  </div>
+                </div>
+                {walkInCustomer.name && (
+                  <button type="button" onClick={() => setFormData(prev => ({ ...prev, pickup_contact_name: walkInCustomer.name, pickup_contact_phone: walkInCustomer.phone }))} className="text-sm text-orange-600 font-bold hover:underline">
+                    ↗️ Use as pickup contact
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Existing Client Selector - only show when NOT walk-in */}
+            {!isWalkIn && (
+              <>
+                <h3 className="text-xl font-bold text-gray-900 mb-4">👤 Select Client</h3>
             <select name="client_id" value={formData.client_id} onChange={handleInputChange} required className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl">
               <option value="">-- Select a Client --</option>
               {clients.map(c => (
@@ -548,12 +685,14 @@ export default function AdminCreateOrderPage() {
     )}
     
     {selectedClient.pricing_notes && (
-      <p className="text-sm text-gray-600 mt-2">
-        <span className="font-semibold">Notes:</span> {selectedClient.pricing_notes}
-      </p>
-    )}
+              <p className="text-sm text-gray-600 mt-2">
+                <span className="font-semibold">Notes:</span> {selectedClient.pricing_notes}
+              </p>
+            )}
   </div>
 )}
+              </>
+            )}
           </div>
 
           {/* Addresses */}
@@ -571,7 +710,7 @@ export default function AdminCreateOrderPage() {
 
               {/* Department Field */}
               <div className="bg-purple-50 rounded-xl p-4">
-                <h4 className="font-bold text-purple-900 mb-3">🏢 Department / Reference</h4>
+                <h4 className="font-bold text-purple-900 mb-3">🏢 Pickup Department / Reference</h4>
                 <input
                   type="text"
                   name="department"
@@ -585,10 +724,23 @@ export default function AdminCreateOrderPage() {
               <div className="bg-green-50 rounded-xl p-4">
                 <h4 className="font-bold text-green-900 mb-3">Delivery Details</h4>
                 <AddressAutocomplete value={formData.dropoff_address} onChange={(e) => setFormData(prev => ({ ...prev, dropoff_address: e.target ? e.target.value : e }))} name="dropoff_address" placeholder="Delivery Address *" className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl mb-3" />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
                   <input type="text" name="dropoff_contact_name" value={formData.dropoff_contact_name} onChange={handleInputChange} required placeholder="Contact Name *" className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl" />
                   <input type="tel" name="dropoff_contact_phone" value={formData.dropoff_contact_phone} onChange={handleInputChange} required placeholder="Contact Phone *" className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl" />
                 </div>
+              </div>
+
+              {/* Delivery Department / Reference */}
+              <div className="bg-purple-50 rounded-xl p-4">
+                <h4 className="font-bold text-purple-900 mb-3">🏢 Delivery Department / Reference</h4>
+                <input
+                  type="text"
+                  name="dropoff_department"
+                  value={formData.dropoff_department || ""}
+                  onChange={handleInputChange}
+                  placeholder="Company name, department, or reference (optional)"
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                />
               </div>
 
               {/* Distance Section - Always Visible */}
@@ -812,7 +964,7 @@ export default function AdminCreateOrderPage() {
   disabled={submitting || pricing.serviceDisabled} 
   className="w-full py-4 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-2xl font-black text-lg hover:from-red-600 hover:to-red-700 transition shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
 >
-  {submitting ? "Creating Order..." : pricing.serviceDisabled ? "⚠️ Service Disabled for Client" : "Create Order ✓"}
+  {submitting ? "Creating Order..." : pricing.serviceDisabled ? "⚠️ Service Disabled for Client" : isWalkIn ? "Create Order & Send Payment Link ✓" : "Create Order ✓"}
 </button>
         </form>
       </main>

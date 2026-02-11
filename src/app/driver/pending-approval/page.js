@@ -13,7 +13,7 @@ export default function DriverPendingApprovalPage() {
   }
 
   async function checkApproval() {
-    const { data: { user } } = await supabase.auth.getUser();
+    const { data: { session } } = await supabase.auth.getSession();
     if (user) {
       const { data: driver } = await supabase
         .from("drivers")

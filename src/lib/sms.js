@@ -40,10 +40,16 @@ export async function sendSMS({ to, message }) {
     return { success: false, error: error.message };
   }
 }
+
+// Helper to get order number with fallback
+function getOrderNumber(order) {
+  return order.order_number ? order.order_number : order.id?.slice(0, 8).toUpperCase();
+}
+
 export const smsTemplates = {
-  orderCreated: (order) => '✅ Mac Track: Order #' + (order.id?.slice(0, 8).toUpperCase() || '') + ' confirmed! Track: mactrackcrm.vercel.app/track/' + order.id,
-  orderPickedUp: (order) => '📦 Mac Track: Your order has been picked up and is on its way! Track live: mactrackcrm.vercel.app/track/' + order.id,
-  orderDelivered: (order) => '🎉 Mac Track: Your order has been delivered! Thank you for choosing us.',
-  driverAssigned: (order) => '🚚 Mac Track: New job assigned! Pickup: ' + (order.pickup_address?.slice(0, 50) || '') + '... Open app to accept.',
-  driverReminder: (order) => '⚠️ Mac Track: You have a pending job! Please accept or reject ASAP.'
+  orderCreated: (order) => '✅ Mac Track: Order #' + getOrderNumber(order) + ' confirmed! Track: mactrackcrm.vercel.app/track/' + order.id,
+  orderPickedUp: (order) => '📦 Mac Track: Order #' + getOrderNumber(order) + ' has been picked up and is on its way! Track live: mactrackcrm.vercel.app/track/' + order.id,
+  orderDelivered: (order) => '🎉 Mac Track: Order #' + getOrderNumber(order) + ' has been delivered! Thank you for choosing us.',
+  driverAssigned: (order) => '🚚 Mac Track: New job assigned! Order #' + getOrderNumber(order) + ' - Pickup: ' + (order.pickup_address?.slice(0, 50) || '') + '... Open app to accept.',
+  driverReminder: (order) => '⚠️ Mac Track: You have a pending job (Order #' + getOrderNumber(order) + ')! Please accept or reject ASAP.'
 };

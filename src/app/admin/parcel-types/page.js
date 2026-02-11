@@ -30,8 +30,9 @@ export default function ParcelTypesPage() {
   }, []);
 
   async function checkAuth() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
+      if (!session) {
       router.push("/admin/login");
       return;
     }

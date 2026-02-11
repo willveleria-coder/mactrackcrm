@@ -36,8 +36,9 @@ export default function AdminLiveTrackingPage() {
   async function checkAuth() {
     console.log("checkAuth called");
     console.log("checkAuth called");
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    const { data: { session } } = await supabase.auth.getSession();
+    const user = session?.user;
+      if (!session) {
       router.push("/admin/login");
       return;
     }

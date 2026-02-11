@@ -14,7 +14,7 @@ function DriverDashboardContent() {
   const { theme } = useTheme();
   const [driver, setDriver] = useState(null);
   const [orders, setOrders] = useState([]);
-  const [stats, setStats] = useState({ assigned: 0, completed: 0, pending: 0, active: 0, hoursWorked: 0 });
+  const [stats, setStats] = useState({ assigned: 0, completed: 0, pending: 0, active: 0, hoursWorked: 0, todayHours: 0, weekHours: 0 });
   const [loading, setLoading] = useState(true);
   const [showContactPopup, setShowContactPopup] = useState(false);
   const [adminContact, setAdminContact] = useState(null);
@@ -95,11 +95,50 @@ function DriverDashboardContent() {
     }
   }, []);
 
+  // NEW: Calculate hours worked from accepted_at to delivered_at
+  function calculateHoursWorked(ordersData) {
+    let totalHours = 0;
+    let todayHours = 0;
+    let weekHours = 0;
+    
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekStart = new Date(todayStart);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Start of week (Sunday)
+
+    ordersData.forEach(order => {
+      // Only count delivered orders with both timestamps
+      if (order.status === 'delivered' && order.accepted_at && order.delivered_at) {
+        const acceptedTime = new Date(order.accepted_at);
+        const deliveredTime = new Date(order.delivered_at);
+        const hoursForOrder = (deliveredTime - acceptedTime) / (1000 * 60 * 60); // Convert ms to hours
+        
+        // Only count positive, reasonable hours (less than 24 hours per order)
+        if (hoursForOrder > 0 && hoursForOrder < 24) {
+          totalHours += hoursForOrder;
+          
+          // Check if delivered today
+          if (deliveredTime >= todayStart) {
+            todayHours += hoursForOrder;
+          }
+          
+          // Check if delivered this week
+          if (deliveredTime >= weekStart) {
+            weekHours += hoursForOrder;
+          }
+        }
+      }
+    });
+
+    return { totalHours, todayHours, weekHours };
+  }
+
   async function loadDashboard() {
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (userError || !user) {
+      const user = session?.user;
+      if (!session) {
         router.push("/driver/login");
         return;
       }
@@ -112,11 +151,12 @@ function DriverDashboardContent() {
 
       if (driverError || !driverData) {
         router.push("/driver/login");
+        return;
+      }
+      
       // Check if driver is approved
       if (!driverData.is_approved) {
         router.push("/driver/pending-approval");
-        return;
-      }
         return;
       }
 
@@ -141,13 +181,23 @@ function DriverDashboardContent() {
         previousOrdersRef.current = ordersData;
         setOrders(ordersData);
         
-        const assigned = ordersData.filter(o => o.status === "pending" || o.status === "active").length;
-        const pending = ordersData.filter(o => o.status === "pending").length;
-        const active = ordersData.filter(o => o.status === "active").length;
+        const assigned = ordersData.filter(o => o.status === "pending" || o.status === "active" || o.status === "in_transit").length;
+        const pending = ordersData.filter(o => o.status === "pending" || o.status === "assigned").length;
+        const active = ordersData.filter(o => o.status === "active" || o.status === "in_transit" || o.status === "picked_up").length;
         const completed = ordersData.filter(o => o.status === "delivered").length;
-        const hoursWorked = driverData.hours_worked || 0;
         
-        setStats({ assigned, completed, pending, active, hoursWorked });
+        // NEW: Calculate hours from actual order times instead of static field
+        const { totalHours, todayHours, weekHours } = calculateHoursWorked(ordersData);
+        
+        setStats({ 
+          assigned, 
+          completed, 
+          pending, 
+          active, 
+          hoursWorked: totalHours,
+          todayHours,
+          weekHours
+        });
       }
     } catch (error) {
       console.error("Error loading dashboard:", error);
@@ -177,19 +227,26 @@ function DriverDashboardContent() {
     router.push("/driver/login");
   }
 
+  function formatOrderNumber(order) {
+    return order.order_number ? `#${order.order_number}` : `#${order.id.slice(0, 8)}`;
+  }
+
+  // UPDATED: Record accepted_at timestamp when driver accepts
   async function handleAcceptOrder(orderId) {
     try {
+      const order = orders.find(o => o.id === orderId);
+      
       const { error } = await supabase
         .from("orders")
-        .update({ status: "in_transit", driver_status: "accepted" })
+        .update({ 
+          status: "in_transit", 
+          driver_status: "accepted",
+          accepted_at: new Date().toISOString() // NEW: Record when driver accepted
+        })
         .eq("id", orderId);
 
       if (error) throw error;
 
-      setShowNotification(false);
-      setNewJobAlert(null);
-      loadDashboard();
-      alert("✅ Order accepted successfully!");
       // Send notification to client
       try {
         await fetch("/api/notify", {
@@ -198,6 +255,32 @@ function DriverDashboardContent() {
           body: JSON.stringify({ type: "order_picked_up", orderId: orderId })
         });
       } catch (e) { console.error("Notification error:", e); }
+
+      // Send SMS to customer
+      const customerPhone = order?.walkin_customer_phone || order?.dropoff_contact_phone;
+      const customerName = order?.walkin_customer_name || order?.dropoff_contact_name || '';
+      const orderNumber = order?.order_number || orderId.slice(0, 8).toUpperCase();
+      const trackingLink = `https://mactrackcrm.vercel.app/track/${orderId}`;
+
+      if (customerPhone) {
+        try {
+          await fetch("/api/send-sms", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              to: customerPhone,
+              message: `Hi${customerName ? ' ' + customerName : ''}! Your delivery #${orderNumber} is now in transit with ${driver?.name || 'your driver'}.\n\nTrack live here:\n${trackingLink}\n\n- Mac With A Van 🚐`
+            })
+          });
+        } catch (e) {
+          console.log("Customer SMS error:", e);
+        }
+      }
+
+      setShowNotification(false);
+      setNewJobAlert(null);
+      loadDashboard();
+      alert("✅ Order accepted successfully!");
     } catch (error) {
       console.error("Accept error:", error);
       alert("Failed to accept order: " + error.message);
@@ -221,6 +304,7 @@ function DriverDashboardContent() {
           driver_id: null,
           driver_status: "rejected",
           status: "pending",
+          accepted_at: null,
           notes: currentOrder.notes 
             ? `${currentOrder.notes}\n\nRejected by ${driver.name}: ${reason}` 
             : `Rejected by ${driver.name}: ${reason}`
@@ -255,31 +339,29 @@ function DriverDashboardContent() {
   }
 
   async function handleSendToAdmin(orderId) {
-  try {
-    const order = orders.find(o => o.id === orderId);
-    if (!order) {
-      alert("❌ Order not found");
-      return;
+    try {
+      const order = orders.find(o => o.id === orderId);
+      if (!order) {
+        alert("❌ Order not found");
+        return;
+      }
+
+      const { error } = await supabase
+        .from("driver_notifications")
+        .insert([{
+          driver_id: driver.id,
+          driver_name: driver.name,
+          order_id: orderId,
+          message: `Order ${formatOrderNumber(order)} - ${order.pickup_address} → ${order.dropoff_address} (${order.status})`
+        }]);
+
+      if (error) throw error;
+      alert("✅ Order details sent to admin!");
+    } catch (error) {
+      console.error("Send to admin error:", error);
+      alert("❌ Failed to send: " + error.message);
     }
-
-    // Save notification to database
-    const { error } = await supabase
-      .from("driver_notifications")
-      .insert([{
-        driver_id: driver.id,
-        driver_name: driver.name,
-        order_id: orderId,
-        message: `Order #${orderId.slice(0, 8)} - ${order.pickup_address} → ${order.dropoff_address} (${order.status})`
-      }]);
-
-    if (error) throw error;
-
-    alert("✅ Order details sent to admin!");
-  } catch (error) {
-    console.error("Send to admin error:", error);
-    alert("❌ Failed to send: " + error.message);
   }
-}
 
   function handleCall() { window.location.href = `tel:0430233811`; }
   function handleSMS() { window.location.href = `sms:0430233811`; }
@@ -324,7 +406,7 @@ function DriverDashboardContent() {
             <div className="bg-gradient-to-r from-green-500 to-green-600 p-6 text-white text-center">
               <div className="text-6xl mb-2 animate-pulse">🚚</div>
               <h2 className="text-3xl font-black">NEW JOB ASSIGNED!</h2>
-              <p className="text-sm opacity-90 mt-1">You have a new delivery request</p>
+              <p className="text-sm opacity-90 mt-1">Order {formatOrderNumber(newJobAlert)}</p>
             </div>
             
             <div className="p-6 space-y-4">
@@ -416,7 +498,7 @@ function DriverDashboardContent() {
           </div>
         )}
 
-        {/* Stats Grid */}
+        {/* Stats Grid - UPDATED: Shows hours today and total */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
           <div className="bg-gradient-to-br from-yellow-500 to-orange-500 rounded-2xl p-4 sm:p-5 text-white shadow-lg">
             <p className="text-xs sm:text-sm font-medium opacity-90 mb-1">Pending</p>
@@ -436,10 +518,11 @@ function DriverDashboardContent() {
             <p className="text-xs opacity-75 mt-1">All time</p>
           </div>
           
+          {/* UPDATED: Shows today's hours with total in subtitle */}
           <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-4 sm:p-5 text-white shadow-lg">
-            <p className="text-xs sm:text-sm font-medium opacity-90 mb-1">Hours Worked</p>
-            <p className="text-3xl sm:text-4xl font-black">{stats.hoursWorked.toFixed(1)}</p>
-            <p className="text-xs opacity-75 mt-1">Total hours</p>
+            <p className="text-xs sm:text-sm font-medium opacity-90 mb-1">Hours Today</p>
+            <p className="text-3xl sm:text-4xl font-black">{stats.todayHours.toFixed(1)}</p>
+            <p className="text-xs opacity-75 mt-1">Total: {stats.hoursWorked.toFixed(1)}h</p>
           </div>
         </div>
 
@@ -470,6 +553,10 @@ function DriverDashboardContent() {
             <div className="text-3xl mb-2">⭐</div>
             <p className="text-sm font-bold text-gray-900">Feedback</p>
           </Link>
+          <Link href="/driver/chat" className="bg-white/80 backdrop-blur-sm rounded-xl p-4 shadow-md border border-gray-100 hover:shadow-lg transition text-center">
+            <div className="text-3xl mb-2">💬</div>
+            <p className="text-sm font-bold text-gray-900">Support</p>
+          </Link>
         </div>
 
         {/* Your Orders */}
@@ -485,15 +572,23 @@ function DriverDashboardContent() {
           ) : (
             <div className="space-y-4">
               {orders.filter(o => o.status !== 'delivered').map((order) => (
-                <div key={order.id} onClick={() => setSelectedOrder(order)} className={`border-2 rounded-2xl p-4 sm:p-5 hover:shadow-md transition bg-white cursor-pointer ${order.status === 'pending' ? 'border-red-400 ring-2 ring-red-200' : 'border-gray-200'}`}>
+                <div key={order.id} onClick={() => setSelectedOrder(order)} className={`border-2 rounded-2xl p-4 sm:p-5 hover:shadow-md transition bg-white cursor-pointer ${order.status === 'pending' || order.status === 'assigned' ? 'border-red-400 ring-2 ring-red-200' : 'border-gray-200'}`}>
                   <div className="flex justify-between items-start mb-4">
                     <div>
-                      <p className="text-xs text-gray-500 mb-1">Order #{order.id.slice(0, 8)}</p>
+                      <p className="text-xs text-gray-500 mb-1">Order {formatOrderNumber(order)}</p>
                       <StatusBadge status={order.status} />
                     </div>
-                    {order.status === 'pending' && (
-                      <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-pulse">ACTION REQUIRED</span>
-                    )}
+                    <div className="flex flex-col items-end gap-1">
+                      {(order.status === 'pending' || order.status === 'assigned') && (
+                        <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-pulse">ACTION REQUIRED</span>
+                      )}
+                      {/* NEW: Show when job was started */}
+                      {order.accepted_at && order.status !== 'delivered' && (
+                        <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded-full">
+                          ⏱️ Started {new Date(order.accepted_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="space-y-3 mb-4">
@@ -513,15 +608,15 @@ function DriverDashboardContent() {
                     <span className="bg-gray-100 px-3 py-1 rounded-full">⚡ {order.service_type}</span>
                   </div>
 
-                  {order.status === "pending" || order.driver_status === null ? (
+                  {order.status === "pending" || order.status === "assigned" || order.driver_status === null ? (
                     <div className="space-y-3 sm:space-y-0 sm:flex sm:gap-3">
-                      <button onClick={() => handleAcceptOrder(order.id)} className="w-full sm:flex-1 py-5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-2xl font-black text-lg hover:from-green-600 hover:to-green-700 transition-all shadow-2xl transform hover:scale-105">
+                      <button onClick={(e) => { e.stopPropagation(); handleAcceptOrder(order.id); }} className="w-full sm:flex-1 py-5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-2xl font-black text-lg hover:from-green-600 hover:to-green-700 transition-all shadow-2xl transform hover:scale-105">
                         ✅ ACCEPT JOB
                       </button>
-                      <button onClick={() => handleRejectOrder(order.id)} className="w-full sm:flex-1 py-5 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-2xl font-black text-lg hover:from-red-600 hover:to-red-700 transition-all shadow-2xl transform hover:scale-105">
+                      <button onClick={(e) => { e.stopPropagation(); handleRejectOrder(order.id); }} className="w-full sm:flex-1 py-5 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-2xl font-black text-lg hover:from-red-600 hover:to-red-700 transition-all shadow-2xl transform hover:scale-105">
                         ❌ REJECT JOB
                       </button>
-                      <button onClick={() => handleNavigate(order.pickup_address, order.dropoff_address, order.status)} className="w-full sm:w-auto px-6 py-5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-2xl font-bold text-base hover:from-blue-600 hover:to-blue-700 transition-all shadow-xl">
+                      <button onClick={(e) => { e.stopPropagation(); handleNavigate(order.pickup_address, order.dropoff_address, order.status); }} className="w-full sm:w-auto px-6 py-5 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-2xl font-bold text-base hover:from-blue-600 hover:to-blue-700 transition-all shadow-xl">
                         🗺️ Navigate
                       </button>
                     </div>
@@ -531,16 +626,16 @@ function DriverDashboardContent() {
                     </div>
                   ) : (
                     <div className="space-y-2 sm:space-y-0 sm:flex sm:gap-2">
-                      <Link href={`/driver/orders/${order.id}/proof`} className="block w-full sm:flex-1 py-4 bg-purple-500 text-white rounded-xl font-bold text-base hover:bg-purple-600 transition text-center shadow-lg">
+                      <Link href={`/driver/orders/${order.id}/proof`} className="block w-full sm:flex-1 py-4 bg-purple-500 text-white rounded-xl font-bold text-base hover:bg-purple-600 transition text-center shadow-lg" onClick={(e) => e.stopPropagation()}>
                         📸 Add Proof of Delivery
                       </Link>
-                      <button onClick={() => handleNavigate(order.pickup_address, order.dropoff_address, order.status)} className="w-full sm:w-auto px-6 py-4 bg-blue-500 text-white rounded-xl font-bold text-base hover:bg-blue-600 transition shadow-lg">
+                      <button onClick={(e) => { e.stopPropagation(); handleNavigate(order.pickup_address, order.dropoff_address, order.status); }} className="w-full sm:w-auto px-6 py-4 bg-blue-500 text-white rounded-xl font-bold text-base hover:bg-blue-600 transition shadow-lg">
                         🗺️ Navigate
                       </button>
                     </div>
                   )}
 
-                  <button onClick={() => handleSendToAdmin(order.id)} className="w-full mt-3 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-bold text-sm hover:from-orange-600 hover:to-orange-700 transition shadow-lg">
+                  <button onClick={(e) => { e.stopPropagation(); handleSendToAdmin(order.id); }} className="w-full mt-3 py-3 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-bold text-sm hover:from-orange-600 hover:to-orange-700 transition shadow-lg">
                     📨 Send Order Details to Admin
                   </button>
                 </div>
@@ -567,31 +662,19 @@ function DriverDashboardContent() {
             <div className="space-y-2">
               <button onClick={handleCall} className="w-full flex items-center gap-3 px-4 py-3 bg-green-50 hover:bg-green-100 rounded-xl transition text-left">
                 <span className="text-2xl">📞</span>
-                <div>
-                  <p className="font-bold text-gray-900 text-sm">Call Admin</p>
-                  <p className="text-xs text-gray-600">0430 233 811</p>
-                </div>
+                <div><p className="font-bold text-gray-900 text-sm">Call Admin</p><p className="text-xs text-gray-600">0430 233 811</p></div>
               </button>
               <button onClick={handleSMS} className="w-full flex items-center gap-3 px-4 py-3 bg-blue-50 hover:bg-blue-100 rounded-xl transition text-left">
                 <span className="text-2xl">💬</span>
-                <div>
-                  <p className="font-bold text-gray-900 text-sm">Send SMS</p>
-                  <p className="text-xs text-gray-600">0430 233 811</p>
-                </div>
+                <div><p className="font-bold text-gray-900 text-sm">Send SMS</p><p className="text-xs text-gray-600">0430 233 811</p></div>
               </button>
               <button onClick={handleEmail} className="w-full flex items-center gap-3 px-4 py-3 bg-purple-50 hover:bg-purple-100 rounded-xl transition text-left">
                 <span className="text-2xl">📧</span>
-                <div>
-                  <p className="font-bold text-gray-900 text-sm">Email Admin</p>
-                  <p className="text-xs text-gray-600">macwithavan@mail.com</p>
-                </div>
+                <div><p className="font-bold text-gray-900 text-sm">Email Admin</p><p className="text-xs text-gray-600">macwithavan@mail.com</p></div>
               </button>
               <button onClick={handleWhatsApp} className="w-full flex items-center gap-3 px-4 py-3 bg-green-50 hover:bg-green-100 rounded-xl transition text-left">
                 <span className="text-2xl">📱</span>
-                <div>
-                  <p className="font-bold text-gray-900 text-sm">WhatsApp</p>
-                  <p className="text-xs text-gray-600">0430 233 811</p>
-                </div>
+                <div><p className="font-bold text-gray-900 text-sm">WhatsApp</p><p className="text-xs text-gray-600">0430 233 811</p></div>
               </button>
             </div>
           </div>
@@ -599,8 +682,6 @@ function DriverDashboardContent() {
       )}
 
       {driver && driver.is_on_duty && <DriverLocationTracker driverId={driver.id} />}
-      
-      {/* Live Chat Button */}
       {driver && <DriverLiveChat userId={driver.id} />}
 
       <style jsx global>{`
@@ -609,11 +690,10 @@ function DriverDashboardContent() {
           50% { transform: translate(-50%, -50%) scale(1.05); }
           100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
         }
-        .animate-bounce-in {
-          animation: bounce-in 0.4s ease-out forwards;
-        }
+        .animate-bounce-in { animation: bounce-in 0.4s ease-out forwards; }
       `}</style>
-      {/* Order Details Modal - NO PRICING */}
+      
+      {/* Order Details Modal */}
       {selectedOrder && (
         <>
           <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={() => setSelectedOrder(null)} />
@@ -622,7 +702,7 @@ function DriverDashboardContent() {
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="text-2xl font-black mb-1">Order Details</h3>
-                  <p className="text-sm opacity-90">#{selectedOrder.id?.slice(0, 8).toUpperCase()}</p>
+                  <p className="text-sm opacity-90">{formatOrderNumber(selectedOrder)}</p>
                 </div>
                 <button onClick={() => setSelectedOrder(null)} className="text-white hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-2xl font-bold">×</button>
               </div>
@@ -638,44 +718,33 @@ function DriverDashboardContent() {
                 <p className="text-sm text-gray-900 font-medium">{selectedOrder.dropoff_address}</p>
                 {selectedOrder.dropoff_contact_name && <p className="text-xs text-gray-600 mt-1">Contact: {selectedOrder.dropoff_contact_name} {selectedOrder.dropoff_contact_phone}</p>}
               </div>
-              {/* REMOVED PRICING - Only showing service, weight, distance, size */}
+              {/* NEW: Time tracking display in modal */}
+              {selectedOrder.accepted_at && (
+                <div className="bg-purple-50 rounded-xl p-4">
+                  <p className="text-xs font-bold text-purple-700 mb-1">⏱️ TIME TRACKING</p>
+                  <p className="text-sm text-gray-900">Started: {new Date(selectedOrder.accepted_at).toLocaleString('en-AU')}</p>
+                  {selectedOrder.delivered_at && (
+                    <>
+                      <p className="text-sm text-gray-900">Delivered: {new Date(selectedOrder.delivered_at).toLocaleString('en-AU')}</p>
+                      <p className="text-sm font-bold text-purple-700 mt-1">
+                        Duration: {((new Date(selectedOrder.delivered_at) - new Date(selectedOrder.accepted_at)) / (1000 * 60 * 60)).toFixed(2)} hours
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-xs text-gray-500">Service</p>
-                  <p className="font-bold text-gray-900">{selectedOrder.service_type?.replace(/_/g, ' ')}</p>
-                </div>
-                <div className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-xs text-gray-500">Weight</p>
-                  <p className="font-bold text-gray-900">{selectedOrder.parcel_weight}kg</p>
-                </div>
-                <div className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-xs text-gray-500">Distance</p>
-                  <p className="font-bold text-gray-900">{selectedOrder.distance_km?.toFixed(1)}km</p>
-                </div>
-                <div className="bg-gray-50 rounded-xl p-3">
-                  <p className="text-xs text-gray-500">Size</p>
-                  <p className="font-bold text-gray-900">{selectedOrder.parcel_size}</p>
-                </div>
+                <div className="bg-gray-50 rounded-xl p-3"><p className="text-xs text-gray-500">Service</p><p className="font-bold text-gray-900">{selectedOrder.service_type?.replace(/_/g, ' ')}</p></div>
+                <div className="bg-gray-50 rounded-xl p-3"><p className="text-xs text-gray-500">Weight</p><p className="font-bold text-gray-900">{selectedOrder.parcel_weight}kg</p></div>
+                <div className="bg-gray-50 rounded-xl p-3"><p className="text-xs text-gray-500">Distance</p><p className="font-bold text-gray-900">{selectedOrder.distance_km?.toFixed(1)}km</p></div>
+                <div className="bg-gray-50 rounded-xl p-3"><p className="text-xs text-gray-500">Size</p><p className="font-bold text-gray-900">{selectedOrder.parcel_size}</p></div>
               </div>
               {selectedOrder.notes && (
-                <div className="bg-yellow-50 rounded-xl p-4">
-                  <p className="text-xs font-bold text-yellow-700 mb-1">📝 NOTES</p>
-                  <p className="text-sm text-gray-900">{selectedOrder.notes}</p>
-                </div>
-              )}
-              {selectedOrder.scheduled_date && (
-                <div className="bg-purple-50 rounded-xl p-4">
-                  <p className="text-xs font-bold text-purple-700 mb-1">📅 SCHEDULED</p>
-                  <p className="text-sm text-gray-900">{selectedOrder.scheduled_date} {selectedOrder.scheduled_time}</p>
-                </div>
+                <div className="bg-yellow-50 rounded-xl p-4"><p className="text-xs font-bold text-yellow-700 mb-1">📝 NOTES</p><p className="text-sm text-gray-900">{selectedOrder.notes}</p></div>
               )}
               <div className="flex gap-3 pt-2">
-                <button onClick={() => { handleNavigate(selectedOrder.pickup_address, selectedOrder.dropoff_address, selectedOrder.status); setSelectedOrder(null); }} className="flex-1 py-3 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600 transition">
-                  🗺️ Navigate
-                </button>
-                <button onClick={() => setSelectedOrder(null)} className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 transition">
-                  Close
-                </button>
+                <button onClick={() => { handleNavigate(selectedOrder.pickup_address, selectedOrder.dropoff_address, selectedOrder.status); setSelectedOrder(null); }} className="flex-1 py-3 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600 transition">🗺️ Navigate</button>
+                <button onClick={() => setSelectedOrder(null)} className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 transition">Close</button>
               </div>
             </div>
           </div>

@@ -27,9 +27,14 @@ export async function sendEmail({ to, subject, html }) {
   }
 }
 
+// Helper to get order number with fallback
+function getOrderNumber(order) {
+  return order.order_number ? order.order_number : order.id?.slice(0, 8).toUpperCase();
+}
+
 export const emailTemplates = {
   orderCreated: (order) => ({
-    subject: `Order #${order.id?.slice(0, 8).toUpperCase()} Confirmed - Mac Track`,
+    subject: `Order #${getOrderNumber(order)} Confirmed - Mac Track`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
@@ -41,7 +46,7 @@ export const emailTemplates = {
           <p style="color: #6b7280;">Your delivery order has been received and is being processed.</p>
           
           <div style="background: white; padding: 20px; border-radius: 10px; margin: 20px 0; border: 1px solid #e5e7eb;">
-            <p style="margin: 0 0 10px;"><strong>Order ID:</strong> #${order.id?.slice(0, 8).toUpperCase()}</p>
+            <p style="margin: 0 0 10px;"><strong>Order:</strong> #${getOrderNumber(order)}</p>
             <p style="margin: 0 0 10px;"><strong>Service:</strong> ${order.service_type}</p>
             <p style="margin: 0 0 10px;"><strong>Pickup:</strong> ${order.pickup_address}</p>
             <p style="margin: 0 0 10px;"><strong>Dropoff:</strong> ${order.dropoff_address}</p>
@@ -61,7 +66,7 @@ export const emailTemplates = {
   }),
 
   orderPickedUp: (order) => ({
-    subject: `Your Order is On Its Way! - Mac Track`,
+    subject: `Order #${getOrderNumber(order)} is On Its Way! - Mac Track`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: linear-gradient(135deg, #2563eb, #1d4ed8); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
@@ -72,7 +77,7 @@ export const emailTemplates = {
           <p style="color: #6b7280;">Great news! Your package has been picked up and is on its way.</p>
           
           <div style="background: white; padding: 20px; border-radius: 10px; margin: 20px 0; border: 1px solid #e5e7eb;">
-            <p style="margin: 0 0 10px;"><strong>Order ID:</strong> #${order.id?.slice(0, 8).toUpperCase()}</p>
+            <p style="margin: 0 0 10px;"><strong>Order:</strong> #${getOrderNumber(order)}</p>
             <p style="margin: 0;"><strong>Delivering to:</strong> ${order.dropoff_address}</p>
           </div>
           
@@ -88,7 +93,7 @@ export const emailTemplates = {
   }),
 
   orderDelivered: (order) => ({
-    subject: `Your Order Has Been Delivered! - Mac Track`,
+    subject: `Order #${getOrderNumber(order)} Has Been Delivered! - Mac Track`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: linear-gradient(135deg, #16a34a, #15803d); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
@@ -99,7 +104,7 @@ export const emailTemplates = {
           <p style="color: #6b7280;">Your package has been successfully delivered.</p>
           
           <div style="background: white; padding: 20px; border-radius: 10px; margin: 20px 0; border: 1px solid #e5e7eb;">
-            <p style="margin: 0 0 10px;"><strong>Order ID:</strong> #${order.id?.slice(0, 8).toUpperCase()}</p>
+            <p style="margin: 0 0 10px;"><strong>Order:</strong> #${getOrderNumber(order)}</p>
             <p style="margin: 0;"><strong>Delivered to:</strong> ${order.dropoff_address}</p>
           </div>
           
@@ -117,7 +122,7 @@ export const emailTemplates = {
   }),
 
   driverAssigned: (order, driver) => ({
-    subject: `New Job Assigned - Mac Track`,
+    subject: `New Job Assigned - Order #${getOrderNumber(order)} - Mac Track`,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background: linear-gradient(135deg, #dc2626, #b91c1c); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;">
@@ -126,6 +131,10 @@ export const emailTemplates = {
         <div style="padding: 30px; background: #f9fafb; border: 1px solid #e5e7eb;">
           <h2 style="color: #111827; margin-top: 0;">Hi ${driver.name}!</h2>
           <p style="color: #6b7280;">You have a new delivery assignment. Please accept or reject ASAP.</p>
+          
+          <div style="background: #fef3c7; padding: 15px; border-radius: 10px; margin: 15px 0; border: 2px solid #f59e0b;">
+            <p style="margin: 0; font-size: 18px; font-weight: bold; color: #92400e;">Order #${getOrderNumber(order)}</p>
+          </div>
           
           <div style="background: #dbeafe; padding: 20px; border-radius: 10px; margin: 20px 0; border: 2px solid #3b82f6;">
             <p style="margin: 0 0 5px; font-weight: bold; color: #1e40af;">📍 PICKUP</p>

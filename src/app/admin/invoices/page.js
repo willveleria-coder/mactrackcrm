@@ -32,9 +32,10 @@ export default function AdminInvoicesPage() {
 
   async function loadData() {
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (userError || !user) {
+      const user = session?.user;
+      if (!session) {
         router.push("/admin/login");
         return;
       }
@@ -52,10 +53,10 @@ export default function AdminInvoicesPage() {
 
       setAdmin(adminData);
 
-      // Load invoices
+      // Load invoices with order data to get order_number
       const { data: invoicesData } = await supabase
         .from("invoices")
-        .select("*")
+        .select("*, order:orders(order_number)")
         .order("created_at", { ascending: false });
 
       setInvoices(invoicesData || []);
@@ -146,6 +147,14 @@ const amount = beforeGst; // Base amount without GST
   async function handleLogout() {
     await supabase.auth.signOut();
     router.push("/admin/login");
+  }
+
+  // Helper function to get order number display
+  function getOrderNumber(invoice) {
+    if (invoice.order?.order_number) {
+      return `#${invoice.order.order_number}`;
+    }
+    return `#${invoice.order_id?.slice(0, 8)}`;
   }
 
   if (loading) {
@@ -246,7 +255,7 @@ const amount = beforeGst; // Base amount without GST
                       <div>
                         <p className="text-sm font-mono font-bold text-gray-900">{invoice.invoice_number}</p>
                         <p className="text-xs text-gray-500">{new Date(invoice.created_at).toLocaleDateString()}</p>
-                        <p className="text-xs text-gray-600 mt-1">Order #{invoice.order_id?.slice(0, 8)}</p>
+                        <p className="text-xs text-gray-600 mt-1">Order {getOrderNumber(invoice)}</p>
                       </div>
                       <InvoiceStatusBadge status={invoice.status} />
                     </div>
@@ -293,7 +302,7 @@ const amount = beforeGst; // Base amount without GST
                     <tr>
                       <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">Invoice #</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">Date</th>
-                      <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">Order ID</th>
+                      <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">Order</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">Amount</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">GST</th>
                       <th className="text-left py-4 px-6 text-xs font-bold text-gray-600 uppercase">Total</th>
@@ -312,7 +321,7 @@ const amount = beforeGst; // Base amount without GST
                           {new Date(invoice.created_at).toLocaleDateString()}
                         </td>
                         <td className="py-4 px-6 text-sm font-mono text-gray-600">
-                          #{invoice.order_id?.slice(0, 8)}
+                          {getOrderNumber(invoice)}
                         </td>
                         <td className="py-4 px-6 text-sm text-gray-900">
                           ${Number(invoice.amount).toFixed(2)}
@@ -394,7 +403,7 @@ const amount = beforeGst; // Base amount without GST
                     >
                       <div className="flex justify-between items-center">
                         <div>
-                          <p className="font-bold text-gray-900">Order #{order.id.slice(0, 8)}</p>
+                          <p className="font-bold text-gray-900">Order #{order.order_number || order.id.slice(0, 8)}</p>
                           <p className="text-xs text-gray-500 truncate max-w-xs">
                             {order.pickup_address} → {order.dropoff_address}
                           </p>

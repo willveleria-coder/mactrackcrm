@@ -27,8 +27,9 @@ export default function AdminApprovalsPage() {
 
   async function loadData() {
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError || !user) { router.push("/admin/login"); return; }
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+      if (!session) { router.push("/admin/login"); return; }
 
       const { data: adminData, error: adminError } = await supabase
         .from("admins").select("*").eq("user_id", user.id).single();

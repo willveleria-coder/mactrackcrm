@@ -51,9 +51,10 @@ export default function OrdersHistoryPage() {
 
   async function loadOrders() {
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (userError || !user) {
+      const user = session?.user;
+      if (!session) {
         router.push("/client-portal/login");
         return;
       }

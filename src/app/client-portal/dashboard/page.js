@@ -58,9 +58,10 @@ function ClientDashboardContent() {
 
   async function loadDashboard() {
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (userError || !user) {
+      const user = session?.user;
+      if (!session) {
         router.push("/client-portal/login");
         return;
       }
@@ -116,6 +117,11 @@ function ClientDashboardContent() {
   async function handleLogout() {
     await supabase.auth.signOut();
     router.push("/client-portal/login");
+  }
+
+  // Helper function to format order number
+  function formatOrderNumber(order) {
+    return order.order_number ? `#${order.order_number}` : `#${order.id.slice(0, 8)}`;
   }
 
   if (loading) {
@@ -198,7 +204,7 @@ function ClientDashboardContent() {
                     <div key={order.id} onClick={() => setSelectedOrder(order)} className="p-4 border-2 border-gray-200 rounded-xl hover:border-red-500 transition cursor-pointer bg-white">
                       <div className="flex justify-between items-start mb-3">
                         <div>
-                          <p className="font-bold text-gray-900">Order #{order.id.slice(0, 8)}</p>
+                          <p className="font-bold text-gray-900">Order {formatOrderNumber(order)}</p>
                           <p className="text-xs text-gray-500">{new Date(order.created_at).toLocaleString()}</p>
                         </div>
                         <StatusBadge status={order.status} />
@@ -294,7 +300,7 @@ function ClientDashboardContent() {
                 <div key={order.id} onClick={() => setSelectedOrder(order)} className="p-4 border-2 border-gray-200 rounded-xl hover:border-gray-400 transition cursor-pointer bg-white">
                   <div className="flex justify-between items-start mb-2">
                     <div>
-                      <p className="font-bold text-gray-900">Order #{order.id.slice(0, 8)}</p>
+                      <p className="font-bold text-gray-900">Order {formatOrderNumber(order)}</p>
                       <p className="text-xs text-gray-500">{new Date(order.created_at).toLocaleString()}</p>
                     </div>
                     <div className="text-right">
@@ -330,7 +336,7 @@ function ClientDashboardContent() {
 
       {/* Order Details Modal */}
       {selectedOrder && (
-        <OrderModal order={selectedOrder} onClose={() => setSelectedOrder(null)} theme={theme} />
+        <OrderModal order={selectedOrder} onClose={() => setSelectedOrder(null)} theme={theme} formatOrderNumber={formatOrderNumber} />
       )}
 
       {/* Live Chat Button */}
@@ -379,7 +385,7 @@ function StatusBadge({ status }) {
   );
 }
 
-function OrderModal({ order, onClose, theme }) {
+function OrderModal({ order, onClose, theme, formatOrderNumber }) {
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={onClose} />
@@ -387,7 +393,7 @@ function OrderModal({ order, onClose, theme }) {
         <div className={`bg-gradient-to-r ${theme.gradient} text-white p-6 flex justify-between items-start`}>
           <div>
             <h3 className="text-2xl font-black mb-1">Order Details</h3>
-            <p className="text-sm opacity-90">#{order.id.slice(0, 8)}</p>
+            <p className="text-sm opacity-90">{formatOrderNumber(order)}</p>
           </div>
           <button onClick={onClose} className="text-white hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-2xl font-bold">×</button>
         </div>

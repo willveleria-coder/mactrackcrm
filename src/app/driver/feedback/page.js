@@ -44,8 +44,9 @@ export default function DriverFeedbackPage() {
 
   async function loadFeedback() {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession();
+      const user = session?.user;
+      if (!session) {
         router.push("/driver/login");
         return;
       }

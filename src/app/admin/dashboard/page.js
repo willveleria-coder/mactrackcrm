@@ -39,6 +39,12 @@ function AdminDashboardContent() {
   const router = useRouter();
   const supabase = createClient();
 
+  // Revenue/Pricing lock states
+  const [showRevenue, setShowRevenue] = useState(false);
+  const [showRevenuePasswordModal, setShowRevenuePasswordModal] = useState(false);
+  const [revenuePassword, setRevenuePassword] = useState("");
+  const [savedPassword, setSavedPassword] = useState("pricing"); // Default password
+
   useEffect(() => {
     loadDashboard();
   }, []);
@@ -75,9 +81,10 @@ function AdminDashboardContent() {
 
   async function loadDashboard() {
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
 
-      if (userError || !user) {
+      const user = session?.user;
+      if (!session) {
         router.push("/admin/login");
         return;
       }
@@ -94,6 +101,17 @@ function AdminDashboardContent() {
       }
 
       setAdmin(adminData);
+
+      // Load saved password from settings (synced across pages)
+      const { data: passwordData } = await supabase
+        .from("settings")
+        .select("value")
+        .eq("key", "lock_password")
+        .single();
+      
+      if (passwordData?.value) {
+        setSavedPassword(passwordData.value);
+      }
 
       // Load orders
       const { data: ordersData } = await supabase
@@ -196,7 +214,7 @@ function AdminDashboardContent() {
           activities.push({
             type: 'order',
             icon: order.status === 'delivered' ? '✅' : order.status === 'active' ? '🚚' : '📦',
-            message: `Order #${order.id.slice(0, 8)} ${order.status === 'delivered' ? 'completed' : order.status === 'active' ? 'is in transit' : 'was created'}`,
+            message: `Order #${order.order_number || order.id.slice(0, 8)} ${order.status === 'delivered' ? 'completed' : order.status === 'active' ? 'is in transit' : 'was created'}`,
             time: new Date(order.created_at),
             color: order.status === 'delivered' ? 'text-green-600' : order.status === 'active' ? 'text-blue-600' : 'text-gray-600'
           });
@@ -224,6 +242,16 @@ function AdminDashboardContent() {
       console.error("Error loading dashboard:", error);
     } finally {
       setLoading(false);
+    }
+  }
+
+  function handleUnlockRevenue() {
+    if (revenuePassword === savedPassword) {
+      setShowRevenue(true);
+      setShowRevenuePasswordModal(false);
+      setRevenuePassword("");
+    } else {
+      alert("❌ Incorrect password");
     }
   }
 
@@ -388,6 +416,25 @@ function AdminDashboardContent() {
           </div>
         </div>
 
+        {/* Revenue Lock/Unlock Button */}
+        <div className="mb-4 flex justify-end">
+          {!showRevenue ? (
+            <button
+              onClick={() => setShowRevenuePasswordModal(true)}
+              className="px-4 py-2 bg-yellow-500 text-white rounded-xl font-bold hover:bg-yellow-600 transition flex items-center gap-2 shadow-lg"
+            >
+              🔒 Show Pricing/Revenue
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowRevenue(false)}
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 transition flex items-center gap-2"
+            >
+              🔒 Hide Pricing/Revenue
+            </button>
+          )}
+        </div>
+
         {/* Create Order Banner */}
         <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-2xl p-5 sm:p-6 text-white shadow-lg mb-6 sm:mb-8 hover:shadow-xl transition">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -438,9 +485,14 @@ function AdminDashboardContent() {
             <p className="text-xs opacity-75">Orders</p>
           </div>
 
+          {/* Revenue Card - Hidden/Shown based on lock */}
           <div className="bg-gradient-to-br from-pink-500 to-rose-500 rounded-2xl p-4 sm:p-5 text-white shadow-lg hover:shadow-xl transition transform hover:scale-105">
             <p className="text-xs sm:text-sm font-semibold opacity-90 mb-1">Revenue</p>
-            <p className="text-2xl sm:text-3xl font-black mb-1">${stats.totalRevenue.toFixed(0)}</p>
+            {showRevenue ? (
+              <p className="text-2xl sm:text-3xl font-black mb-1">${stats.totalRevenue.toFixed(0)}</p>
+            ) : (
+              <p className="text-2xl sm:text-3xl font-black mb-1">🔒</p>
+            )}
             <p className="text-xs opacity-75">Total</p>
           </div>
         </div>
@@ -486,10 +538,15 @@ function AdminDashboardContent() {
                     >
                       <div className="flex justify-between items-start mb-2">
                         <div>
-                          <p className="text-sm font-bold text-gray-900">Order #{order.id.slice(0, 8)}</p>
+                          <p className="text-sm font-bold text-gray-900">Order #{order.order_number || order.id.slice(0, 8)}</p>
                           <p className="text-xs text-gray-500">{new Date(order.created_at).toLocaleString()}</p>
                         </div>
-                        <p className="text-base font-black text-green-600">${Number(order.price).toFixed(2)}</p>
+                        {/* Price - Hidden/Shown based on lock */}
+                        {showRevenue ? (
+                          <p className="text-base font-black text-green-600">${Number(order.price).toFixed(2)}</p>
+                        ) : (
+                          <p className="text-base font-black text-gray-400">🔒</p>
+                        )}
                       </div>
                       <div className="space-y-1 text-xs">
                         <div className="flex items-start gap-2">
@@ -569,7 +626,12 @@ function AdminDashboardContent() {
                         <p className="text-xs text-gray-600">{driver.completedOrders} deliveries</p>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="text-base sm:text-lg font-black text-green-600">${driver.revenue.toFixed(0)}</p>
+                        {/* Driver Revenue - Hidden/Shown based on lock */}
+                        {showRevenue ? (
+                          <p className="text-base sm:text-lg font-black text-green-600">${driver.revenue.toFixed(0)}</p>
+                        ) : (
+                          <p className="text-base sm:text-lg font-black text-gray-400">🔒</p>
+                        )}
                         {driver.isOnDuty && (
                           <span className="inline-block w-2 h-2 bg-green-500 rounded-full"></span>
                         )}
@@ -679,14 +741,19 @@ function AdminDashboardContent() {
                   <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
-                        <p className="font-bold text-gray-900">#{order.id.slice(0, 8)}</p>
+                        <p className="font-bold text-gray-900">#{order.order_number || order.id.slice(0, 8)}</p>
                         <StatusBadge status={order.status} />
                       </div>
                       <p className="text-sm text-gray-600 truncate">{order.pickup_address} → {order.dropoff_address}</p>
                       <p className="text-xs text-gray-500 mt-1">{new Date(order.created_at).toLocaleString()}</p>
                     </div>
                     <div className="text-left sm:text-right">
-                      <p className="text-xl font-black text-green-600">${Number(order.price).toFixed(2)}</p>
+                      {/* Order Price - Hidden/Shown based on lock */}
+                      {showRevenue ? (
+                        <p className="text-xl font-black text-green-600">${Number(order.price).toFixed(2)}</p>
+                      ) : (
+                        <p className="text-xl font-black text-gray-400">🔒</p>
+                      )}
                       <p className="text-xs text-gray-500">{order.parcel_size} • {order.service_type}</p>
                     </div>
                   </div>
@@ -696,6 +763,47 @@ function AdminDashboardContent() {
           )}
         </div>
       </main>
+
+      {/* Revenue Password Modal */}
+      {showRevenuePasswordModal && (
+        <>
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-50" 
+            onClick={() => { setShowRevenuePasswordModal(false); setRevenuePassword(""); }} 
+          />
+          <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl shadow-2xl p-6 z-50 w-11/12 max-w-sm">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">🔒 Enter Password</h3>
+            <p className="text-sm text-gray-600 mb-4">Enter password to view pricing and revenue information</p>
+            <input
+              type="password"
+              value={revenuePassword}
+              onChange={(e) => setRevenuePassword(e.target.value)}
+              placeholder="Enter password..."
+              className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl mb-4 focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleUnlockRevenue();
+                }
+              }}
+            />
+            <div className="flex gap-3">
+              <button 
+                onClick={() => { setShowRevenuePasswordModal(false); setRevenuePassword(""); }} 
+                className="flex-1 py-3 bg-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-400 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleUnlockRevenue}
+                className="flex-1 py-3 bg-yellow-500 text-white rounded-xl font-bold hover:bg-yellow-600 transition"
+              >
+                Unlock
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

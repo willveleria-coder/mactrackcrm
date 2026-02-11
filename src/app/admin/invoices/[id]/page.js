@@ -33,9 +33,10 @@ export default function InvoiceDetailPage() {
 
   async function loadInvoice() {
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (userError || !user) {
+      const user = session?.user;
+      if (!session) {
         router.push("/admin/login");
         return;
       }
@@ -86,6 +87,14 @@ export default function InvoiceDetailPage() {
 
   function handlePrint() {
     window.print();
+  }
+
+  // Helper function to get order number display
+  function getOrderNumber() {
+    if (order?.order_number) {
+      return `#${order.order_number}`;
+    }
+    return `#${invoice?.order_id?.slice(0, 8) || '—'}`;
   }
 
   if (loading) {
@@ -219,7 +228,7 @@ export default function InvoiceDetailPage() {
               <div>
                 <p className="text-xs font-bold text-gray-500 uppercase">Order Ref</p>
                 <p className="font-semibold text-gray-900 font-mono">
-                  #{invoice.order_id?.slice(0, 8) || '—'}
+                  {getOrderNumber()}
                 </p>
               </div>
               <div>

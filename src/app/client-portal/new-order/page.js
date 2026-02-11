@@ -8,15 +8,14 @@ import AddressAutocomplete from "@/components/AddressAutocomplete";
 
 export default function NewOrderPage() {
   const router = useRouter();
-  const [bypassTimeCheck, setBypassTimeCheck] = useState(false); // ADDED THIS
+  const [bypassTimeCheck, setBypassTimeCheck] = useState(false);
   
   // Check booking hours on page load
   useEffect(() => {
-    // Check for bypass parameter
     const urlParams = new URLSearchParams(window.location.search);
     const bypass = urlParams.get("bypass");
     if (bypass === "mac123") {
-      setBypassTimeCheck(true); // ADDED THIS
+      setBypassTimeCheck(true);
       return;
     }
     
@@ -33,9 +32,11 @@ export default function NewOrderPage() {
     pickup_address: "",
     pickup_contact_name: "",
     pickup_contact_phone: "",
+    department: "",
     dropoff_address: "",
     dropoff_contact_name: "",
     dropoff_contact_phone: "",
+    dropoff_department: "",
     service_type: "standard",
     scheduled_date: "",
     scheduled_time: "",
@@ -151,9 +152,10 @@ export default function NewOrderPage() {
 
   async function loadClient() {
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (userError || !user) {
+      const user = session?.user;
+      if (!session) {
         router.push("/client-portal/login");
         return;
       }
@@ -495,7 +497,7 @@ export default function NewOrderPage() {
   async function handleSubmit(e) {
     e.preventDefault();
     
-    // Check booking hours ONLY if bypass is not active (UPDATED THIS SECTION)
+    // Check booking hours ONLY if bypass is not active
     if (!bypassTimeCheck) {
       const now = new Date();
       const hour = now.getHours();
@@ -588,6 +590,8 @@ export default function NewOrderPage() {
 
       const orderData = {
         client_id: client.id,
+        department: formData.department || null,
+        dropoff_department: formData.dropoff_department || null,
         pickup_address: formData.pickup_address,
         pickup_contact_name: formData.pickup_contact_name,
         pickup_contact_phone: formData.pickup_contact_phone,
@@ -755,6 +759,7 @@ export default function NewOrderPage() {
               <h3 className="text-xl font-bold text-gray-900 mb-6">📍 Pickup & Delivery Location</h3>
               
               <div className="space-y-6">
+                {/* Pickup Details - Blue Box */}
                 <div className="bg-blue-50 rounded-xl p-4">
                   <h4 className="font-bold text-blue-900 mb-4">Pickup Details</h4>
                   <div className="space-y-4">
@@ -775,6 +780,20 @@ export default function NewOrderPage() {
                   </div>
                 </div>
 
+                {/* Pickup Department / Reference - Purple Box */}
+                <div className="bg-purple-50 rounded-xl p-4">
+                  <h4 className="font-bold text-purple-900 mb-3">🏢 Pickup Department / Reference</h4>
+                  <input
+                    type="text"
+                    name="department"
+                    value={formData.department || ""}
+                    onChange={handleInputChange}
+                    placeholder="Company name, department, or reference (optional)"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
+
+                {/* Delivery Details - Green Box */}
                 <div className="bg-green-50 rounded-xl p-4">
                   <h4 className="font-bold text-green-900 mb-4">Delivery Details</h4>
                   <div className="space-y-4">
@@ -793,6 +812,19 @@ export default function NewOrderPage() {
                       </div>
                     </div>
                   </div>
+                </div>
+
+                {/* Delivery Department / Reference - Purple Box */}
+                <div className="bg-purple-50 rounded-xl p-4">
+                  <h4 className="font-bold text-purple-900 mb-3">🏢 Delivery Department / Reference</h4>
+                  <input
+                    type="text"
+                    name="dropoff_department"
+                    value={formData.dropoff_department || ""}
+                    onChange={handleInputChange}
+                    placeholder="Company name, department, or reference (optional)"
+                    className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
                 </div>
               </div>
 
@@ -1192,11 +1224,13 @@ export default function NewOrderPage() {
                     <p className="font-bold text-gray-700 mb-1">📍 From:</p>
                     <p className="text-gray-900">{formData.pickup_address}</p>
                     <p className="text-gray-600">{formData.pickup_contact_name} • {formData.pickup_contact_phone}</p>
+                    {formData.department && <p className="text-purple-600">🏢 {formData.department}</p>}
                   </div>
                   <div className="pb-3 border-b">
                     <p className="font-bold text-gray-700 mb-1">🎯 To:</p>
                     <p className="text-gray-900">{formData.dropoff_address}</p>
                     <p className="text-gray-600">{formData.dropoff_contact_name} • {formData.dropoff_contact_phone}</p>
+                    {formData.dropoff_department && <p className="text-purple-600">🏢 {formData.dropoff_department}</p>}
                   </div>
                   <div className="pb-3 border-b">
                     <p className="font-bold text-gray-700 mb-1">📦 Items ({items.length}):</p>

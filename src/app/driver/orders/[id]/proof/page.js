@@ -39,9 +39,10 @@ export default function ProofOfDeliveryPage() {
 
   async function loadOrder() {
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (userError || !user) {
+      const user = session?.user;
+      if (!session) {
         router.push("/driver/login");
         return;
       }
@@ -144,85 +145,114 @@ export default function ProofOfDeliveryPage() {
   }
 
   async function handleSubmit(e) {
-    e.preventDefault();
-    setError("");
-    setSubmitting(true);
+  e.preventDefault();
+  setError("");
+  setSubmitting(true);
 
+  try {
+    const imageUrls = [];
+
+    // Upload proof images
+    for (const image of proofImages) {
+      const fileExt = image.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `proof-images/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("order-images")
+        .upload(filePath, image);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("order-images")
+        .getPublicUrl(filePath);
+
+      imageUrls.push(publicUrl);
+    }
+
+    // Upload signature if exists
+    let signatureUrl = null;
+    if (signature) {
+      const base64Data = signature.split(',')[1];
+      const blob = await fetch(signature).then(r => r.blob());
+      const fileName = `signature-${Math.random()}.png`;
+      const filePath = `signatures/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("order-images")
+        .upload(filePath, blob);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("order-images")
+        .getPublicUrl(filePath);
+
+      signatureUrl = publicUrl;
+    }
+
+    // Update order with proof of delivery
+    const { error: updateError } = await supabase
+      .from("orders")
+      .update({
+        status: "delivered",
+        proof_images: imageUrls,
+        signature_url: signatureUrl,
+        anyone_home: anyoneHome,
+        delivery_notes: deliveryNotes,
+        delivered_at: new Date().toISOString(),
+      })
+      .eq("id", params.id);
+
+    if (updateError) throw updateError;
+
+    // Send notification to client
     try {
-      const imageUrls = [];
+      await fetch("/api/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "order_delivered", orderId: params.id })
+      });
+    } catch (e) { console.error("Notification error:", e); }
 
-      // Upload proof images
-      for (const image of proofImages) {
-        const fileExt = image.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
-        const filePath = `proof-images/${fileName}`;
+    // Send SMS to customer - order delivered
+    const customerPhone = order?.walkin_customer_phone || order?.dropoff_contact_phone;
+    const customerName = order?.walkin_customer_name || order?.dropoff_contact_name || '';
+    const orderNumber = order?.order_number || params.id.slice(0, 8).toUpperCase();
+    const trackingLink = `https://mactrackcrm.vercel.app/track/${params.id}`;
 
-        const { error: uploadError } = await supabase.storage
-          .from("order-images")
-          .upload(filePath, image);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from("order-images")
-          .getPublicUrl(filePath);
-
-        imageUrls.push(publicUrl);
-      }
-
-      // Upload signature if exists
-      let signatureUrl = null;
-      if (signature) {
-        const base64Data = signature.split(',')[1];
-        const blob = await fetch(signature).then(r => r.blob());
-        const fileName = `signature-${Math.random()}.png`;
-        const filePath = `signatures/${fileName}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("order-images")
-          .upload(filePath, blob);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from("order-images")
-          .getPublicUrl(filePath);
-
-        signatureUrl = publicUrl;
-      }
-
-      // Update order with proof of delivery
-      const { error: updateError } = await supabase
-        .from("orders")
-        .update({
-          status: "delivered",
-          proof_images: imageUrls,
-          signature_url: signatureUrl,
-          anyone_home: anyoneHome,
-          delivery_notes: deliveryNotes,
-          delivered_at: new Date().toISOString(),
-        })
-        .eq("id", params.id);
-
-      if (updateError) throw updateError;
-      // Send notification to client
+    if (customerPhone) {
       try {
-        await fetch("/api/notify", {
+        await fetch("/api/send-sms", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ type: "order_delivered", orderId: params.id })
-        });
-      } catch (e) { console.error("Notification error:", e); }
+          body: JSON.stringify({
+            to: customerPhone,
+            message: `Hi${customerName ? ' ' + customerName : ''}! Great news - your delivery #${orderNumber} has been delivered! ✅
 
-      alert("✅ Proof of delivery submitted successfully!");
-      router.push("/driver/dashboard");
-    } catch (err) {
-      console.error("Error submitting proof:", err);
-      setError(err.message || "Failed to submit proof");
-    } finally {
-      setSubmitting(false);
+${anyoneHome === 'yes' ? 'Handed to recipient' : anyoneHome === 'neighbor' ? 'Left with neighbor' : anyoneHome === 'office' ? 'Left at building office' : 'Left in safe location'}
+
+View delivery proof:
+${trackingLink}
+
+Thank you for choosing Mac With A Van! 🚐`
+          })
+        });
+      } catch (e) {
+        console.log("Customer SMS error:", e);
+      }
     }
+
+    alert("✅ Proof of delivery submitted successfully!");
+    router.push("/driver/dashboard");
+  } catch (err) {
+    console.error("Error submitting proof:", err);
+    setError(err.message || "Failed to submit proof");
+  } finally {
+    setSubmitting(false);
   }
+}
 
   if (loading) {
     return (

@@ -9,7 +9,7 @@ import { ThemeProvider, useTheme } from "../../../context/ThemeContext";
 function DriverHoursContent() {
   const { theme } = useTheme();
   const [driver, setDriver] = useState(null);
-  const [hoursLog, setHoursLog] = useState([]);
+  const [completedOrders, setCompletedOrders] = useState([]);
   const [payoutRequests, setPaymentRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -18,8 +18,12 @@ function DriverHoursContent() {
   const [payoutNotes, setPaymentNotes] = useState("");
   const [stats, setStats] = useState({
     totalHours: 0,
+    todayHours: 0,
     thisWeekHours: 0,
     thisMonthHours: 0,
+    totalDeliveries: 0,
+    todayDeliveries: 0,
+    weekDeliveries: 0,
     pendingPayment: 0,
     approvedPayment: 0,
   });
@@ -28,6 +32,7 @@ function DriverHoursContent() {
   const [daysUntilNextPayment, setDaysUntilNextPayment] = useState(0);
   const [showBankModal, setShowBankModal] = useState(false);
   const [bankDetails, setBankDetails] = useState({ bsb: "", account_number: "", account_name: "" });
+  const [viewMode, setViewMode] = useState("week"); // "today", "week", "month", "all"
   const router = useRouter();
   const supabase = createClient();
 
@@ -44,11 +49,127 @@ function DriverHoursContent() {
     loadData();
   }, []);
 
+  // Calculate hours for a single order
+  function calculateOrderHours(order) {
+    if (!order.accepted_at || !order.delivered_at) return 0;
+    
+    const acceptedTime = new Date(order.accepted_at);
+    const deliveredTime = new Date(order.delivered_at);
+    const hours = (deliveredTime - acceptedTime) / (1000 * 60 * 60);
+    
+    // Only count positive, reasonable hours (less than 24 hours per order)
+    if (hours > 0 && hours < 24) {
+      return hours;
+    }
+    return 0;
+  }
+
+  // Calculate all hours stats from orders
+  function calculateHoursStats(orders) {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekStart = new Date(todayStart);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Start of week (Sunday)
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    let totalHours = 0;
+    let todayHours = 0;
+    let thisWeekHours = 0;
+    let thisMonthHours = 0;
+    let todayDeliveries = 0;
+    let weekDeliveries = 0;
+
+    orders.forEach(order => {
+      if (order.status === 'delivered' && order.accepted_at && order.delivered_at) {
+        const hours = calculateOrderHours(order);
+        const deliveredTime = new Date(order.delivered_at);
+        
+        totalHours += hours;
+        
+        if (deliveredTime >= todayStart) {
+          todayHours += hours;
+          todayDeliveries++;
+        }
+        
+        if (deliveredTime >= weekStart) {
+          thisWeekHours += hours;
+          weekDeliveries++;
+        }
+        
+        if (deliveredTime >= monthStart) {
+          thisMonthHours += hours;
+        }
+      }
+    });
+
+    return {
+      totalHours,
+      todayHours,
+      thisWeekHours,
+      thisMonthHours,
+      totalDeliveries: orders.filter(o => o.status === 'delivered').length,
+      todayDeliveries,
+      weekDeliveries
+    };
+  }
+
+  // Group orders by date for display
+  function groupOrdersByDate(orders) {
+    const grouped = {};
+    
+    orders.forEach(order => {
+      if (order.status === 'delivered' && order.delivered_at) {
+        const date = new Date(order.delivered_at).toLocaleDateString('en-AU');
+        if (!grouped[date]) {
+          grouped[date] = {
+            date: new Date(order.delivered_at),
+            orders: [],
+            totalHours: 0,
+            deliveryCount: 0
+          };
+        }
+        const hours = calculateOrderHours(order);
+        grouped[date].orders.push({ ...order, calculatedHours: hours });
+        grouped[date].totalHours += hours;
+        grouped[date].deliveryCount++;
+      }
+    });
+
+    // Convert to array and sort by date (newest first)
+    return Object.values(grouped).sort((a, b) => b.date - a.date);
+  }
+
+  // Filter orders based on view mode
+  function getFilteredOrders() {
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekStart = new Date(todayStart);
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    return completedOrders.filter(order => {
+      if (!order.delivered_at) return false;
+      const deliveredTime = new Date(order.delivered_at);
+      
+      switch (viewMode) {
+        case "today":
+          return deliveredTime >= todayStart;
+        case "week":
+          return deliveredTime >= weekStart;
+        case "month":
+          return deliveredTime >= monthStart;
+        default:
+          return true;
+      }
+    });
+  }
+
   async function loadData() {
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
       
-      if (userError || !user) {
+      const user = session?.user;
+      if (!session) {
         router.push("/driver/login");
         return;
       }
@@ -65,7 +186,6 @@ function DriverHoursContent() {
       }
 
       setDriver(driverData);
-      // Load existing bank details
       if (driverData.bank_bsb || driverData.bank_account_number || driverData.bank_account_name) {
         setBankDetails({
           bsb: driverData.bank_bsb || "",
@@ -74,37 +194,27 @@ function DriverHoursContent() {
         });
       }
 
-      // Load hours log
-      const { data: hoursData } = await supabase
-        .from("driver_hours")
+      // Fetch all delivered orders for this driver
+      const { data: ordersData, error: ordersError } = await supabase
+        .from("orders")
         .select("*")
         .eq("driver_id", driverData.id)
-        .order("date", { ascending: false })
-        .limit(30);
+        .eq("status", "delivered")
+        .order("delivered_at", { ascending: false });
 
-      if (hoursData) {
-        setHoursLog(hoursData);
+      if (!ordersError && ordersData) {
+        setCompletedOrders(ordersData);
         
-        // Calculate stats
-        const now = new Date();
-        const weekStart = new Date(now);
-        weekStart.setDate(now.getDate() - now.getDay());
-        weekStart.setHours(0, 0, 0, 0);
+        // Calculate hours from actual order data
+        const hoursStats = calculateHoursStats(ordersData);
         
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        
-        const totalHours = driverData.hours_worked || 0;
-        const thisWeekHours = hoursData
-          .filter(h => new Date(h.date) >= weekStart)
-          .reduce((sum, h) => sum + (h.hours || 0), 0);
-        const thisMonthHours = hoursData
-          .filter(h => new Date(h.date) >= monthStart)
-          .reduce((sum, h) => sum + (h.hours || 0), 0);
-
-        setStats(prev => ({ ...prev, totalHours, thisWeekHours, thisMonthHours }));
+        setStats(prev => ({
+          ...prev,
+          ...hoursStats
+        }));
       }
 
-      // Load payment requests
+      // Fetch payout requests
       const { data: payoutData } = await supabase
         .from("payout_requests")
         .select("*")
@@ -124,27 +234,17 @@ function DriverHoursContent() {
 
         setStats(prev => ({ ...prev, pendingPayment, approvedPayment }));
 
-        // Check 2-week payout restriction
-        if (payoutData.length > 0) {
-          const lastRequest = new Date(payoutData[0].created_at);
-          setLastPaymentDate(lastRequest);
+        // 2-week payout restriction - check last payment
+        const lastPayout = payoutData.find(p => p.status !== "rejected");
+        if (lastPayout) {
+          const lastDate = new Date(lastPayout.created_at);
+          setLastPaymentDate(lastDate);
           
-          const twoWeeksMs = 14 * 24 * 60 * 60 * 1000; // 14 days in milliseconds
-          const now = new Date();
-          const timeSinceLastRequest = now - lastRequest;
-          
-          if (timeSinceLastRequest < twoWeeksMs) {
+          const daysSinceLast = Math.floor((new Date() - lastDate) / (1000 * 60 * 60 * 24));
+          if (daysSinceLast < 14) {
             setCanRequestPayment(false);
-            const daysRemaining = Math.ceil((twoWeeksMs - timeSinceLastRequest) / (24 * 60 * 60 * 1000));
-            setDaysUntilNextPayment(daysRemaining);
-          } else {
-            setCanRequestPayment(true);
-            setDaysUntilNextPayment(0);
+            setDaysUntilNextPayment(14 - daysSinceLast);
           }
-        } else {
-          // No previous requests, can request immediately
-          setCanRequestPayment(true);
-          setDaysUntilNextPayment(0);
         }
       }
 
@@ -161,48 +261,48 @@ function DriverHoursContent() {
   }
 
   async function handlePaymentRequest(e) {
-  e.preventDefault();
-  
-  if (!payoutAmount || parseFloat(payoutAmount) <= 0) {
-    alert("Please enter a valid amount");
-    return;
+    e.preventDefault();
+    
+    if (!payoutAmount || parseFloat(payoutAmount) <= 0) {
+      alert("Please enter a valid amount");
+      return;
+    }
+
+    if (!canRequestPayment) {
+      alert(`You can only request a payment every 2 weeks. Please wait ${daysUntilNextPayment} more day(s).`);
+      return;
+    }
+
+    setSubmitting(true);
+
+    try {
+      const { error } = await supabase
+        .from("payout_requests")
+        .insert([{
+          driver_id: driver.id,
+          amount: parseFloat(payoutAmount),
+          hours_claimed: stats.thisWeekHours,
+          notes: payoutNotes || null,
+          status: "pending",
+          payment_method: "bank_transfer",
+          bank_account_details: `BSB: ${bankDetails.bsb || 'N/A'}\nAccount: ${bankDetails.account_number || 'N/A'}\nName: ${bankDetails.account_name || 'N/A'}`
+        }]);
+
+      if (error) throw error;
+
+      alert("✅ Payment request submitted successfully! Admin will review shortly.");
+      setShowPaymentModal(false);
+      setPaymentAmount("");
+      setPaymentNotes("");
+      loadData();
+    } catch (error) {
+      console.error("Payment request error:", error);
+      alert("Failed to submit payment request: " + error.message);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
-  // Double-check 2-week restriction
-  if (!canRequestPayment) {
-    alert(`You can only request a payment every 2 weeks. Please wait ${daysUntilNextPayment} more day(s).`);
-    return;
-  }
-
-  setSubmitting(true);
-
-  try {
-    const { error } = await supabase
-      .from("payout_requests")
-      .insert([{
-        driver_id: driver.id,
-        amount: parseFloat(payoutAmount),
-        notes: payoutNotes || null,
-        status: "pending",
-        payment_method: "bank_transfer", // ADD THIS
-        requested_at: new Date().toISOString(), // ADD THIS
-        bank_account_details: `BSB: ${bankDetails.bsb || 'N/A'}\nAccount: ${bankDetails.account_number || 'N/A'}\nName: ${bankDetails.account_name || 'N/A'}` // ADD THIS
-      }]);
-
-    if (error) throw error;
-
-    alert("✅ Payment request submitted successfully! Admin will review shortly.");
-    setShowPaymentModal(false);
-    setPaymentAmount("");
-    setPaymentNotes("");
-    loadData();
-  } catch (error) {
-    console.error("Payment request error:", error);
-    alert("Failed to submit payment request: " + error.message);
-  } finally {
-    setSubmitting(false);
-  }
-}
   async function handleSaveBankDetails(e) {
     e.preventDefault();
     if (!bankDetails.bsb || !bankDetails.account_number || !bankDetails.account_name) {
@@ -231,6 +331,23 @@ function DriverHoursContent() {
     }
   }
 
+  // Format duration nicely
+  function formatDuration(hours) {
+    if (hours < 1) {
+      return `${Math.round(hours * 60)}m`;
+    }
+    const h = Math.floor(hours);
+    const m = Math.round((hours - h) * 60);
+    return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  }
+
+  // Format order number
+  function formatOrderNumber(order) {
+    return order.order_number ? `#${order.order_number}` : `#${order.id.slice(0, 8)}`;
+  }
+
+  const groupedOrders = groupOrdersByDate(getFilteredOrders());
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff] flex items-center justify-center">
@@ -242,7 +359,6 @@ function DriverHoursContent() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f0f7ff] via-[#ffffff] to-[#e8f4ff]">
       
-      {/* Navigation */}
       <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 shadow-sm sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between">
@@ -269,7 +385,6 @@ function DriverHoursContent() {
         </div>
       </nav>
 
-      {/* Main Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         
         <div className="mb-6">
@@ -279,28 +394,34 @@ function DriverHoursContent() {
           <p className="text-sm sm:text-base text-gray-600">Track your hours and request payouts</p>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
-          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-4 sm:p-5 text-white shadow-lg">
-            <p className="text-xs sm:text-sm font-medium opacity-90 mb-1">Total Hours</p>
-            <p className="text-3xl sm:text-4xl font-black">{stats.totalHours.toFixed(1)}</p>
-            <p className="text-xs opacity-75 mt-1">All time</p>
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
+          <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-2xl p-4 sm:p-5 text-white shadow-lg">
+            <p className="text-xs sm:text-sm font-medium opacity-90 mb-1">Today</p>
+            <p className="text-3xl sm:text-4xl font-black">{stats.todayHours.toFixed(1)}</p>
+            <p className="text-xs opacity-75 mt-1">{stats.todayDeliveries} deliveries</p>
           </div>
           
           <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 sm:p-5 text-white shadow-lg">
             <p className="text-xs sm:text-sm font-medium opacity-90 mb-1">This Week</p>
             <p className="text-3xl sm:text-4xl font-black">{stats.thisWeekHours.toFixed(1)}</p>
-            <p className="text-xs opacity-75 mt-1">Hours</p>
+            <p className="text-xs opacity-75 mt-1">{stats.weekDeliveries} deliveries</p>
           </div>
           
           <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-2xl p-4 sm:p-5 text-white shadow-lg">
             <p className="text-xs sm:text-sm font-medium opacity-90 mb-1">This Month</p>
             <p className="text-3xl sm:text-4xl font-black">{stats.thisMonthHours.toFixed(1)}</p>
-            <p className="text-xs opacity-75 mt-1">Hours</p>
+            <p className="text-xs opacity-75 mt-1">Hours worked</p>
+          </div>
+          
+          <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-4 sm:p-5 text-white shadow-lg">
+            <p className="text-xs sm:text-sm font-medium opacity-90 mb-1">All Time</p>
+            <p className="text-3xl sm:text-4xl font-black">{stats.totalHours.toFixed(1)}</p>
+            <p className="text-xs opacity-75 mt-1">{stats.totalDeliveries} deliveries</p>
           </div>
         </div>
 
-        {/* Request Payment Button */}
+        {/* Payment Request Banner */}
         <div className={`bg-gradient-to-r ${canRequestPayment ? 'from-green-500 to-green-600' : 'from-gray-400 to-gray-500'} rounded-2xl p-6 mb-6 shadow-xl`}>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div className="text-white">
@@ -333,7 +454,7 @@ function DriverHoursContent() {
           </div>
         </div>
 
-        {/* Payment Status */}
+        {/* Payment Stats */}
         <div className="grid grid-cols-2 gap-4 mb-6">
           <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-5">
             <div className="flex items-center gap-3 mb-2">
@@ -352,49 +473,114 @@ function DriverHoursContent() {
           </div>
         </div>
 
-        {/* Recent Hours Log */}
+        {/* Hours Log - Calculated from Orders */}
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-5 sm:p-6 mb-6">
-          <h3 className="text-xl font-bold text-gray-900 mb-5">📅 Recent Hours</h3>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-5">
+            <h3 className="text-xl font-bold text-gray-900">📅 Hours Breakdown</h3>
+            
+            {/* View Mode Toggle */}
+            <div className="flex gap-2">
+              {[
+                { key: "today", label: "Today" },
+                { key: "week", label: "Week" },
+                { key: "month", label: "Month" },
+                { key: "all", label: "All" },
+              ].map(({ key, label }) => (
+                <button
+                  key={key}
+                  onClick={() => setViewMode(key)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-bold transition ${
+                    viewMode === key
+                      ? "bg-purple-600 text-white"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
           
-          {hoursLog.length === 0 ? (
+          {groupedOrders.length === 0 ? (
             <div className="text-center py-8">
               <div className="text-5xl mb-3">⏱️</div>
-              <p className="text-gray-500 font-semibold">No hours logged yet</p>
-              <p className="text-gray-400 text-sm mt-1">Hours are tracked when you complete deliveries</p>
+              <p className="text-gray-500 font-semibold">No completed deliveries yet</p>
+              <p className="text-gray-400 text-sm mt-1">Hours are tracked from when you accept a job until delivery</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {hoursLog.map((log) => (
-                <div 
-                  key={log.id} 
-                  className="flex justify-between items-center p-4 bg-gray-50 rounded-xl"
-                >
-                  <div>
-                    <p className="font-bold text-gray-900">
-                      {new Date(log.date).toLocaleDateString('en-AU', { 
-                        weekday: 'short', 
-                        day: 'numeric', 
-                        month: 'short' 
-                      })}
-                    </p>
-                    {log.notes && (
-                      <p className="text-xs text-gray-500 mt-1">{log.notes}</p>
-                    )}
+            <div className="space-y-4">
+              {groupedOrders.map((dayGroup, idx) => (
+                <div key={idx} className="border-2 border-gray-100 rounded-xl overflow-hidden">
+                  {/* Day Header */}
+                  <div className="flex justify-between items-center p-4 bg-gray-50">
+                    <div>
+                      <p className="font-bold text-gray-900">
+                        {dayGroup.date.toLocaleDateString('en-AU', { 
+                          weekday: 'long', 
+                          day: 'numeric', 
+                          month: 'short' 
+                        })}
+                      </p>
+                      <p className="text-xs text-gray-500">{dayGroup.deliveryCount} delivery{dayGroup.deliveryCount !== 1 ? 'ies' : ''}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-black text-purple-600">{formatDuration(dayGroup.totalHours)}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xl font-black text-purple-600">{log.hours?.toFixed(1)}h</p>
-                    {log.deliveries && (
-                      <p className="text-xs text-gray-500">{log.deliveries} deliveries</p>
-                    )}
+                  
+                  {/* Individual Orders */}
+                  <div className="divide-y divide-gray-100">
+                    {dayGroup.orders.map((order) => (
+                      <div key={order.id} className="p-4 bg-white hover:bg-gray-50 transition">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-sm font-bold text-gray-900">{formatOrderNumber(order)}</span>
+                              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">✅ Delivered</span>
+                            </div>
+                            <p className="text-xs text-gray-500 truncate">{order.pickup_address?.split(',')[0]} → {order.dropoff_address?.split(',')[0]}</p>
+                            <div className="flex gap-3 mt-2 text-xs text-gray-400">
+                              <span>🕐 Started: {new Date(order.accepted_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}</span>
+                              <span>🏁 Finished: {new Date(order.delivered_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                          </div>
+                          <div className="text-right ml-4">
+                            <p className="text-lg font-black text-purple-600">{formatDuration(order.calculatedHours)}</p>
+                            {order.service_type && (
+                              <p className="text-xs text-gray-400 capitalize">{order.service_type.replace(/_/g, ' ')}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
             </div>
           )}
+          
+          {/* Summary Footer */}
+          {groupedOrders.length > 0 && (
+            <div className="mt-4 p-4 bg-purple-50 rounded-xl border-2 border-purple-200">
+              <div className="flex justify-between items-center">
+                <p className="text-sm font-bold text-purple-700">
+                  {viewMode === "today" ? "Today's" : viewMode === "week" ? "This Week's" : viewMode === "month" ? "This Month's" : "Total"} Summary
+                </p>
+                <div className="text-right">
+                  <p className="text-2xl font-black text-purple-600">
+                    {formatDuration(groupedOrders.reduce((sum, day) => sum + day.totalHours, 0))}
+                  </p>
+                  <p className="text-xs text-purple-500">
+                    {groupedOrders.reduce((sum, day) => sum + day.deliveryCount, 0)} deliveries
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Payment History */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-5 sm:p-6">
+        <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-5 sm:p-6 mb-6">
           <h3 className="text-xl font-bold text-gray-900 mb-5">💳 Payment History</h3>
           
           {payoutRequests.length === 0 ? (
@@ -419,7 +605,7 @@ function DriverHoursContent() {
                       })}
                     </p>
                     {payout.hours_claimed && (
-                      <p className="text-xs text-gray-500 mt-1">{payout.hours_claimed}h claimed</p>
+                      <p className="text-xs text-gray-500 mt-1">{payout.hours_claimed.toFixed(1)}h claimed</p>
                     )}
                   </div>
                   <div className="text-right">
@@ -430,7 +616,9 @@ function DriverHoursContent() {
               ))}
             </div>
           )}
-        {/* Bank Details Section */}
+        </div>
+
+        {/* Bank Details */}
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-100 p-6">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-xl font-bold text-gray-900">🏦 Bank Details</h3>
@@ -465,7 +653,6 @@ function DriverHoursContent() {
             </div>
           )}
         </div>
-        </div>
       </main>
 
       {/* Payment Request Modal */}
@@ -476,7 +663,7 @@ function DriverHoursContent() {
             onClick={() => setShowPaymentModal(false)}
           />
           
-          <div className="fixed inset-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-md bg-white rounded-2xl shadow-2xl z-50 overflow-hidden">
+          <div className="fixed inset-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-md bg-white rounded-2xl shadow-2xl z-50 overflow-hidden max-h-[90vh] overflow-y-auto">
             <div className="bg-gradient-to-r from-green-500 to-green-600 text-white p-6">
               <div className="flex justify-between items-start">
                 <div>
@@ -494,8 +681,16 @@ function DriverHoursContent() {
 
             <form onSubmit={handlePaymentRequest} className="p-6 space-y-4">
               <div className="bg-purple-50 rounded-xl p-4 mb-4">
-                <p className="text-sm text-purple-700 font-semibold">Hours this week</p>
-                <p className="text-3xl font-black text-purple-600">{stats.thisWeekHours.toFixed(1)} hours</p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-purple-700 font-semibold">This Week</p>
+                    <p className="text-2xl font-black text-purple-600">{stats.thisWeekHours.toFixed(1)}h</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-purple-700 font-semibold">Deliveries</p>
+                    <p className="text-2xl font-black text-purple-600">{stats.weekDeliveries}</p>
+                  </div>
+                </div>
               </div>
 
               <div>
@@ -554,6 +749,7 @@ function DriverHoursContent() {
           </div>
         </>
       )}
+
       {/* Bank Details Modal */}
       {showBankModal && (
         <>
@@ -565,7 +761,7 @@ function DriverHoursContent() {
                   <h3 className="text-2xl font-black mb-1">Bank Details</h3>
                   <p className="text-sm opacity-90">Enter your bank account for payments</p>
                 </div>
-                <button onClick={() => setShowBankModal(false)} className="text-white hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-2xl font-bold">x</button>
+                <button onClick={() => setShowBankModal(false)} className="text-white hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-2xl font-bold">×</button>
               </div>
             </div>
             <form onSubmit={handleSaveBankDetails} className="p-6 space-y-4">
