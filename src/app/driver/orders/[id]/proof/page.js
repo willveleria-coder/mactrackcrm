@@ -37,6 +37,12 @@ export default function ProofOfDeliveryPage() {
     }
   }, []);
 
+  // Format order number properly
+  function formatOrderNumber(order) {
+    if (!order) return '';
+    return order.order_number ? `#${order.order_number}` : `#${order.id.slice(0, 8).toUpperCase()}`;
+  }
+
   async function loadOrder() {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -145,91 +151,91 @@ export default function ProofOfDeliveryPage() {
   }
 
   async function handleSubmit(e) {
-  e.preventDefault();
-  setError("");
-  setSubmitting(true);
+    e.preventDefault();
+    setError("");
+    setSubmitting(true);
 
-  try {
-    const imageUrls = [];
-
-    // Upload proof images
-    for (const image of proofImages) {
-      const fileExt = image.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `proof-images/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("order-images")
-        .upload(filePath, image);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from("order-images")
-        .getPublicUrl(filePath);
-
-      imageUrls.push(publicUrl);
-    }
-
-    // Upload signature if exists
-    let signatureUrl = null;
-    if (signature) {
-      const base64Data = signature.split(',')[1];
-      const blob = await fetch(signature).then(r => r.blob());
-      const fileName = `signature-${Math.random()}.png`;
-      const filePath = `signatures/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("order-images")
-        .upload(filePath, blob);
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from("order-images")
-        .getPublicUrl(filePath);
-
-      signatureUrl = publicUrl;
-    }
-
-    // Update order with proof of delivery
-    const { error: updateError } = await supabase
-      .from("orders")
-      .update({
-        status: "delivered",
-        proof_images: imageUrls,
-        signature_url: signatureUrl,
-        anyone_home: anyoneHome,
-        delivery_notes: deliveryNotes,
-        delivered_at: new Date().toISOString(),
-      })
-      .eq("id", params.id);
-
-    if (updateError) throw updateError;
-
-    // Send notification to client
     try {
-      await fetch("/api/notify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "order_delivered", orderId: params.id })
-      });
-    } catch (e) { console.error("Notification error:", e); }
+      const imageUrls = [];
 
-    // Send SMS to customer - order delivered
-    const customerPhone = order?.walkin_customer_phone || order?.dropoff_contact_phone;
-    const customerName = order?.walkin_customer_name || order?.dropoff_contact_name || '';
-    const orderNumber = order?.order_number || params.id.slice(0, 8).toUpperCase();
-    const trackingLink = `https://mactrackcrm.vercel.app/track/${params.id}`;
+      // Upload proof images
+      for (const image of proofImages) {
+        const fileExt = image.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const filePath = `proof-images/${fileName}`;
 
-    if (customerPhone) {
+        const { error: uploadError } = await supabase.storage
+          .from("order-images")
+          .upload(filePath, image);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from("order-images")
+          .getPublicUrl(filePath);
+
+        imageUrls.push(publicUrl);
+      }
+
+      // Upload signature if exists
+      let signatureUrl = null;
+      if (signature) {
+        const base64Data = signature.split(',')[1];
+        const blob = await fetch(signature).then(r => r.blob());
+        const fileName = `signature-${Math.random()}.png`;
+        const filePath = `signatures/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("order-images")
+          .upload(filePath, blob);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from("order-images")
+          .getPublicUrl(filePath);
+
+        signatureUrl = publicUrl;
+      }
+
+      // Update order with proof of delivery
+      const { error: updateError } = await supabase
+        .from("orders")
+        .update({
+          status: "delivered",
+          proof_images: imageUrls,
+          signature_url: signatureUrl,
+          anyone_home: anyoneHome,
+          delivery_notes: deliveryNotes,
+          delivered_at: new Date().toISOString(),
+        })
+        .eq("id", params.id);
+
+      if (updateError) throw updateError;
+
+      // Send notification to client
       try {
-        await fetch("/api/send-sms", {
+        await fetch("/api/notify", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            to: customerPhone,
-            message: `Hi${customerName ? ' ' + customerName : ''}! Great news - your delivery #${orderNumber} has been delivered! ✅
+          body: JSON.stringify({ type: "order_delivered", orderId: params.id })
+        });
+      } catch (e) { console.error("Notification error:", e); }
+
+      // Send SMS to customer - order delivered
+      const customerPhone = order?.walkin_customer_phone || order?.dropoff_contact_phone;
+      const customerName = order?.walkin_customer_name || order?.dropoff_contact_name || '';
+      const orderNumber = order?.order_number || params.id.slice(0, 8).toUpperCase();
+      const trackingLink = `https://mactrackcrm.vercel.app/track/${params.id}`;
+
+      if (customerPhone) {
+        try {
+          await fetch("/api/send-sms", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              to: customerPhone,
+              message: `Hi${customerName ? ' ' + customerName : ''}! Great news - your delivery #${orderNumber} has been delivered! ✅
 
 ${anyoneHome === 'yes' ? 'Handed to recipient' : anyoneHome === 'neighbor' ? 'Left with neighbor' : anyoneHome === 'office' ? 'Left at building office' : 'Left in safe location'}
 
@@ -237,22 +243,22 @@ View delivery proof:
 ${trackingLink}
 
 Thank you for choosing Mac With A Van! 🚐`
-          })
-        });
-      } catch (e) {
-        console.log("Customer SMS error:", e);
+            })
+          });
+        } catch (e) {
+          console.log("Customer SMS error:", e);
+        }
       }
-    }
 
-    alert("✅ Proof of delivery submitted successfully!");
-    router.push("/driver/dashboard");
-  } catch (err) {
-    console.error("Error submitting proof:", err);
-    setError(err.message || "Failed to submit proof");
-  } finally {
-    setSubmitting(false);
+      alert("✅ Proof of delivery submitted successfully!");
+      router.push("/driver/dashboard");
+    } catch (err) {
+      console.error("Error submitting proof:", err);
+      setError(err.message || "Failed to submit proof");
+    } finally {
+      setSubmitting(false);
+    }
   }
-}
 
   if (loading) {
     return (
@@ -301,17 +307,29 @@ Thank you for choosing Mac With A Van! 🚐`
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Order Details</h2>
           <div className="space-y-3">
             <div className="flex justify-between">
-              <span className="text-gray-600">Order ID:</span>
-              <span className="font-semibold">#{order?.id.slice(0, 8)}</span>
+              <span className="text-gray-600">Order:</span>
+              <span className="font-bold text-lg text-[#0072ab]">{formatOrderNumber(order)}</span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between items-start">
               <span className="text-gray-600">Pickup:</span>
-              <span className="font-semibold text-right">{order?.pickup_address}</span>
+              <span className="font-semibold text-right max-w-[65%]">{order?.pickup_address}</span>
             </div>
-            <div className="flex justify-between">
+            <div className="flex justify-between items-start">
               <span className="text-gray-600">Dropoff:</span>
-              <span className="font-semibold text-right">{order?.dropoff_address}</span>
+              <span className="font-semibold text-right max-w-[65%]">{order?.dropoff_address}</span>
             </div>
+            {order?.dropoff_contact_name && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Recipient:</span>
+                <span className="font-semibold">{order.dropoff_contact_name}</span>
+              </div>
+            )}
+            {order?.dropoff_contact_phone && (
+              <div className="flex justify-between">
+                <span className="text-gray-600">Phone:</span>
+                <span className="font-semibold">{order.dropoff_contact_phone}</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -331,7 +349,7 @@ Thank you for choosing Mac With A Van! 🚐`
                 onChange={handleImageChange}
                 className="hidden"
                 id="proof-upload"
-                
+                capture="environment"
               />
               <label htmlFor="proof-upload" className="cursor-pointer">
                 <div className="text-5xl mb-3">📷</div>
@@ -432,7 +450,7 @@ Thank you for choosing Mac With A Van! 🚐`
             disabled={submitting}
             className="w-full py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-black text-lg hover:from-green-600 hover:to-green-700 transition shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {submitting ? "Submitting..." : "✅ Submit Proof of Delivery"}
+            {submitting ? "Submitting..." : `✅ Complete Delivery ${formatOrderNumber(order)}`}
           </button>
         </form>
       </main>

@@ -19,6 +19,12 @@ export default function OrdersHistoryPage() {
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewOrder, setReviewOrder] = useState(null);
+  
+  // Label pagination state
+  const [showLabelModal, setShowLabelModal] = useState(false);
+  const [labelOrder, setLabelOrder] = useState(null);
+  const [labelCount, setLabelCount] = useState(1);
+  
   const router = useRouter();
   const supabase = createClient();
 
@@ -113,7 +119,6 @@ export default function OrdersHistoryPage() {
   }
 
   function getEtaString(order) {
-    // If delivered or cancelled, no ETA needed
     if (order.status === 'delivered' || order.status === 'cancelled') {
       return null;
     }
@@ -178,6 +183,27 @@ export default function OrdersHistoryPage() {
   function closeReviewModal() {
     setShowReviewModal(false);
     setReviewOrder(null);
+  }
+
+  // Label pagination functions
+  function openLabelModal(order) {
+    setLabelOrder(order);
+    setLabelCount(1);
+    setShowLabelModal(true);
+    setShowOrderModal(false);
+  }
+
+  function closeLabelModal() {
+    setShowLabelModal(false);
+    setLabelOrder(null);
+    setLabelCount(1);
+  }
+
+  function handlePrintLabels() {
+    if (labelOrder) {
+      router.push(`/client-portal/orders/${labelOrder.id}/label?count=${labelCount}`);
+      closeLabelModal();
+    }
   }
 
   if (loading) {
@@ -369,7 +395,12 @@ export default function OrdersHistoryPage() {
                           </td>
                           <td className="py-4 px-6 text-sm font-bold text-gray-900 text-right">${Number(order.price).toFixed(2)}</td>
                           <td className="py-4 px-6 text-center">
-                            <span className="text-xs text-gray-500">Click for details</span>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); openLabelModal(order); }}
+                              className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-xs font-semibold transition"
+                            >
+                              🏷️ Labels
+                            </button>
                           </td>
                         </tr>
                       );
@@ -557,13 +588,89 @@ export default function OrdersHistoryPage() {
                     📍 Track Order
                   </Link>
                 )}
-                <Link href={`/client-portal/orders/${selectedOrder.id}/label`} className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold text-center hover:bg-gray-300 transition text-sm sm:text-base" onClick={closeOrderModal}>
-                  🏷️ View Label
-                </Link>
+                <button 
+                  onClick={() => openLabelModal(selectedOrder)} 
+                  className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold text-center hover:bg-gray-300 transition text-sm sm:text-base"
+                >
+                  🏷️ Print Labels
+                </button>
               </div>
               <button onClick={closeOrderModal} className="w-full mt-3 py-3 bg-white border-2 border-gray-300 text-gray-700 rounded-xl font-bold hover:bg-gray-50 transition">
                 Close
               </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Label Pagination Modal */}
+      {showLabelModal && labelOrder && (
+        <>
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50" onClick={closeLabelModal} />
+          <div className="fixed inset-4 sm:inset-auto sm:top-1/2 sm:left-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-full sm:max-w-md bg-white rounded-2xl shadow-2xl z-50 overflow-hidden">
+            <div className="bg-gradient-to-r from-gray-700 to-gray-800 text-white p-6">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h3 className="text-xl font-black mb-1">🏷️ Print Labels</h3>
+                  <p className="text-sm opacity-90">
+                    {labelOrder.order_number ? `Order #${labelOrder.order_number}` : `Order #${labelOrder.id.slice(0, 8).toUpperCase()}`}
+                  </p>
+                </div>
+                <button onClick={closeLabelModal} className="text-white hover:bg-white/20 rounded-full w-8 h-8 flex items-center justify-center text-2xl font-bold transition">×</button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              <p className="text-sm text-gray-600 mb-4">How many labels do you need to print?</p>
+              
+              {/* Quick Select Buttons */}
+              <div className="grid grid-cols-5 gap-2 mb-4">
+                {[1, 2, 3, 5, 10].map((num) => (
+                  <button
+                    key={num}
+                    onClick={() => setLabelCount(num)}
+                    className={`py-3 rounded-xl font-bold text-lg transition ${
+                      labelCount === num 
+                        ? 'bg-red-600 text-white' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {num}
+                  </button>
+                ))}
+              </div>
+
+              {/* Custom Input */}
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Or enter custom amount:</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={labelCount}
+                  onChange={(e) => setLabelCount(Math.max(1, Math.min(100, parseInt(e.target.value) || 1)))}
+                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl text-center text-2xl font-bold focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Preview */}
+              <div className="bg-gray-50 rounded-xl p-4 mb-6">
+                <p className="text-sm text-gray-600">This will print:</p>
+                <p className="text-lg font-bold text-gray-900">
+                  {labelCount} label{labelCount > 1 ? 's' : ''} 
+                  {labelCount > 1 && <span className="text-gray-500 font-normal"> (1/{labelCount}, 2/{labelCount}, ... {labelCount}/{labelCount})</span>}
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <button onClick={closeLabelModal} className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-xl font-bold hover:bg-gray-300 transition">
+                  Cancel
+                </button>
+                <button onClick={handlePrintLabels} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition">
+                  🖨️ Print {labelCount} Label{labelCount > 1 ? 's' : ''}
+                </button>
+              </div>
             </div>
           </div>
         </>

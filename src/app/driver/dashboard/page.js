@@ -50,7 +50,7 @@ function DriverDashboardContent() {
           if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
             const newOrder = payload.new;
             const wasAlreadyAssigned = previousOrdersRef.current.some(o => o.id === newOrder.id);
-            if (!wasAlreadyAssigned && newOrder.status === 'pending') {
+            if (!wasAlreadyAssigned && (newOrder.status === 'pending' || newOrder.status === 'assigned')) {
               triggerNewJobAlert(newOrder);
             }
           }
@@ -95,7 +95,7 @@ function DriverDashboardContent() {
     }
   }, []);
 
-  // NEW: Calculate hours worked from accepted_at to delivered_at
+  // Calculate hours worked from accepted_at to delivered_at
   function calculateHoursWorked(ordersData) {
     let totalHours = 0;
     let todayHours = 0;
@@ -104,25 +104,21 @@ function DriverDashboardContent() {
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const weekStart = new Date(todayStart);
-    weekStart.setDate(weekStart.getDate() - weekStart.getDay()); // Start of week (Sunday)
+    weekStart.setDate(weekStart.getDate() - weekStart.getDay());
 
     ordersData.forEach(order => {
-      // Only count delivered orders with both timestamps
       if (order.status === 'delivered' && order.accepted_at && order.delivered_at) {
         const acceptedTime = new Date(order.accepted_at);
         const deliveredTime = new Date(order.delivered_at);
-        const hoursForOrder = (deliveredTime - acceptedTime) / (1000 * 60 * 60); // Convert ms to hours
+        const hoursForOrder = (deliveredTime - acceptedTime) / (1000 * 60 * 60);
         
-        // Only count positive, reasonable hours (less than 24 hours per order)
         if (hoursForOrder > 0 && hoursForOrder < 24) {
           totalHours += hoursForOrder;
           
-          // Check if delivered today
           if (deliveredTime >= todayStart) {
             todayHours += hoursForOrder;
           }
           
-          // Check if delivered this week
           if (deliveredTime >= weekStart) {
             weekHours += hoursForOrder;
           }
@@ -154,7 +150,6 @@ function DriverDashboardContent() {
         return;
       }
       
-      // Check if driver is approved
       if (!driverData.is_approved) {
         router.push("/driver/pending-approval");
         return;
@@ -171,7 +166,8 @@ function DriverDashboardContent() {
       if (!ordersError && ordersData) {
         if (previousOrdersRef.current.length > 0) {
           const newOrders = ordersData.filter(
-            newOrder => !previousOrdersRef.current.some(oldOrder => oldOrder.id === newOrder.id) && newOrder.status === 'pending'
+            newOrder => !previousOrdersRef.current.some(oldOrder => oldOrder.id === newOrder.id) && 
+            (newOrder.status === 'pending' || newOrder.status === 'assigned')
           );
           if (newOrders.length > 0) {
             triggerNewJobAlert(newOrders[0]);
@@ -181,12 +177,11 @@ function DriverDashboardContent() {
         previousOrdersRef.current = ordersData;
         setOrders(ordersData);
         
-        const assigned = ordersData.filter(o => o.status === "pending" || o.status === "active" || o.status === "in_transit").length;
+        const assigned = ordersData.filter(o => ['pending', 'assigned', 'active', 'in_transit', 'picked_up'].includes(o.status)).length;
         const pending = ordersData.filter(o => o.status === "pending" || o.status === "assigned").length;
-        const active = ordersData.filter(o => o.status === "active" || o.status === "in_transit" || o.status === "picked_up").length;
+        const active = ordersData.filter(o => ['active', 'in_transit', 'picked_up'].includes(o.status)).length;
         const completed = ordersData.filter(o => o.status === "delivered").length;
         
-        // NEW: Calculate hours from actual order times instead of static field
         const { totalHours, todayHours, weekHours } = calculateHoursWorked(ordersData);
         
         setStats({ 
@@ -231,7 +226,7 @@ function DriverDashboardContent() {
     return order.order_number ? `#${order.order_number}` : `#${order.id.slice(0, 8)}`;
   }
 
-  // UPDATED: Record accepted_at timestamp when driver accepts
+  // Accept order and record accepted_at
   async function handleAcceptOrder(orderId) {
     try {
       const order = orders.find(o => o.id === orderId);
@@ -241,13 +236,12 @@ function DriverDashboardContent() {
         .update({ 
           status: "in_transit", 
           driver_status: "accepted",
-          accepted_at: new Date().toISOString() // NEW: Record when driver accepted
+          accepted_at: new Date().toISOString()
         })
         .eq("id", orderId);
 
       if (error) throw error;
 
-      // Send notification to client
       try {
         await fetch("/api/notify", {
           method: "POST",
@@ -256,7 +250,6 @@ function DriverDashboardContent() {
         });
       } catch (e) { console.error("Notification error:", e); }
 
-      // Send SMS to customer
       const customerPhone = order?.walkin_customer_phone || order?.dropoff_contact_phone;
       const customerName = order?.walkin_customer_name || order?.dropoff_contact_name || '';
       const orderNumber = order?.order_number || orderId.slice(0, 8).toUpperCase();
@@ -269,7 +262,7 @@ function DriverDashboardContent() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               to: customerPhone,
-              message: `Hi${customerName ? ' ' + customerName : ''}! Your delivery #${orderNumber} is now in transit with ${driver?.name || 'your driver'}.\n\nTrack live here:\n${trackingLink}\n\n- Mac With A Van 🚐`
+              message: `Hi${customerName ? ' ' + customerName : ''}! Great news - a driver has accepted your delivery #${orderNumber} and is on the way to collect your package! 🚚\n\nDriver: ${driver?.name || 'Your driver'}\n\nTrack live here:\n${trackingLink}\n\n- Mac With A Van 🚐`
             })
           });
         } catch (e) {
@@ -284,6 +277,66 @@ function DriverDashboardContent() {
     } catch (error) {
       console.error("Accept error:", error);
       alert("Failed to accept order: " + error.message);
+    }
+  }
+
+  // Mark order as picked up
+  async function handleMarkPickedUp(orderId) {
+    try {
+      const order = orders.find(o => o.id === orderId);
+      
+      const { error } = await supabase
+        .from("orders")
+        .update({ 
+          status: "picked_up",
+          picked_up_at: new Date().toISOString()
+        })
+        .eq("id", orderId);
+
+      if (error) throw error;
+
+      const customerPhone = order?.walkin_customer_phone || order?.dropoff_contact_phone;
+      const customerName = order?.walkin_customer_name || order?.dropoff_contact_name || '';
+      const orderNumber = order?.order_number || orderId.slice(0, 8).toUpperCase();
+      const trackingLink = `https://mactrackcrm.vercel.app/track/${orderId}`;
+
+      if (customerPhone) {
+        try {
+          await fetch("/api/send-sms", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              to: customerPhone,
+              message: `Hi${customerName ? ' ' + customerName : ''}! Your package #${orderNumber} has been picked up and is on its way! 📦\n\nTrack live here:\n${trackingLink}\n\n- Mac With A Van 🚐`
+            })
+          });
+        } catch (e) {
+          console.log("Customer SMS error:", e);
+        }
+      }
+
+      loadDashboard();
+      alert("✅ Order marked as picked up!");
+    } catch (error) {
+      console.error("Pickup error:", error);
+      alert("Failed to update order: " + error.message);
+    }
+  }
+
+  // Mark order as in transit (after pickup)
+  async function handleMarkInTransit(orderId) {
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ status: "in_transit" })
+        .eq("id", orderId);
+
+      if (error) throw error;
+      loadDashboard();
+      alert("✅ Order marked as in transit!");
+    } catch (error) {
+      console.error("Transit error:", error);
+      alert("Failed to update order: " + error.message);
     }
   }
 
@@ -369,7 +422,8 @@ function DriverDashboardContent() {
   function handleWhatsApp() { window.open(`https://wa.me/61430233811`, '_blank'); }
 
   function handleNavigate(pickupAddress, dropoffAddress, orderStatus) {
-    const destination = orderStatus === "pending" ? pickupAddress : dropoffAddress;
+    // Navigate to pickup for pending/assigned/in_transit, to dropoff for picked_up
+    const destination = ['pending', 'assigned', 'in_transit', 'active'].includes(orderStatus) ? pickupAddress : dropoffAddress;
     const encodedDestination = encodeURIComponent(destination);
     window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodedDestination}&travelmode=driving`, '_blank');
   }
@@ -475,7 +529,6 @@ function DriverDashboardContent() {
           <p className="text-sm sm:text-base text-gray-600">Here&apos;s your delivery overview</p>
         </div>
 
-        {/* Push Notifications Manager */}
         {driver && (
           <div className="mb-6">
             <PushNotificationManager userId={driver.id} userType="driver" />
@@ -498,7 +551,7 @@ function DriverDashboardContent() {
           </div>
         )}
 
-        {/* Stats Grid - UPDATED: Shows hours today and total */}
+        {/* Stats Grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mb-6">
           <div className="bg-gradient-to-br from-yellow-500 to-orange-500 rounded-2xl p-4 sm:p-5 text-white shadow-lg">
             <p className="text-xs sm:text-sm font-medium opacity-90 mb-1">Pending</p>
@@ -518,7 +571,6 @@ function DriverDashboardContent() {
             <p className="text-xs opacity-75 mt-1">All time</p>
           </div>
           
-          {/* UPDATED: Shows today's hours with total in subtitle */}
           <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-4 sm:p-5 text-white shadow-lg">
             <p className="text-xs sm:text-sm font-medium opacity-90 mb-1">Hours Today</p>
             <p className="text-3xl sm:text-4xl font-black">{stats.todayHours.toFixed(1)}</p>
@@ -571,19 +623,18 @@ function DriverDashboardContent() {
             </div>
           ) : (
             <div className="space-y-4">
-              {orders.filter(o => o.status !== 'delivered').map((order) => (
-                <div key={order.id} onClick={() => setSelectedOrder(order)} className={`border-2 rounded-2xl p-4 sm:p-5 hover:shadow-md transition bg-white cursor-pointer ${order.status === 'pending' || order.status === 'assigned' ? 'border-red-400 ring-2 ring-red-200' : 'border-gray-200'}`}>
+              {orders.filter(o => !['delivered', 'cancelled', 'failed'].includes(o.status)).map((order) => (
+                <div key={order.id} onClick={() => setSelectedOrder(order)} className={`border-2 rounded-2xl p-4 sm:p-5 hover:shadow-md transition bg-white cursor-pointer ${['pending', 'assigned'].includes(order.status) ? 'border-red-400 ring-2 ring-red-200' : order.status === 'picked_up' ? 'border-orange-400 ring-2 ring-orange-200' : 'border-gray-200'}`}>
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <p className="text-xs text-gray-500 mb-1">Order {formatOrderNumber(order)}</p>
                       <StatusBadge status={order.status} />
                     </div>
                     <div className="flex flex-col items-end gap-1">
-                      {(order.status === 'pending' || order.status === 'assigned') && (
+                      {['pending', 'assigned'].includes(order.status) && (
                         <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-pulse">ACTION REQUIRED</span>
                       )}
-                      {/* NEW: Show when job was started */}
-                      {order.accepted_at && order.status !== 'delivered' && (
+                      {order.accepted_at && !['delivered', 'pending', 'assigned'].includes(order.status) && (
                         <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded-full">
                           ⏱️ Started {new Date(order.accepted_at).toLocaleTimeString('en-AU', { hour: '2-digit', minute: '2-digit' })}
                         </span>
@@ -592,12 +643,12 @@ function DriverDashboardContent() {
                   </div>
 
                   <div className="space-y-3 mb-4">
-                    <div className="bg-blue-50 rounded-xl p-3">
-                      <p className="text-xs font-bold text-blue-700 mb-1">📍 PICKUP</p>
+                    <div className={`rounded-xl p-3 ${order.status === 'picked_up' ? 'bg-green-50 border-2 border-green-200' : 'bg-blue-50'}`}>
+                      <p className="text-xs font-bold text-blue-700 mb-1">📍 PICKUP {order.status === 'picked_up' && <span className="text-green-600">✓ DONE</span>}</p>
                       <p className="text-sm text-gray-900 font-medium leading-snug">{order.pickup_address}</p>
                     </div>
-                    <div className="bg-green-50 rounded-xl p-3">
-                      <p className="text-xs font-bold text-green-700 mb-1">🎯 DROPOFF</p>
+                    <div className={`rounded-xl p-3 ${order.status === 'picked_up' ? 'bg-orange-50 border-2 border-orange-300' : 'bg-green-50'}`}>
+                      <p className="text-xs font-bold text-green-700 mb-1">🎯 DROPOFF {order.status === 'picked_up' && <span className="text-orange-600">← NEXT</span>}</p>
                       <p className="text-sm text-gray-900 font-medium leading-snug">{order.dropoff_address}</p>
                     </div>
                   </div>
@@ -608,7 +659,9 @@ function DriverDashboardContent() {
                     <span className="bg-gray-100 px-3 py-1 rounded-full">⚡ {order.service_type}</span>
                   </div>
 
-                  {order.status === "pending" || order.status === "assigned" || order.driver_status === null ? (
+                  {/* Dynamic Action Buttons Based on Status */}
+                  {['pending', 'assigned'].includes(order.status) || order.driver_status === null ? (
+                    // PENDING/ASSIGNED - Show Accept/Reject
                     <div className="space-y-3 sm:space-y-0 sm:flex sm:gap-3">
                       <button onClick={(e) => { e.stopPropagation(); handleAcceptOrder(order.id); }} className="w-full sm:flex-1 py-5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-2xl font-black text-lg hover:from-green-600 hover:to-green-700 transition-all shadow-2xl transform hover:scale-105">
                         ✅ ACCEPT JOB
@@ -620,11 +673,28 @@ function DriverDashboardContent() {
                         🗺️ Navigate
                       </button>
                     </div>
-                  ) : order.status === "delivered" ? (
-                    <div className="bg-green-50 border-2 border-green-200 rounded-xl p-4 text-center">
-                      <p className="text-base font-bold text-green-700">✅ Delivered Successfully</p>
+                  ) : ['in_transit', 'active'].includes(order.status) ? (
+                    // IN TRANSIT - Show Mark Picked Up
+                    <div className="space-y-2 sm:space-y-0 sm:flex sm:gap-2">
+                      <button onClick={(e) => { e.stopPropagation(); handleMarkPickedUp(order.id); }} className="w-full sm:flex-1 py-4 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-xl font-bold text-base hover:from-orange-600 hover:to-orange-700 transition shadow-lg">
+                        📦 Mark as Picked Up
+                      </button>
+                      <button onClick={(e) => { e.stopPropagation(); handleNavigate(order.pickup_address, order.dropoff_address, order.status); }} className="w-full sm:w-auto px-6 py-4 bg-blue-500 text-white rounded-xl font-bold text-base hover:bg-blue-600 transition shadow-lg">
+                        🗺️ Navigate to Pickup
+                      </button>
+                    </div>
+                  ) : order.status === 'picked_up' ? (
+                    // PICKED UP - Show Complete Delivery
+                    <div className="space-y-2 sm:space-y-0 sm:flex sm:gap-2">
+                      <Link href={`/driver/orders/${order.id}/proof`} className="block w-full sm:flex-1 py-4 bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-xl font-bold text-base hover:from-purple-600 hover:to-purple-700 transition text-center shadow-lg" onClick={(e) => e.stopPropagation()}>
+                        📸 Complete Delivery
+                      </Link>
+                      <button onClick={(e) => { e.stopPropagation(); handleNavigate(order.pickup_address, order.dropoff_address, 'picked_up'); }} className="w-full sm:w-auto px-6 py-4 bg-green-500 text-white rounded-xl font-bold text-base hover:bg-green-600 transition shadow-lg">
+                        🗺️ Navigate to Dropoff
+                      </button>
                     </div>
                   ) : (
+                    // DEFAULT
                     <div className="space-y-2 sm:space-y-0 sm:flex sm:gap-2">
                       <Link href={`/driver/orders/${order.id}/proof`} className="block w-full sm:flex-1 py-4 bg-purple-500 text-white rounded-xl font-bold text-base hover:bg-purple-600 transition text-center shadow-lg" onClick={(e) => e.stopPropagation()}>
                         📸 Add Proof of Delivery
@@ -708,6 +778,9 @@ function DriverDashboardContent() {
               </div>
             </div>
             <div className="p-6 space-y-4">
+              <div className="flex justify-center mb-2">
+                <StatusBadge status={selectedOrder.status} />
+              </div>
               <div className="bg-blue-50 rounded-xl p-4">
                 <p className="text-xs font-bold text-blue-700 mb-1">📍 PICKUP</p>
                 <p className="text-sm text-gray-900 font-medium">{selectedOrder.pickup_address}</p>
@@ -718,11 +791,13 @@ function DriverDashboardContent() {
                 <p className="text-sm text-gray-900 font-medium">{selectedOrder.dropoff_address}</p>
                 {selectedOrder.dropoff_contact_name && <p className="text-xs text-gray-600 mt-1">Contact: {selectedOrder.dropoff_contact_name} {selectedOrder.dropoff_contact_phone}</p>}
               </div>
-              {/* NEW: Time tracking display in modal */}
               {selectedOrder.accepted_at && (
                 <div className="bg-purple-50 rounded-xl p-4">
                   <p className="text-xs font-bold text-purple-700 mb-1">⏱️ TIME TRACKING</p>
                   <p className="text-sm text-gray-900">Started: {new Date(selectedOrder.accepted_at).toLocaleString('en-AU')}</p>
+                  {selectedOrder.picked_up_at && (
+                    <p className="text-sm text-gray-900">Picked Up: {new Date(selectedOrder.picked_up_at).toLocaleString('en-AU')}</p>
+                  )}
                   {selectedOrder.delivered_at && (
                     <>
                       <p className="text-sm text-gray-900">Delivered: {new Date(selectedOrder.delivered_at).toLocaleString('en-AU')}</p>
@@ -761,7 +836,7 @@ function StatusBadge({ status }) {
     confirmed: "bg-blue-100 text-blue-700 border-blue-300",
     assigned: "bg-purple-100 text-purple-700 border-purple-300",
     active: "bg-blue-100 text-blue-700 border-blue-300",
-    picked_up: "bg-indigo-100 text-indigo-700 border-indigo-300",
+    picked_up: "bg-orange-100 text-orange-700 border-orange-300",
     in_transit: "bg-blue-100 text-blue-700 border-blue-300",
     delivered: "bg-green-100 text-green-700 border-green-300",
     cancelled: "bg-red-100 text-red-700 border-red-300",

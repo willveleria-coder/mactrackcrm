@@ -1,111 +1,96 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useRouter, useParams } from "next/navigation";
-import { createClient } from "../../../../../lib/supabase/client";
-import Image from "next/image";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import ShippingLabel from "@/components/ShippingLabel";
 
-export default function LabelPage() {
+export default function ClientLabelPage() {
   const params = useParams();
-  const orderId = params.id;
-  
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [order, setOrder] = useState(null);
   const [client, setClient] = useState(null);
-  const [notes, setNotes] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [saveMessage, setSaveMessage] = useState("");
   const [loading, setLoading] = useState(true);
-  const router = useRouter();
+  const [error, setError] = useState(null);
   const supabase = createClient();
 
+  // Get label count from URL params (default to 1)
+  const labelCount = parseInt(searchParams.get('count')) || 1;
+
   useEffect(() => {
-    if (orderId) {
-      loadOrder();
-    }
-  }, [orderId]);
+    loadOrder();
+  }, []);
 
   async function loadOrder() {
     try {
+      // Check if user is logged in
       const { data: { session } } = await supabase.auth.getSession();
       
-      const user = session?.user;
       if (!session) {
         router.push("/client-portal/login");
         return;
       }
 
+      // Get client data
       const { data: clientData, error: clientError } = await supabase
         .from("clients")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", session.user.id)
         .single();
 
       if (clientError || !clientData) {
-        router.push("/client-portal/login");
+        setError("Client not found");
+        setLoading(false);
         return;
       }
 
       setClient(clientData);
 
-      const { data: orderData, error: orderError } = await supabase
+      // Fetch the order
+      const { data, error: orderError } = await supabase
         .from("orders")
         .select("*")
-        .eq("id", orderId)
-        .eq("client_id", clientData.id)
+        .eq("id", params.id)
         .single();
 
-      if (orderError || !orderData) {
-        router.push("/client-portal/orders");
+      if (orderError || !data) {
+        console.error("Order fetch error:", orderError);
+        setError("Order not found");
+        setLoading(false);
         return;
       }
 
-      setOrder(orderData);
-      setNotes(orderData.notes || "");
-    } catch (error) {
-      console.error("Error loading order:", error);
+      setOrder(data);
+    } catch (err) {
+      console.error("Error loading order:", err);
+      setError("Failed to load order");
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleSaveNotes() {
-    setSaving(true);
-    setSaveMessage("");
-
-    try {
-      const { error } = await supabase
-        .from("orders")
-        .update({ notes: notes })
-        .eq("id", orderId);
-
-      if (error) throw error;
-
-      // Update local order state
-      setOrder(prev => ({ ...prev, notes: notes }));
-      setSaveMessage("✅ Notes saved successfully!");
-      setTimeout(() => setSaveMessage(""), 3000);
-    } catch (error) {
-      console.error("Error saving notes:", error);
-      setSaveMessage("❌ Failed to save notes");
-    } finally {
-      setSaving(false);
-    }
+  function formatOrderNumber(order) {
+    return order?.order_number ? `#${order.order_number}` : `#${order?.id?.slice(0, 8).toUpperCase()}`;
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-600 text-lg">Loading label...</div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <div className="text-4xl mb-4">🏷️</div>
+          <p className="text-gray-600">Loading labels...</p>
+        </div>
       </div>
     );
   }
 
-  if (!order) {
+  if (error || !order) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-6xl mb-4">📦</div>
-          <div className="text-gray-600 text-lg mb-4">Order not found</div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-center bg-white rounded-2xl shadow-lg p-8 max-w-md">
+          <div className="text-6xl mb-4">⚠️</div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Order Not Found</h2>
+          <p className="text-gray-600 mb-6">{error || "This order doesn't exist or you don't have access to it."}</p>
           <button
             onClick={() => router.push("/client-portal/orders")}
             className="px-6 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition"
@@ -117,89 +102,91 @@ export default function LabelPage() {
     );
   }
 
+  // Generate array of label numbers
+  const labels = Array.from({ length: labelCount }, (_, i) => i + 1);
+
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Navigation - Hidden when printing */}
-      <nav className="bg-white border-b border-gray-200 shadow-sm print:hidden">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Image 
-                src="/bus-icon.png" 
-                alt="Mac Track" 
-                width={40} 
-                height={40}
-                className="object-contain"
-              />
-              <div>
-                <h1 className="text-xl sm:text-2xl font-black text-red-600">Mac Track</h1>
-                <p className="text-xs text-gray-500">Shipping Label</p>
-              </div>
-            </div>
+      {/* Print Controls - Hidden when printing */}
+      <div className="no-print bg-white border-b border-gray-200 p-4 sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto flex justify-between items-center">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Shipping Labels</h1>
+            <p className="text-sm text-gray-600">
+              Order {formatOrderNumber(order)} • {labelCount} label{labelCount > 1 ? 's' : ''}
+            </p>
+          </div>
+          <div className="flex gap-3">
             <button
               onClick={() => router.push("/client-portal/orders")}
-              className="text-sm font-semibold text-gray-700 hover:text-red-600"
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition"
             >
-              ← Back to Orders
+              ← Back
             </button>
-          </div>
-        </div>
-      </nav>
-
-      <main className="max-w-4xl mx-auto px-4 py-8">
-        {/* Notes Section - Only show when NOT printing */}
-        <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-6 mb-8 print:hidden">
-          <h3 className="text-xl font-bold text-gray-900 mb-4">📝 Delivery Notes & Instructions</h3>
-          <p className="text-sm text-gray-600 mb-4">
-            Add any special instructions for the driver (e.g., gate code, parking instructions, delivery preferences)
-          </p>
-          
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            maxLength={200}
-            placeholder="Enter delivery notes here... (e.g., 'Leave at front door', 'Ring doorbell', 'Gate code: 1234')"
-            className="w-full px-4 py-3 border-2 border-gray-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:border-transparent resize-none"
-            rows={3}
-          />
-          
-          <div className="flex justify-between items-center mt-3">
-            <span className="text-sm text-gray-500">
-              {notes.length}/200 characters (keep brief for label)
-            </span>
             <button
-              onClick={handleSaveNotes}
-              disabled={saving}
-              className="px-6 py-2 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition disabled:opacity-50"
+              onClick={() => window.print()}
+              className="px-6 py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition"
             >
-              {saving ? "Saving..." : "Save Notes"}
+              🖨️ Print All Labels
             </button>
           </div>
-
-          {saveMessage && (
-            <div className={`mt-3 text-sm font-semibold ${saveMessage.includes('✅') ? 'text-green-600' : 'text-red-600'}`}>
-              {saveMessage}
-            </div>
-          )}
         </div>
+      </div>
 
-        {/* Shipping Label Component */}
-        <ShippingLabel order={order} client={client} showPrintButton={true} />
+      {/* Labels Container */}
+      <div className="max-w-4xl mx-auto p-4 print:p-0 print:max-w-none">
+        {labels.map((labelNum) => (
+          <div 
+            key={labelNum} 
+            className="mb-8 print:mb-0"
+            style={{ pageBreakAfter: labelNum < labelCount ? 'always' : 'auto' }}
+          >
+            {/* Pagination Badge - Only show if multiple labels */}
+            {labelCount > 1 && (
+              <div className="no-print bg-red-100 border-2 border-red-300 rounded-lg p-3 mb-4 text-center max-w-[420px] mx-auto">
+                <p className="text-xl font-black text-red-700">
+                  📦 PARCEL {labelNum} OF {labelCount}
+                </p>
+              </div>
+            )}
 
-        {/* Print Instructions */}
-        <div className="mt-8 bg-blue-50 rounded-xl p-6 print:hidden">
-          <h4 className="text-lg font-bold text-blue-900 mb-3">
-            📋 Printing Tips
-          </h4>
-          <ul className="space-y-2 text-sm text-gray-700">
-            <li>• Click the <strong>"Print Label"</strong> button above</li>
-            <li>• Select <strong>Portrait</strong> orientation</li>
-            <li>• Use <strong>A4 or Letter</strong> size paper</li>
-            <li>• Keep <strong>"Background graphics"</strong> enabled for colors</li>
-            <li>• Attach label securely to your parcel</li>
-          </ul>
-        </div>
-      </main>
+            {/* The actual shipping label */}
+            <ShippingLabel 
+              order={{
+                ...order,
+                // Add pagination info to notes if multiple labels
+                notes: labelCount > 1 
+                  ? `${order.notes ? order.notes + '\n\n' : ''}📦 PARCEL ${labelNum} OF ${labelCount}`
+                  : order.notes
+              }} 
+              client={client}
+              showPrintButton={false}
+            />
+
+            {/* Print-only pagination footer */}
+            {labelCount > 1 && (
+              <div className="hidden print:block text-center mt-2">
+                <p className="text-lg font-bold text-red-600">
+                  Label {labelNum} of {labelCount}
+                </p>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Print Styles */}
+      <style jsx global>{`
+        @media print {
+          .no-print {
+            display: none !important;
+          }
+          @page {
+            size: A4 portrait;
+            margin: 10mm;
+          }
+        }
+      `}</style>
     </div>
   );
 }
