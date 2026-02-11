@@ -203,6 +203,13 @@ export default function InvoiceDetailPage() {
                     <p className="text-gray-600">{client.phone}</p>
                     {client.address && <p className="text-gray-600">{client.address}</p>}
                   </>
+                ) : order?.walkin_customer_name ? (
+                  <>
+                    <p className="font-bold text-gray-900">{order.walkin_customer_name}</p>
+                    <span className="inline-block px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-semibold rounded mb-2">Walk-in Customer</span>
+                    {order.walkin_customer_email && <p className="text-gray-600">{order.walkin_customer_email}</p>}
+                    {order.walkin_customer_phone && <p className="text-gray-600">{order.walkin_customer_phone}</p>}
+                  </>
                 ) : (
                   <p className="text-gray-400">Client details not available</p>
                 )}
